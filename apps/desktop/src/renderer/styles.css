@@ -173,6 +173,42 @@ button {
   color: color-mix(in srgb, currentColor 58%, transparent);
 }
 
+.dev-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dev-grid p {
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.dev-grid span {
+  color: color-mix(in srgb, currentColor 58%, transparent);
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.dev-list {
+  align-content: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.dev-list button {
+  font-size: 12px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
 .add-panel {
   border-style: dashed;
 }

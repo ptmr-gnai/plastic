@@ -197,6 +197,15 @@ const bundledPanels = [
     subtitle: "Embodied agent runtime",
     body: "Codex is available as an agent runtime that can observe and drive Plastic.",
     order: 3
+  },
+  {
+    id: "agent-dev",
+    title: "Agent Dev",
+    kind: "agent-dev",
+    extensionId: "plastic.agent-dev",
+    subtitle: "Control plane cockpit",
+    body: "Snapshot, self-test, visible refs, and build controls for agents building Plastic.",
+    order: 4
   }
 ];
 
@@ -486,6 +495,71 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
+      id: "windows/focusPanel",
+      title: "Focus panel",
+      description: "Scrolls a visible panel into view and focuses its window.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(async () => {
+          const panelId = (input as { panelId?: string }).panelId;
+          if (!panelId) {
+            throw new Error("windows/focusPanel requires panelId");
+          }
+          const ref = `panel:${panelId}`;
+          const result = [];
+          for (const window of BrowserWindow.getAllWindows()) {
+            const found = await window.webContents.executeJavaScript(`
+              (() => {
+                const element = document.querySelector('[data-plastic-ref="${ref}"]');
+                if (!element) return false;
+                element.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                return true;
+              })()
+            `) as boolean;
+            if (found) {
+              window.focus();
+            }
+            result.push({ windowId: window.id, found });
+          }
+          return result;
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "windows/scrollToRef",
+      title: "Scroll to visible ref",
+      description: "Scrolls any visible data-plastic-ref into view.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(async () => {
+          const ref = (input as { ref?: string }).ref;
+          if (!ref) {
+            throw new Error("windows/scrollToRef requires ref");
+          }
+          const result = [];
+          for (const window of BrowserWindow.getAllWindows()) {
+            const found = await window.webContents.executeJavaScript(`
+              (() => {
+                const element = document.querySelector('[data-plastic-ref="${ref}"]');
+                if (!element) return false;
+                element.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                return true;
+              })()
+            `) as boolean;
+            if (found) {
+              window.focus();
+            }
+            result.push({ windowId: window.id, found });
+          }
+          return result;
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
       id: "app/diagnostics",
       title: "App diagnostics",
       owner: { kind: "runtime", id: "plastic.runtime" },
@@ -509,6 +583,23 @@ const registerRuntimeMethods = async (store: EventStore) => {
       description: "Returns the local build/dev socket status and key development environment paths.",
       owner: { kind: "runtime", id: "plastic.build" },
       handler: () => Effect.sync(buildStatus)
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "renderer/reload",
+      title: "Reload renderer",
+      description: "Reloads all Electron renderer windows.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: () =>
+        Effect.sync(() => {
+          const result = BrowserWindow.getAllWindows().map((window) => {
+            window.webContents.reload();
+            return { windowId: window.id, reloaded: true };
+          });
+          return result;
+        })
     })
   );
 

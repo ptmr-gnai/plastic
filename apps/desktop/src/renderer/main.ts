@@ -56,6 +56,28 @@ type CodexStatus = {
   pendingRequests: number;
 };
 
+type PlasticSnapshot = {
+  build: {
+    status: string;
+    viteUrl: string | null;
+  };
+  runtime: {
+    windowCount: number;
+    eventStreamClientCount: number;
+  };
+  codex: CodexStatus;
+  methods: {
+    count: number;
+  };
+  panels: PlasticPanel[];
+  extensions: Array<{ id: string; title: string; errors: string[] }>;
+  visibleRefs: Array<{ windowId: number; refs: Array<{ ref?: string; panel?: string; command?: string; text: string }> }>;
+  events: {
+    count: number;
+    latest: { type: string; timestamp: string } | null;
+  };
+};
+
 const escapeHtml = (value: string): string =>
   value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
@@ -98,6 +120,8 @@ const render = async (force = false) => {
   const methods = await callPlastic("plastic/methods") as Array<{ id: string }>;
   const panels = await callPlastic("panels/list") as PlasticPanel[];
   const codexStatus = await callPlastic("codex/status") as CodexStatus;
+  const agentDevPanelVisible = panels.some((panel) => panel.kind === "agent-dev");
+  const snapshot = agentDevPanelVisible ? await callPlastic("plastic/snapshot") as PlasticSnapshot : null;
   if (!force && events.length === lastRenderedEventCount) {
     return;
   }
@@ -219,6 +243,34 @@ const render = async (force = false) => {
     </div>
   `;
 
+  const renderAgentDevPanel = () => {
+    const visibleRefs = snapshot?.visibleRefs.flatMap((windowRefs) => windowRefs.refs) ?? [];
+    const recentRefs = visibleRefs.filter((ref) => ref.ref).slice(0, 10);
+    return `
+      <div class="dev-grid" data-plastic-ref="agent-dev:summary">
+        <p><span>Build</span>${escapeHtml(snapshot?.build.status ?? "unknown")}</p>
+        <p><span>Methods</span>${snapshot?.methods.count ?? methods.length}</p>
+        <p><span>Panels</span>${snapshot?.panels.length ?? panels.length}</p>
+        <p><span>Refs</span>${visibleRefs.length}</p>
+        <p><span>Events</span>${snapshot?.events.count ?? state.events.count}</p>
+        <p><span>Codex</span>${snapshot?.codex.initialized ? "initialized" : codexStatus.initialized ? "initialized" : "idle"}</p>
+      </div>
+      <div class="flow-row">
+        <button data-action="self-test" data-plastic-command="plastic/selfTest">Self-test</button>
+        <button data-action="reload-renderer" data-plastic-command="renderer/reload">Reload</button>
+        <button data-action="scan-extensions" data-plastic-command="extensions/scan">Scan extensions</button>
+      </div>
+      <div class="dev-list" data-plastic-ref="agent-dev:refs">
+        ${recentRefs.map((ref) => `
+          <button data-scroll-ref="${escapeHtml(ref.ref ?? "")}" data-plastic-command="windows/scrollToRef">
+            ${escapeHtml(ref.ref ?? "ref")}
+          </button>
+        `).join("")}
+      </div>
+      <p class="muted" data-plastic-ref="agent-dev:latest-event">Latest event: ${escapeHtml(snapshot?.events.latest?.type ?? "none")}</p>
+    `;
+  };
+
   const renderPanelBody = (panel: PlasticPanel) => {
     if (panel.kind === "chat") {
       return renderChatPanel();
@@ -226,6 +278,10 @@ const render = async (force = false) => {
 
     if (panel.kind === "agent-runtime" && panel.id === "codex") {
       return renderCodexPanel();
+    }
+
+    if (panel.kind === "agent-dev") {
+      return renderAgentDevPanel();
     }
 
     return `<p>${escapeHtml(panel.body ?? "This panel is projected from the durable event stream.")}</p>`;
@@ -299,6 +355,30 @@ const render = async (force = false) => {
       order: panels.length + 1
     });
     await render(true);
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-action='self-test']")?.addEventListener("click", async () => {
+    await callPlastic("plastic/selfTest", {});
+    await render(true);
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-action='reload-renderer']")?.addEventListener("click", async () => {
+    await callPlastic("renderer/reload", {});
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-action='scan-extensions']")?.addEventListener("click", async () => {
+    await callPlastic("extensions/scan", {});
+    await render(true);
+  });
+
+  root.querySelectorAll<HTMLButtonElement>("[data-scroll-ref]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const ref = button.dataset.scrollRef;
+      if (!ref) {
+        return;
+      }
+      await callPlastic("windows/scrollToRef", { ref });
+    });
   });
 
   root.querySelector<HTMLFormElement>(".chat-compose")?.addEventListener("submit", async (event) => {
