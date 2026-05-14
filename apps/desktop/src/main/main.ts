@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
 import { Effect } from "effect";
-import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticState, type EventStore } from "@plastic/core";
+import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticState, projectPanels, projectWindows, type EventStore } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 
@@ -19,6 +19,75 @@ const methods = createMethodRegistry();
 const codexAdapter = createCodexAdapter({ eventStore, methods, runPromise });
 const windows = new Set<BrowserWindow>();
 const eventStreamClients = new Set<ServerResponse>();
+
+const bundledPanels = [
+  {
+    id: "chat-main",
+    title: "Chat",
+    kind: "chat",
+    extensionId: "plastic.chat",
+    subtitle: "Markdown conversation surface",
+    body: "Agent messages and user messages land in Plastic's shared event stream.",
+    order: 0
+  },
+  {
+    id: "doc-main",
+    title: "Document",
+    kind: "document",
+    extensionId: "plastic.document",
+    subtitle: "Markdown editor and preview",
+    body: "The document panel starts as a projection of durable document events.",
+    order: 1
+  },
+  {
+    id: "tasks-main",
+    title: "Tasks",
+    kind: "tasks",
+    extensionId: "plastic.tasks",
+    subtitle: "Tasks and recurring work",
+    body: "Recurring tasks can learn from usage and propose new buttons or flows.",
+    order: 2
+  },
+  {
+    id: "codex",
+    title: "Codex",
+    kind: "agent-runtime",
+    extensionId: "plastic.codex",
+    subtitle: "Embodied agent runtime",
+    body: "Codex is available as an agent runtime that can observe and drive Plastic.",
+    order: 3
+  }
+];
+
+const ensureBundledPanels = async (store: EventStore) => {
+  const events = await runPromise(store.list());
+  const existingPanelIds = new Set(projectPanels(events).map((panel) => panel.id));
+
+  for (const panel of bundledPanels) {
+    if (existingPanelIds.has(panel.id)) {
+      continue;
+    }
+
+    await runPromise(
+      store.append(
+        createEvent({
+          type: "panel.created",
+          payload: panel,
+          scope: {
+            panelId: panel.id,
+            extensionId: panel.extensionId
+          },
+          meta: {
+            links: [
+              { rel: "panel", href: "panels/get", method: "panels/get", target: panel.id },
+              { rel: "extension", href: "extensions/get", method: "extensions/get", target: panel.extensionId }
+            ]
+          }
+        })
+      )
+    );
+  }
+};
 
 const registerRuntimeMethods = async (store: EventStore) => {
   await runPromise(
@@ -47,6 +116,182 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "List events",
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: () => store.list()
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "panels/list",
+      title: "List panels",
+      description: "Returns the panel read model rebuilt from durable events.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: () => Effect.map(store.list(), projectPanels)
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "panels/get",
+      title: "Get panel",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.map(store.list(), (events) => {
+          const id = (input as { id?: string }).id;
+          const panel = projectPanels(events).find((candidate) => candidate.id === id);
+          if (!panel) {
+            throw new Error(`Panel not found: ${id}`);
+          }
+          return panel;
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "panels/create",
+      title: "Create panel",
+      description: "Appends a durable panel.created event. Renderer windows project it immediately.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) => {
+        const panelInput = input as {
+          id?: string;
+          title?: string;
+          kind?: string;
+          extensionId?: string;
+          subtitle?: string;
+          body?: string;
+          windowId?: string;
+          order?: number;
+        };
+        const title = panelInput.title ?? "Untitled panel";
+        const id = panelInput.id ?? `panel-${crypto.randomUUID().slice(0, 8)}`;
+        const extensionId = panelInput.extensionId ?? "plastic.user";
+        const scope = {
+          panelId: id,
+          extensionId
+        } as { panelId: string; extensionId: string; windowId?: string };
+        if (panelInput.windowId) {
+          scope.windowId = panelInput.windowId;
+        }
+
+        return store.append(
+          createEvent({
+            type: "panel.created",
+            payload: {
+              id,
+              title,
+              kind: panelInput.kind ?? "generic",
+              extensionId,
+              subtitle: panelInput.subtitle,
+              body: panelInput.body ?? "This panel was created through Plastic RPC.",
+              windowId: panelInput.windowId,
+              order: panelInput.order
+            },
+            scope
+          })
+        );
+      }
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "panels/rename",
+      title: "Rename panel",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) => {
+        const panelInput = input as { id?: string; title?: string; subtitle?: string };
+        if (!panelInput.id || !panelInput.title) {
+          throw new Error("panels/rename requires id and title");
+        }
+
+        return store.append(
+          createEvent({
+            type: "panel.renamed",
+            payload: {
+              id: panelInput.id,
+              title: panelInput.title,
+              subtitle: panelInput.subtitle
+            },
+            scope: { panelId: panelInput.id }
+          })
+        );
+      }
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "panels/move",
+      title: "Move panel",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) => {
+        const panelInput = input as { id?: string; windowId?: string; order?: number };
+        if (!panelInput.id) {
+          throw new Error("panels/move requires id");
+        }
+
+        return store.append(
+          createEvent({
+            type: "panel.moved",
+            payload: {
+              id: panelInput.id,
+              windowId: panelInput.windowId,
+              order: panelInput.order
+            },
+            scope: { panelId: panelInput.id }
+          })
+        );
+      }
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "panels/remove",
+      title: "Remove panel",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) => {
+        const panelInput = input as { id?: string; reason?: string };
+        if (!panelInput.id) {
+          throw new Error("panels/remove requires id");
+        }
+
+        return store.append(
+          createEvent({
+            type: "panel.removed",
+            payload: {
+              id: panelInput.id,
+              reason: panelInput.reason
+            },
+            scope: { panelId: panelInput.id }
+          })
+        );
+      }
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "windows/list",
+      title: "List windows",
+      description: "Returns known windows rebuilt from durable events.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: () => Effect.map(store.list(), (events) => projectWindows(events))
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "windows/create",
+      title: "Create window",
+      description: "Opens a new Electron window and appends window.created.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(async () => {
+          const windowInput = input as { title?: string };
+          return createWindow(windowInput.title);
+        })
     })
   );
 
@@ -343,11 +588,11 @@ const startBuildSocket = () => {
   return server;
 };
 
-const createWindow = async () => {
+const createWindow = async (title = "Plastic") => {
   const window = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: "Plastic",
+    title,
     webPreferences: {
       preload: new URL("../preload/preload.js", import.meta.url).pathname,
       contextIsolation: true,
@@ -369,12 +614,12 @@ const createWindow = async () => {
   });
 
   await runPromise(
-    eventStore.append(
-      createEvent({
-        type: "window.created",
-        payload: { electronWindowId: window.id }
-      })
-    )
+      eventStore.append(
+        createEvent({
+          type: "window.created",
+          payload: { id: `electron:${window.id}`, electronWindowId: window.id, title }
+        })
+      )
   );
 
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -382,6 +627,8 @@ const createWindow = async () => {
   } else {
     await window.loadFile(new URL("../../dist/index.html", import.meta.url).pathname);
   }
+
+  return { id: `electron:${window.id}`, electronWindowId: window.id, title };
 };
 
 ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise<RpcResponse> => {
@@ -396,6 +643,7 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
   }
 });
 
+await ensureBundledPanels(eventStore);
 await registerRuntimeMethods(eventStore);
 await codexAdapter.registerMethods();
 await runPromise(

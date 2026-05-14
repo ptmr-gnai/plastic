@@ -23,6 +23,16 @@ type PlasticEvent = {
   payload: unknown;
 };
 
+type PlasticPanel = {
+  id: string;
+  title: string;
+  kind: string;
+  extensionId: string;
+  subtitle?: string;
+  body?: string;
+  order: number;
+};
+
 type ChatButton = {
   id: string;
   label: string;
@@ -44,26 +54,8 @@ type CodexStatus = {
   pendingRequests: number;
 };
 
-const panels = [
-  {
-    id: "chat-main",
-    title: "Chat",
-    subtitle: "Markdown conversation surface",
-    body: "Agent messages and user messages will land in Plastic's shared event stream."
-  },
-  {
-    id: "doc-main",
-    title: "Document",
-    subtitle: "Markdown editor and preview",
-    body: "The document panel starts as a projection of durable document events."
-  },
-  {
-    id: "tasks-main",
-    title: "Tasks",
-    subtitle: "Tasks and recurring work",
-    body: "Recurring tasks can learn from usage and propose new buttons or flows."
-  }
-];
+const escapeHtml = (value: string): string =>
+  value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
 const callPlastic = async (method: string, input?: unknown): Promise<unknown> => {
   if (window.plastic) {
@@ -93,6 +85,7 @@ const render = async (force = false) => {
   const state = await callPlastic("plastic/state") as PlasticState;
   const events = await callPlastic("events/list") as PlasticEvent[];
   const methods = await callPlastic("plastic/methods") as Array<{ id: string }>;
+  const panels = await callPlastic("panels/list") as PlasticPanel[];
   const codexStatus = await callPlastic("codex/status") as CodexStatus;
   if (!force && events.length === lastRenderedEventCount) {
     return;
@@ -135,6 +128,43 @@ const render = async (force = false) => {
     } satisfies ChatMessage));
   document.documentElement.dataset.theme = state.app.theme;
 
+  const renderChatPanel = () => `
+    <div class="flow-row" data-plastic-ref="chat-buttons:chat-main">
+      ${chatButtons.map((button) => `
+        <button
+          data-chat-button="${escapeHtml(button.id)}"
+          data-plastic-ref="panel-button:${escapeHtml(button.id)}"
+          data-plastic-command="${escapeHtml(button.action.method)}"
+        >${escapeHtml(button.label)}</button>
+      `).join("")}
+    </div>
+    <div class="chat-log" data-plastic-ref="chat-log:chat-main">
+      ${chatMessages.length > 0 ? chatMessages.map((message) => `
+        <p class="chat-message" data-plastic-ref="${escapeHtml(message.id)}">${escapeHtml(message.content)}</p>
+      `).join("") : `<p class="muted">Injected user messages will appear here.</p>`}
+    </div>
+  `;
+
+  const renderCodexPanel = () => `
+    <p>Status: ${codexStatus.connected ? "connected" : "disconnected"}${codexStatus.initialized ? " and initialized" : ""}</p>
+    <p>PID: ${codexStatus.pid ?? "none"} · Pending: ${codexStatus.pendingRequests}</p>
+    <div class="flow-row">
+      <button data-action="codex-connect" data-plastic-command="codex/initialize">Connect</button>
+    </div>
+  `;
+
+  const renderPanelBody = (panel: PlasticPanel) => {
+    if (panel.kind === "chat") {
+      return renderChatPanel();
+    }
+
+    if (panel.kind === "agent-runtime" && panel.id === "codex") {
+      return renderCodexPanel();
+    }
+
+    return `<p>${escapeHtml(panel.body ?? "This panel is projected from the durable event stream.")}</p>`;
+  };
+
   root.innerHTML = `
     <section class="workspace" data-plastic-ref="workspace:default">
       <header class="topbar" data-plastic-ref="runtime:topbar">
@@ -150,47 +180,21 @@ const render = async (force = false) => {
       </header>
       <div class="rail" data-plastic-ref="window-layout:main">
         ${panels.map((panel) => `
-          <article class="panel" data-plastic-ref="panel:${panel.id}" data-plastic-panel="${panel.id}">
+          <article class="panel" data-plastic-ref="panel:${escapeHtml(panel.id)}" data-plastic-panel="${escapeHtml(panel.id)}" data-plastic-extension="${escapeHtml(panel.extensionId)}">
             <header class="panel-header">
               <div>
-                <p class="eyebrow">${panel.subtitle}</p>
-                <h2>${panel.title}</h2>
+                <p class="eyebrow">${escapeHtml(panel.subtitle ?? panel.kind)}</p>
+                <h2>${escapeHtml(panel.title)}</h2>
               </div>
             </header>
-            ${panel.id === "chat-main" ? `
-              <div class="flow-row" data-plastic-ref="chat-buttons:chat-main">
-                ${chatButtons.map((button) => `
-                  <button
-                    data-chat-button="${button.id}"
-                    data-plastic-ref="panel-button:${button.id}"
-                    data-plastic-command="${button.action.method}"
-                  >${button.label}</button>
-                `).join("")}
-              </div>
-              <div class="chat-log" data-plastic-ref="chat-log:chat-main">
-                ${chatMessages.length > 0 ? chatMessages.map((message) => `
-                  <p class="chat-message" data-plastic-ref="${message.id}">${message.content}</p>
-                `).join("") : `<p class="muted">Injected user messages will appear here.</p>`}
-              </div>
-            ` : ""}
-            <p>${panel.body}</p>
+            ${renderPanelBody(panel)}
           </article>
         `).join("")}
         <article class="panel add-panel" data-plastic-ref="panel:add">
           <h2>Add panel</h2>
           <p>Ask an agent to create a new panel, button, workflow, or extension. New panels accumulate to the right.</p>
-        </article>
-        <article class="panel" data-plastic-ref="panel:codex" data-plastic-panel="codex">
-          <header class="panel-header">
-            <div>
-              <p class="eyebrow">Embodied agent runtime</p>
-              <h2>Codex</h2>
-            </div>
-          </header>
-          <p>Status: ${codexStatus.connected ? "connected" : "disconnected"}${codexStatus.initialized ? " and initialized" : ""}</p>
-          <p>PID: ${codexStatus.pid ?? "none"} · Pending: ${codexStatus.pendingRequests}</p>
           <div class="flow-row">
-            <button data-action="codex-connect" data-plastic-command="codex/initialize">Connect</button>
+            <button data-action="create-panel" data-plastic-command="panels/create">Create panel</button>
           </div>
         </article>
       </div>
@@ -217,6 +221,17 @@ const render = async (force = false) => {
 
   root.querySelector<HTMLButtonElement>("[data-action='codex-connect']")?.addEventListener("click", async () => {
     await callPlastic("codex/initialize", {});
+    await render(true);
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-action='create-panel']")?.addEventListener("click", async () => {
+    await callPlastic("panels/create", {
+      title: "New panel",
+      kind: "generic",
+      extensionId: "plastic.user",
+      body: "Created from the GUI through panels/create.",
+      order: panels.length + 1
+    });
     await render(true);
   });
 };
