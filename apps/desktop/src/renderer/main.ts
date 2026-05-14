@@ -78,11 +78,20 @@ const callPlastic = async (method: string, input?: unknown): Promise<unknown> =>
 
 let lastRenderedEventCount = -1;
 
+const isNearBottom = (element: HTMLElement) =>
+  element.scrollHeight - element.scrollTop - element.clientHeight < 48;
+
 const render = async (force = false) => {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) {
     return;
   }
+
+  const existingChatLog = root.querySelector<HTMLElement>("[data-plastic-ref='chat-log:chat-main']");
+  const chatScroll = existingChatLog ? {
+    top: existingChatLog.scrollTop,
+    stickToBottom: isNearBottom(existingChatLog)
+  } : null;
 
   const state = await callPlastic("plastic/state") as PlasticState;
   const events = await callPlastic("events/list") as PlasticEvent[];
@@ -306,6 +315,13 @@ const render = async (force = false) => {
     form.reset();
     await render(true);
   });
+
+  const nextChatLog = root.querySelector<HTMLElement>("[data-plastic-ref='chat-log:chat-main']");
+  if (nextChatLog && chatScroll) {
+    nextChatLog.scrollTop = chatScroll.stickToBottom ? nextChatLog.scrollHeight : chatScroll.top;
+  } else if (nextChatLog) {
+    nextChatLog.scrollTop = nextChatLog.scrollHeight;
+  }
 };
 
 void render(true);
