@@ -7,6 +7,10 @@ export interface PlasticState {
     name: "Plastic";
     theme: "light" | "dark";
   };
+  events: {
+    count: number;
+    latest: string | null;
+  };
   resources: PlasticResource[];
 }
 
@@ -24,6 +28,10 @@ export const buildPlasticState = (
       app: {
         name: "Plastic",
         theme: lastTheme?.theme ?? "light"
+      },
+      events: {
+        count: events.length,
+        latest: events.at(-1)?.id ?? null
       },
       resources: [
         {
@@ -49,4 +57,3 @@ export const buildPlasticState = (
       ]
     };
   });
-

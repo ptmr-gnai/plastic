@@ -1,8 +1,9 @@
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 
 const cwd = new URL("..", import.meta.url).pathname;
+const workspaceDir = new URL("../../..", import.meta.url).pathname;
 const viteUrl = "http://127.0.0.1:5173";
 const electronMain = new URL("../dist-electron/main/main.js", import.meta.url).pathname;
 
@@ -36,6 +37,8 @@ process.on("SIGTERM", () => {
   process.exit(143);
 });
 
+rmSync(new URL("../dist-electron", import.meta.url), { force: true, recursive: true });
+
 run("pnpm", ["exec", "tsc", "-p", "tsconfig.node.json", "--watch", "--preserveWatchOutput"]);
 run("pnpm", ["exec", "vite", "--host", "127.0.0.1"]);
 
@@ -56,7 +59,7 @@ while (!viteReady) {
 run("pnpm", ["exec", "electron", "."], {
   env: {
     ...process.env,
+    PLASTIC_WORKSPACE_DIR: workspaceDir,
     VITE_DEV_SERVER_URL: viteUrl
   }
 });
-

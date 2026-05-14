@@ -69,6 +69,17 @@ button {
   text-transform: uppercase;
 }
 
+.status {
+  color: color-mix(in srgb, currentColor 68%, transparent);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 4px 0 0;
+}
+
+.status code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 .rail {
   display: grid;
   gap: 14px;
@@ -104,4 +115,3 @@ button {
 .add-panel {
   border-style: dashed;
 }
-

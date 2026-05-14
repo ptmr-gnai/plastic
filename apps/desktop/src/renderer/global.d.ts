@@ -2,9 +2,8 @@ export {};
 
 declare global {
   interface Window {
-    plastic: {
+    plastic?: {
       call: (method: string, input?: unknown) => Promise<unknown>;
     };
   }
 }
-

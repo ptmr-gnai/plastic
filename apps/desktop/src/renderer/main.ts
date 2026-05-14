@@ -5,6 +5,10 @@ type PlasticState = {
     name: "Plastic";
     theme: "light" | "dark";
   };
+  events: {
+    count: number;
+    latest: string | null;
+  };
   resources: Array<{
     id: string;
     kind: string;
@@ -35,13 +39,30 @@ const panels = [
   }
 ];
 
+const callPlastic = async (method: string, input?: unknown): Promise<unknown> => {
+  if (window.plastic) {
+    return window.plastic.call(method, input);
+  }
+
+  const response = await fetch("http://127.0.0.1:7331/rpc", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ method, input })
+  });
+  const result = await response.json() as { ok: true; value: unknown } | { ok: false; error: string };
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  return result.value;
+};
+
 const render = async () => {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) {
     return;
   }
 
-  const state = await window.plastic.call("plastic/state") as PlasticState;
+  const state = await callPlastic("plastic/state") as PlasticState;
   document.documentElement.dataset.theme = state.app.theme;
 
   root.innerHTML = `
@@ -50,6 +71,7 @@ const render = async () => {
         <div>
           <p class="eyebrow">Plastic</p>
           <h1>Agent-native workspace</h1>
+          <p class="status">Runtime socket <code>7331</code> · Build socket <code>7332</code> · Events ${state.events.count}</p>
         </div>
         <div class="topbar-actions">
           <button data-action="theme" data-theme="light" data-plastic-command="app/setTheme">Light</button>
@@ -84,7 +106,7 @@ const render = async () => {
 
   root.querySelectorAll<HTMLButtonElement>("[data-action='theme']").forEach((button) => {
     button.addEventListener("click", async () => {
-      await window.plastic.call("app/setTheme", { theme: button.dataset.theme });
+      await callPlastic("app/setTheme", { theme: button.dataset.theme });
       await render();
     });
   });
@@ -92,3 +114,19 @@ const render = async () => {
 
 void render();
 
+window.addEventListener("message", (event) => {
+  if (event.data?.type !== "plastic:listVisibleRefs") {
+    return;
+  }
+
+  const refs = [...document.querySelectorAll<HTMLElement>("[data-plastic-ref]")].map((element) => ({
+    ref: element.dataset.plasticRef,
+    panel: element.dataset.plasticPanel,
+    extension: element.dataset.plasticExtension,
+    command: element.dataset.plasticCommand,
+    tag: element.tagName.toLowerCase(),
+    text: element.innerText.slice(0, 240)
+  }));
+
+  event.source?.postMessage({ type: "plastic:visibleRefs", refs }, { targetOrigin: "*" });
+});
