@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain } from "electron";
 import { Effect } from "effect";
-import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticState, projectPanels, projectWindows, type EventStore } from "@plastic/core";
+import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticState, projectExtensions, projectPanels, projectWindows, type EventStore, type PlasticEvent } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { registerExtensionMethods, scanWorkspaceExtensions } from "./extension-loader.js";
@@ -20,6 +20,146 @@ const methods = createMethodRegistry();
 const codexAdapter = createCodexAdapter({ eventStore, methods, runPromise, workspaceDir });
 const windows = new Set<BrowserWindow>();
 const eventStreamClients = new Set<ServerResponse>();
+const processStartedAt = new Date().toISOString();
+
+type VisibleRef = {
+  ref?: string;
+  panel?: string;
+  extension?: string;
+  command?: string;
+  tag: string;
+  text: string;
+};
+
+type WindowVisibleRefs = {
+  windowId: number;
+  refs: VisibleRef[];
+};
+
+const buildStatus = () => ({
+  service: "plastic.build",
+  status: "running",
+  workspaceDir,
+  clayDir,
+  extensionsDir: join(clayDir, "extensions"),
+  eventPath,
+  viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,
+  runtimeSocket: "http://127.0.0.1:7331",
+  buildSocket: "http://127.0.0.1:7332",
+  pid: process.pid,
+  startedAt: processStartedAt
+});
+
+const listVisibleRefs = async (): Promise<WindowVisibleRefs[]> => {
+  const refs = [];
+  for (const window of BrowserWindow.getAllWindows()) {
+    const windowRefs = await window.webContents.executeJavaScript(`
+      [...document.querySelectorAll("[data-plastic-ref]")].map((element) => ({
+        ref: element.dataset.plasticRef,
+        panel: element.dataset.plasticPanel,
+        extension: element.dataset.plasticExtension,
+        command: element.dataset.plasticCommand,
+        tag: element.tagName.toLowerCase(),
+        text: (element.innerText || element.textContent || "").slice(0, 240)
+      }))
+    `) as VisibleRef[];
+    refs.push({ windowId: window.id, refs: windowRefs });
+  }
+  return refs;
+};
+
+const findRecentEvents = (events: PlasticEvent[], predicate: (event: PlasticEvent) => boolean, limit = 20) =>
+  events.filter(predicate).slice(-limit);
+
+const sourceHintsFor = (input: { ref?: string; panelId?: string; extensionId?: string; command?: string }) => {
+  const hints = new Set<string>();
+  if (input.ref?.startsWith("panel:") || input.panelId) {
+    hints.add("apps/desktop/src/renderer/main.ts");
+    hints.add("apps/desktop/src/renderer/styles.css");
+    hints.add("packages/core/src/panels.ts");
+  }
+  if (input.ref?.startsWith("panel-button:") || input.command?.startsWith("chats/")) {
+    hints.add("apps/desktop/src/main/main.ts");
+    hints.add("apps/desktop/src/main/codex-adapter.ts");
+    hints.add("apps/desktop/src/renderer/main.ts");
+  }
+  if (input.extensionId?.startsWith("workspace.")) {
+    hints.add("apps/desktop/src/main/extension-loader.ts");
+    hints.add(".clay/extensions");
+  }
+  if (input.command?.startsWith("codex/")) {
+    hints.add("apps/desktop/src/main/codex-adapter.ts");
+    hints.add("docs/CODEX_APP_SERVER_INTEGRATION.md");
+  }
+  if (input.command?.startsWith("panels/")) {
+    hints.add("packages/core/src/panels.ts");
+    hints.add("apps/desktop/src/main/main.ts");
+  }
+  return [...hints];
+};
+
+const buildSnapshot = async () => {
+  const events = await runPromise(eventStore.list());
+  const registeredMethods = await runPromise(methods.list());
+  const panels = projectPanels(events);
+  const windowsModel = projectWindows(events, panels);
+  const extensions = projectExtensions(events);
+  const visibleRefs = await listVisibleRefs();
+
+  return {
+    app: {
+      name: "Plastic",
+      version: app.getVersion(),
+      ready: app.isReady(),
+      workspaceDir,
+      eventPath
+    },
+    build: buildStatus(),
+    runtime: {
+      windowCount: BrowserWindow.getAllWindows().length,
+      retainedWindowCount: windows.size,
+      eventStreamClientCount: eventStreamClients.size
+    },
+    codex: codexAdapter.status(),
+    methods: {
+      count: registeredMethods.length,
+      items: registeredMethods.map((method) => ({
+        id: method.id,
+        title: method.title,
+        owner: method.owner,
+        description: method.description,
+        links: method.links ?? []
+      }))
+    },
+    panels,
+    windows: windowsModel,
+    extensions,
+    visibleRefs,
+    events: {
+      count: events.length,
+      latest: events.at(-1) ?? null,
+      recent: events.slice(-30)
+    },
+    links: [
+      { rel: "state", href: "plastic/state", method: "plastic/state" },
+      { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+      { rel: "events", href: "events/list", method: "events/list" },
+      { rel: "visible-refs", href: "deixis/listVisibleRefs", method: "deixis/listVisibleRefs" },
+      { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" }
+    ]
+  };
+};
+
+const resolveVisibleRef = async (ref: string) => {
+  const visibleRefs = await listVisibleRefs();
+  for (const windowRefs of visibleRefs) {
+    const match = windowRefs.refs.find((candidate) => candidate.ref === ref);
+    if (match) {
+      return { windowId: windowRefs.windowId, ref: match };
+    }
+  }
+  return null;
+};
 
 const bundledPanels = [
   {
@@ -108,6 +248,54 @@ const registerRuntimeMethods = async (store: EventStore) => {
       description: "Lists all registered RPC methods.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: () => methods.list()
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "plastic/snapshot",
+      title: "Plastic snapshot",
+      description: "Returns a high-signal observable snapshot for agents: app, build, methods, panels, windows, extensions, visible refs, Codex, and recent events.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: () => Effect.promise(buildSnapshot)
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "plastic/selfTest",
+      title: "Plastic self-test",
+      description: "Runs a fast control-plane health check for event store, projections, methods, DOM refs, build status, and Codex status.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: () =>
+        Effect.promise(async () => {
+          const checks: Array<{ id: string; ok: boolean; details?: unknown }> = [];
+          const record = (id: string, fn: () => Promise<unknown> | unknown) =>
+            Promise.resolve()
+              .then(fn)
+              .then((details) => checks.push({ id, ok: true, details }))
+              .catch((error) => checks.push({ id, ok: false, details: error instanceof Error ? error.message : String(error) }));
+
+          await record("event-store:list", async () => ({ count: (await runPromise(store.list())).length }));
+          await record("methods:list", async () => ({ count: (await runPromise(methods.list())).length }));
+          await record("panels:project", async () => ({ count: projectPanels(await runPromise(store.list())).length }));
+          await record("windows:project", async () => ({ count: projectWindows(await runPromise(store.list())).length }));
+          await record("extensions:project", async () => ({ count: projectExtensions(await runPromise(store.list())).length }));
+          await record("deixis:listVisibleRefs", async () => ({ windows: (await listVisibleRefs()).length }));
+          await record("build:status", () => buildStatus());
+          await record("codex:status", () => codexAdapter.status());
+
+          const ok = checks.every((check) => check.ok);
+          const event = await runPromise(
+            store.append(
+              createEvent({
+                type: "plastic.self_test.completed",
+                payload: { ok, checks }
+              })
+            )
+          );
+          return { ok, checks, eventId: event.id };
+        })
     })
   );
 
@@ -316,6 +504,16 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
+      id: "build/status",
+      title: "Build status",
+      description: "Returns the local build/dev socket status and key development environment paths.",
+      owner: { kind: "runtime", id: "plastic.build" },
+      handler: () => Effect.sync(buildStatus)
+    })
+  );
+
+  await runPromise(
+    methods.register({
       id: "events/append",
       title: "Append event",
       owner: { kind: "runtime", id: "plastic.runtime" },
@@ -418,23 +616,74 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "List visible UI references",
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: () =>
+        Effect.promise(listVisibleRefs)
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "deixis/resolveRef",
+      title: "Resolve visible UI reference",
+      description: "Explains a data-plastic-ref with DOM, panel, extension, command, source hints, and recent event lineage.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
         Effect.promise(async () => {
-          const windows = BrowserWindow.getAllWindows();
-          const refs = [];
-          for (const window of windows) {
-            const windowRefs = await window.webContents.executeJavaScript(`
-              [...document.querySelectorAll("[data-plastic-ref]")].map((element) => ({
-                ref: element.dataset.plasticRef,
-                panel: element.dataset.plasticPanel,
-                extension: element.dataset.plasticExtension,
-                command: element.dataset.plasticCommand,
-                tag: element.tagName.toLowerCase(),
-                text: (element.innerText || element.textContent || "").slice(0, 240)
-              }))
-            `) as unknown[];
-            refs.push({ windowId: window.id, refs: windowRefs });
+          const ref = (input as { ref?: string }).ref;
+          if (!ref) {
+            throw new Error("deixis/resolveRef requires ref");
           }
-          return refs;
+
+          const events = await runPromise(store.list());
+          const panels = projectPanels(events);
+          const extensions = projectExtensions(events);
+          const visible = await resolveVisibleRef(ref);
+          const panelId = visible?.ref.panel ?? (ref.startsWith("panel:") ? ref.slice("panel:".length) : undefined);
+          const panel = panelId ? panels.find((candidate) => candidate.id === panelId) : undefined;
+          const extensionId = visible?.ref.extension ?? panel?.extensionId;
+          const extension = extensionId ? extensions.find((candidate) => candidate.id === extensionId) : undefined;
+          const command = visible?.ref.command;
+          const lineage = findRecentEvents(
+            events,
+            (event) =>
+              event.scope.panelId === panelId ||
+              event.scope.extensionId === extensionId ||
+              event.type.includes(panelId ?? "__no_panel__") ||
+              event.type.includes(extensionId ?? "__no_extension__"),
+            12
+          );
+
+          const sourceHintInput: { ref?: string; panelId?: string; extensionId?: string; command?: string } = { ref };
+          if (panelId) {
+            sourceHintInput.panelId = panelId;
+          }
+          if (extensionId) {
+            sourceHintInput.extensionId = extensionId;
+          }
+          if (command) {
+            sourceHintInput.command = command;
+          }
+
+          return {
+            ref,
+            visible,
+            panel,
+            extension,
+            command,
+            sourceHints: sourceHintsFor(sourceHintInput),
+            lineage,
+            actions: [
+              ...(panelId ? [
+                { id: "get-panel", title: "Get panel", method: "panels/get", input: { id: panelId } },
+                { id: "rename-panel", title: "Rename panel", method: "panels/rename" }
+              ] : []),
+              ...(extensionId ? [
+                { id: "get-extension", title: "Get extension", method: "extensions/get", input: { id: extensionId } }
+              ] : []),
+              ...(command ? [
+                { id: "invoke-command", title: "Invoke command", method: command }
+              ] : [])
+            ]
+          };
         })
     })
   );
@@ -564,7 +813,12 @@ const startRuntimeSocket = () => {
 };
 
 const startBuildSocket = () => {
-  const server = createServer((request, response) => {
+  const server = createServer(async (request, response) => {
+    if (request.method === "OPTIONS") {
+      sendJson(response, 204, {});
+      return;
+    }
+
     if (request.method === "GET" && request.url === "/healthz") {
       sendJson(response, 200, { ok: true, service: "plastic.build" });
       return;
@@ -573,12 +827,28 @@ const startBuildSocket = () => {
     if (request.method === "GET" && request.url === "/status") {
       sendJson(response, 200, {
         ok: true,
-        value: {
-          service: "plastic.build",
-          status: "stubbed",
-          viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
-        }
+        value: buildStatus()
       });
+      return;
+    }
+
+    if (request.method === "GET" && request.url === "/snapshot") {
+      try {
+        sendJson(response, 200, { ok: true, value: await buildSnapshot() });
+      } catch (error) {
+        sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/rpc") {
+      try {
+        const body = await readJsonBody(request) as RpcRequest;
+        const value = await runPromise(methods.call(body.method, body.input));
+        sendJson(response, 200, { ok: true, value });
+      } catch (error) {
+        sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+      }
       return;
     }
 
