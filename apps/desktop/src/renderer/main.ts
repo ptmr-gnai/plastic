@@ -212,7 +212,8 @@ const render = async (force = false) => {
 
   const buildChatMessages = (chatId: string) => {
     const agentMessages = new Map<string, ChatMessage>();
-    const messages = events.flatMap<ChatMessage>((event, index) => {
+    const messages: ChatMessage[] = [];
+    events.forEach((event, index) => {
       const payload = event.payload as {
         chatId?: string;
         fromPanelId?: string;
@@ -225,60 +226,67 @@ const render = async (force = false) => {
       };
 
       if ((event.type === "chat.user_message.injected" || event.type === "chat.user_message.submitted") && payload.chatId === chatId) {
-        return [{
+        messages.push({
           id: `message-${chatId}-${index}`,
           role: "user",
           content: payload.content ?? ""
-        } satisfies ChatMessage];
+        });
+        return;
       }
 
       if (event.type === "panel.message.sent" && payload.toPanelId === chatId) {
-        return [{
+        messages.push({
           id: `panel-message-${chatId}-${index}`,
           role: "peer",
           content: `${payload.fromPanelId}: ${payload.content ?? ""}`
-        } satisfies ChatMessage];
+        });
+        return;
       }
 
       if (event.type === "chat.agent_message.delta" && payload.chatId === chatId) {
         const id = payload.itemId ?? `agent-${chatId}-${index}`;
-        const existing = agentMessages.get(id) ?? {
-          id,
-          role: "agent",
-          content: "",
-          streaming: true
-        } satisfies ChatMessage;
+        let existing = agentMessages.get(id);
+        if (!existing) {
+          existing = {
+            id,
+            role: "agent",
+            content: "",
+            streaming: true
+          };
+          agentMessages.set(id, existing);
+          messages.push(existing);
+        }
         existing.content += payload.delta ?? "";
         existing.streaming = true;
-        agentMessages.set(id, existing);
-        return [];
+        return;
       }
 
       if (event.type === "chat.agent_message.completed" && payload.chatId === chatId) {
         const id = payload.itemId ?? `agent-${chatId}-${index}`;
-        const existing = agentMessages.get(id) ?? {
-          id,
-          role: "agent",
-          content: "",
-          streaming: false
-        } satisfies ChatMessage;
+        let existing = agentMessages.get(id);
+        if (!existing) {
+          existing = {
+            id,
+            role: "agent",
+            content: "",
+            streaming: false
+          };
+          agentMessages.set(id, existing);
+          messages.push(existing);
+        }
         existing.content = payload.content ?? existing.content;
         existing.streaming = false;
-        agentMessages.set(id, existing);
-        return [];
+        return;
       }
 
       if (event.type === "chat.codex_turn.completed" && payload.chatId === chatId && payload.status === "failed") {
-        return [{
+        messages.push({
           id: `turn-${chatId}-${index}`,
           role: "system",
           content: payload.error?.message ?? "Codex turn failed."
-        } satisfies ChatMessage];
+        });
       }
-
-      return [];
     });
-    messages.push(...agentMessages.values());
     return messages;
   };
   document.documentElement.dataset.theme = state.app.theme;
