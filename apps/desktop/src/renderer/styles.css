@@ -150,6 +150,29 @@ button {
   min-height: 0;
 }
 
+.chat-status {
+  align-items: center;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 8px;
+  line-height: 1.2;
+}
+
+.chat-status span {
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  border-radius: 999px;
+  padding: 5px 8px;
+}
+
+.chat-status button {
+  border-color: #dc2626;
+  color: #dc2626;
+  padding: 5px 8px;
+}
+
 .chat-actions {
   border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
   flex: 0 0 auto;

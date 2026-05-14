@@ -56,6 +56,14 @@ type CodexStatus = {
   pendingRequests: number;
 };
 
+type ChatBinding = {
+  chatId: string;
+  runtimeId: string;
+  threadId: string | null;
+  activeTurnId: string | null;
+  activeTurnStatus: string | null;
+};
+
 type PlasticSnapshot = {
   build: {
     status: string;
@@ -151,6 +159,12 @@ const render = async (force = false) => {
     .map((event) => (event.payload as { button?: ChatButton }).button)
     .filter((button): button is ChatButton => Boolean(button));
   const chatPanels = panels.filter((panel) => panel.kind === "chat");
+  const chatBindings = new Map<string, ChatBinding>(
+    await Promise.all(chatPanels.map(async (panel) => {
+      const binding = await callPlastic("chats/getBinding", { chatId: panel.id }) as ChatBinding;
+      return [panel.id, binding] as const;
+    }))
+  );
 
   const buildChatButtons = (chatId: string): ChatButton[] => {
     const peer = chatPanels.find((panel) => panel.id !== chatId);
@@ -264,9 +278,17 @@ const render = async (force = false) => {
   const renderChatPanel = (panel: PlasticPanel) => {
     const chatButtons = buildChatButtons(panel.id);
     const chatMessages = buildChatMessages(panel.id);
+    const binding = chatBindings.get(panel.id);
+    const turnRunning = binding?.activeTurnStatus === "inProgress";
     const peer = chatPanels.find((candidate) => candidate.id !== panel.id);
     return `
     <section class="chat-shell" data-plastic-ref="chat-shell:${escapeHtml(panel.id)}">
+      <div class="chat-status" data-plastic-ref="chat-status:${escapeHtml(panel.id)}">
+        <span>${escapeHtml(binding?.runtimeId ?? "codex")}</span>
+        <span>${binding?.threadId ? `Thread ${escapeHtml(binding.threadId.slice(0, 8))}` : "No thread"}</span>
+        <span>${binding?.activeTurnStatus ? `Turn ${escapeHtml(binding.activeTurnStatus)}` : "Idle"}</span>
+        ${turnRunning ? `<button data-chat-interrupt="${escapeHtml(panel.id)}" data-plastic-command="chats/interrupt">Stop</button>` : ""}
+      </div>
       <details class="chat-actions" data-plastic-ref="chat-buttons:${escapeHtml(panel.id)}">
         <summary>Actions</summary>
         <div class="flow-row">
@@ -416,6 +438,17 @@ const render = async (force = false) => {
         return;
       }
       await callPlastic(chatButton.action.method, chatButton.action.input);
+      await render(true);
+    });
+  });
+
+  root.querySelectorAll<HTMLButtonElement>("[data-chat-interrupt]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const chatId = button.dataset.chatInterrupt;
+      if (!chatId) {
+        return;
+      }
+      await callPlastic("chats/interrupt", { chatId });
       await render(true);
     });
   });
