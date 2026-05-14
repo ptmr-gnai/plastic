@@ -5,17 +5,20 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import { Effect } from "effect";
 import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticState, type EventStore } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
+import { createCodexAdapter } from "./codex-adapter.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
 const clayDir = join(workspaceDir, ".clay");
 const eventPath = join(clayDir, "events", "events.jsonl");
 mkdirSync(join(clayDir, "events"), { recursive: true });
 
+const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(effect);
+
 const eventStore = await createJsonlEventStore(eventPath);
 const methods = createMethodRegistry();
+const codexAdapter = createCodexAdapter({ eventStore, methods, runPromise });
 const windows = new Set<BrowserWindow>();
-
-const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(effect);
+const eventStreamClients = new Set<ServerResponse>();
 
 const registerRuntimeMethods = async (store: EventStore) => {
   await runPromise(
@@ -241,6 +244,19 @@ const sendJson = (response: ServerResponse, status: number, value: unknown) => {
   response.end(JSON.stringify(value));
 };
 
+const writeSse = (response: ServerResponse, event: string, data: unknown) => {
+  response.write(`event: ${event}\n`);
+  response.write(`data: ${JSON.stringify(data)}\n\n`);
+};
+
+await runPromise(
+  eventStore.subscribe((event) => {
+    for (const response of eventStreamClients) {
+      writeSse(response, "plastic.event", event);
+    }
+  })
+);
+
 const startRuntimeSocket = () => {
   const server = createServer(async (request, response) => {
     if (request.method === "OPTIONS") {
@@ -263,6 +279,21 @@ const startRuntimeSocket = () => {
       if (request.method === "GET" && request.url === "/methods") {
         const value = await runPromise(methods.list());
         sendJson(response, 200, { ok: true, value });
+        return;
+      }
+
+      if (request.method === "GET" && request.url === "/events/stream") {
+        response.writeHead(200, {
+          "content-type": "text/event-stream",
+          "cache-control": "no-cache",
+          connection: "keep-alive",
+          "access-control-allow-origin": "http://127.0.0.1:5173"
+        });
+        eventStreamClients.add(response);
+        writeSse(response, "plastic.ready", { ok: true });
+        request.on("close", () => {
+          eventStreamClients.delete(response);
+        });
         return;
       }
 
@@ -366,6 +397,7 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
 });
 
 await registerRuntimeMethods(eventStore);
+await codexAdapter.registerMethods();
 await runPromise(
   eventStore.append(
     createEvent({

@@ -37,6 +37,13 @@ type ChatMessage = {
   content: string;
 };
 
+type CodexStatus = {
+  connected: boolean;
+  initialized: boolean;
+  pid: number | null;
+  pendingRequests: number;
+};
+
 const panels = [
   {
     id: "chat-main",
@@ -85,6 +92,8 @@ const render = async (force = false) => {
 
   const state = await callPlastic("plastic/state") as PlasticState;
   const events = await callPlastic("events/list") as PlasticEvent[];
+  const methods = await callPlastic("plastic/methods") as Array<{ id: string }>;
+  const codexStatus = await callPlastic("codex/status") as CodexStatus;
   if (!force && events.length === lastRenderedEventCount) {
     return;
   }
@@ -132,7 +141,7 @@ const render = async (force = false) => {
         <div>
           <p class="eyebrow">Plastic</p>
           <h1>Agent-native workspace</h1>
-          <p class="status">Runtime socket <code>7331</code> · Build socket <code>7332</code> · Events ${state.events.count}</p>
+          <p class="status">Runtime socket <code>7331</code> · Build socket <code>7332</code> · Events ${state.events.count} · Methods ${methods.length}</p>
         </div>
         <div class="topbar-actions">
           <button data-action="theme" data-theme="light" data-plastic-command="app/setTheme">Light</button>
@@ -171,6 +180,19 @@ const render = async (force = false) => {
           <h2>Add panel</h2>
           <p>Ask an agent to create a new panel, button, workflow, or extension. New panels accumulate to the right.</p>
         </article>
+        <article class="panel" data-plastic-ref="panel:codex" data-plastic-panel="codex">
+          <header class="panel-header">
+            <div>
+              <p class="eyebrow">Embodied agent runtime</p>
+              <h2>Codex</h2>
+            </div>
+          </header>
+          <p>Status: ${codexStatus.connected ? "connected" : "disconnected"}${codexStatus.initialized ? " and initialized" : ""}</p>
+          <p>PID: ${codexStatus.pid ?? "none"} · Pending: ${codexStatus.pendingRequests}</p>
+          <div class="flow-row">
+            <button data-action="codex-connect" data-plastic-command="codex/initialize">Connect</button>
+          </div>
+        </article>
       </div>
     </section>
   `;
@@ -192,12 +214,24 @@ const render = async (force = false) => {
       await render(true);
     });
   });
+
+  root.querySelector<HTMLButtonElement>("[data-action='codex-connect']")?.addEventListener("click", async () => {
+    await callPlastic("codex/initialize", {});
+    await render(true);
+  });
 };
 
 void render(true);
-window.setInterval(() => {
-  void render();
-}, 1000);
+const events = new EventSource("http://127.0.0.1:7331/events/stream");
+events.addEventListener("plastic.event", () => {
+  void render(true);
+});
+
+events.onerror = () => {
+  window.setTimeout(() => {
+    void render();
+  }, 1000);
+};
 
 window.addEventListener("message", (event) => {
   if (event.data?.type !== "plastic:listVisibleRefs") {
