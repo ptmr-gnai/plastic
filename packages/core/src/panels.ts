@@ -19,6 +19,17 @@ export interface PlasticWindow {
   open: boolean;
 }
 
+export interface PlasticPanelMessage {
+  id: string;
+  fromPanelId: string;
+  toPanelId: string;
+  type: string;
+  content?: string;
+  payload?: unknown;
+  timestamp: string;
+  status: "sent" | "read";
+}
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
 
@@ -143,4 +154,41 @@ export const projectWindows = (events: PlasticEvent[], panels: PlasticPanel[] = 
   }
 
   return [...windows.values()];
+};
+
+export const projectPanelMessages = (events: PlasticEvent[]): PlasticPanelMessage[] => {
+  const messages = new Map<string, PlasticPanelMessage>();
+
+  for (const event of events) {
+    const payload = asRecord(event.payload);
+
+    if (event.type === "panel.message.sent") {
+      const id = asString(payload.id, event.id);
+      const message: PlasticPanelMessage = {
+        id,
+        fromPanelId: asString(payload.fromPanelId, ""),
+        toPanelId: asString(payload.toPanelId, event.scope.panelId ?? ""),
+        type: asString(payload.messageType, asString(payload.type, "text")),
+        timestamp: event.timestamp,
+        status: "sent"
+      };
+      if (typeof payload.content === "string") {
+        message.content = payload.content;
+      }
+      if ("payload" in payload) {
+        message.payload = payload.payload;
+      }
+      messages.set(id, message);
+    }
+
+    if (event.type === "panel.message.read") {
+      const id = asString(payload.id, "");
+      const message = messages.get(id);
+      if (message) {
+        messages.set(id, { ...message, status: "read" });
+      }
+    }
+  }
+
+  return [...messages.values()].filter((message) => message.fromPanelId && message.toPanelId);
 };

@@ -157,10 +157,11 @@ const render = async (force = false) => {
       id: `send-to-${peer.id}`,
       label: `Send to ${peer.title}`,
       action: {
-        method: "chats/relayMessage",
+        method: "panels/sendMessage",
         input: {
-          fromChatId: chatId,
-          toChatId: peer.id,
+          fromPanelId: chatId,
+          toPanelId: peer.id,
+          messageType: "chat",
           content: `Message from ${chatId} at ${new Date().toLocaleTimeString()}.`
         }
       }
@@ -191,8 +192,8 @@ const render = async (force = false) => {
     const messages = events.flatMap<ChatMessage>((event, index) => {
       const payload = event.payload as {
         chatId?: string;
-        fromChatId?: string;
-        toChatId?: string;
+        fromPanelId?: string;
+        toPanelId?: string;
         content?: string;
         itemId?: string;
         delta?: string;
@@ -208,11 +209,11 @@ const render = async (force = false) => {
         } satisfies ChatMessage];
       }
 
-      if (event.type === "chat.panel_message.relayed" && payload.toChatId === chatId) {
+      if (event.type === "panel.message.sent" && payload.toPanelId === chatId) {
         return [{
-          id: `relay-${chatId}-${index}`,
+          id: `panel-message-${chatId}-${index}`,
           role: "peer",
-          content: `${payload.fromChatId}: ${payload.content ?? ""}`
+          content: `${payload.fromPanelId}: ${payload.content ?? ""}`
         } satisfies ChatMessage];
       }
 

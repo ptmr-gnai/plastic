@@ -7,6 +7,7 @@ import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticS
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { registerExtensionMethods, scanWorkspaceExtensions } from "./extension-loader.js";
+import { registerPanelMailboxMethods } from "./panel-methods.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
 const clayDir = join(workspaceDir, ".clay");
@@ -712,40 +713,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
-      id: "chats/relayMessage",
-      title: "Relay chat message",
-      description: "Writes a durable message from one chat panel into another chat panel.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: (input) => {
-        const messageInput = input as { fromChatId?: string; toChatId?: string; content?: string };
-        if (!messageInput.fromChatId || !messageInput.toChatId || !messageInput.content) {
-          throw new Error("chats/relayMessage requires fromChatId, toChatId, and content");
-        }
-
-        return store.append(
-          createEvent({
-            type: "chat.panel_message.relayed",
-            payload: {
-              fromChatId: messageInput.fromChatId,
-              toChatId: messageInput.toChatId,
-              chatId: messageInput.toChatId,
-              content: messageInput.content
-            },
-            scope: { panelId: messageInput.toChatId },
-            meta: {
-              links: [
-                { rel: "source-chat", href: "panels/get", method: "panels/get", target: messageInput.fromChatId },
-                { rel: "target-chat", href: "panels/get", method: "panels/get", target: messageInput.toChatId }
-              ]
-            }
-          })
-        );
-      }
-    })
-  );
-
-  await runPromise(
-    methods.register({
       id: "deixis/listVisibleRefs",
       title: "List visible UI references",
       owner: { kind: "runtime", id: "plastic.runtime" },
@@ -1051,6 +1018,7 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
 await ensureBundledPanels(eventStore);
 await registerRuntimeMethods(eventStore);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
+await registerPanelMailboxMethods({ eventStore, methods, runPromise });
 await codexAdapter.registerMethods();
 const discoveredExtensions = await scanWorkspaceExtensions(workspaceDir);
 for (const extension of discoveredExtensions) {
