@@ -1,0 +1,17 @@
+{
+  "name": "plastic",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @plastic/core --filter @plastic/desktop dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "find . -name dist -type d -prune -exec rm -rf {} + && find . -name dist-electron -type d -prune -exec rm -rf {} +"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  }
+}
