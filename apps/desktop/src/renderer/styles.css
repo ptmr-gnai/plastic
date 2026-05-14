@@ -116,6 +116,8 @@ button {
   border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
   display: grid;
   gap: 8px;
+  max-height: 46vh;
+  overflow: auto;
   padding-top: 12px;
 }
 
@@ -123,6 +125,48 @@ button {
   background: color-mix(in srgb, currentColor 7%, transparent);
   border-radius: 8px;
   padding: 10px;
+  white-space: pre-wrap;
+}
+
+.chat-message span {
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  display: block;
+  font-size: 12px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.chat-message-agent {
+  background: color-mix(in srgb, #0f766e 14%, canvas);
+}
+
+.chat-message-user {
+  background: color-mix(in srgb, #2563eb 10%, canvas);
+}
+
+.chat-message em {
+  color: color-mix(in srgb, currentColor 58%, transparent);
+  display: block;
+  font-size: 12px;
+  font-style: normal;
+  margin-top: 8px;
+}
+
+.chat-compose {
+  display: grid;
+  gap: 8px;
+}
+
+.chat-compose textarea {
+  background: color-mix(in srgb, canvas 86%, currentColor 3%);
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  line-height: 1.4;
+  min-height: 96px;
+  padding: 10px;
+  resize: vertical;
 }
 
 .muted {

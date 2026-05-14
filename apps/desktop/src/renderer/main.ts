@@ -45,6 +45,8 @@ type ChatButton = {
 type ChatMessage = {
   id: string;
   content: string;
+  role: "user" | "agent" | "system";
+  streaming?: boolean;
 };
 
 type CodexStatus = {
@@ -100,7 +102,7 @@ const render = async (force = false) => {
       id: "summarize-project",
       label: "Summarize project",
       action: {
-        method: "chats/injectUserMessage",
+        method: "chats/sendToCodex",
         input: {
           chatId: "chat-main",
           content: "Summarize the current project and suggest next steps."
@@ -111,7 +113,7 @@ const render = async (force = false) => {
       id: "make-task-list",
       label: "Make task list",
       action: {
-        method: "chats/injectUserMessage",
+        method: "chats/sendToCodex",
         input: {
           chatId: "chat-main",
           content: "Turn the current conversation into a task list."
@@ -120,12 +122,60 @@ const render = async (force = false) => {
     },
     ...addedButtons
   ];
-  const chatMessages = events
-    .filter((event) => event.type === "chat.user_message.injected")
-    .map((event, index) => ({
-      id: `message-${index}`,
-      content: (event.payload as { content?: string }).content ?? ""
-    } satisfies ChatMessage));
+  const agentMessages = new Map<string, ChatMessage>();
+  const chatMessages = events.flatMap<ChatMessage>((event, index) => {
+    if (event.type === "chat.user_message.injected" || event.type === "chat.user_message.submitted") {
+      return [{
+        id: `message-${index}`,
+        role: "user",
+        content: (event.payload as { content?: string }).content ?? ""
+      } satisfies ChatMessage];
+    }
+
+    if (event.type === "chat.agent_message.delta") {
+      const payload = event.payload as { itemId?: string; delta?: string };
+      const id = payload.itemId ?? `agent-${index}`;
+      const existing = agentMessages.get(id) ?? {
+        id,
+        role: "agent",
+        content: "",
+        streaming: true
+      } satisfies ChatMessage;
+      existing.content += payload.delta ?? "";
+      existing.streaming = true;
+      agentMessages.set(id, existing);
+      return [];
+    }
+
+    if (event.type === "chat.agent_message.completed") {
+      const payload = event.payload as { itemId?: string; content?: string };
+      const id = payload.itemId ?? `agent-${index}`;
+      const existing = agentMessages.get(id) ?? {
+        id,
+        role: "agent",
+        content: "",
+        streaming: false
+      } satisfies ChatMessage;
+      existing.content = payload.content ?? existing.content;
+      existing.streaming = false;
+      agentMessages.set(id, existing);
+      return [];
+    }
+
+    if (event.type === "chat.codex_turn.completed") {
+      const payload = event.payload as { status?: string; error?: { message?: string } };
+      if (payload.status === "failed") {
+        return [{
+          id: `turn-${index}`,
+          role: "system",
+          content: payload.error?.message ?? "Codex turn failed."
+        } satisfies ChatMessage];
+      }
+    }
+
+    return [];
+  });
+  chatMessages.push(...agentMessages.values());
   document.documentElement.dataset.theme = state.app.theme;
 
   const renderChatPanel = () => `
@@ -140,9 +190,16 @@ const render = async (force = false) => {
     </div>
     <div class="chat-log" data-plastic-ref="chat-log:chat-main">
       ${chatMessages.length > 0 ? chatMessages.map((message) => `
-        <p class="chat-message" data-plastic-ref="${escapeHtml(message.id)}">${escapeHtml(message.content)}</p>
+        <p class="chat-message chat-message-${message.role}" data-plastic-ref="${escapeHtml(message.id)}">
+          <span>${message.role === "agent" ? "Codex" : message.role === "user" ? "You" : "System"}</span>
+          ${escapeHtml(message.content)}${message.streaming ? `<em>Streaming...</em>` : ""}
+        </p>
       `).join("") : `<p class="muted">Injected user messages will appear here.</p>`}
     </div>
+    <form class="chat-compose" data-plastic-ref="chat-compose:chat-main">
+      <textarea name="content" rows="4" placeholder="Message Codex through Plastic"></textarea>
+      <button type="submit" data-plastic-command="chats/sendToCodex">Send</button>
+    </form>
   `;
 
   const renderCodexPanel = () => `
@@ -232,6 +289,21 @@ const render = async (force = false) => {
       body: "Created from the GUI through panels/create.",
       order: panels.length + 1
     });
+    await render(true);
+  });
+
+  root.querySelector<HTMLFormElement>(".chat-compose")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget as HTMLFormElement;
+    const content = new FormData(form).get("content")?.toString() ?? "";
+    if (content.trim().length === 0) {
+      return;
+    }
+    await callPlastic("chats/sendToCodex", {
+      chatId: "chat-main",
+      content
+    });
+    form.reset();
     await render(true);
   });
 };

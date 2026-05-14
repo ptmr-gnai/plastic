@@ -17,7 +17,7 @@ const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(e
 
 const eventStore = await createJsonlEventStore(eventPath);
 const methods = createMethodRegistry();
-const codexAdapter = createCodexAdapter({ eventStore, methods, runPromise });
+const codexAdapter = createCodexAdapter({ eventStore, methods, runPromise, workspaceDir });
 const windows = new Set<BrowserWindow>();
 const eventStreamClients = new Set<ServerResponse>();
 

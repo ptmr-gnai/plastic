@@ -25,12 +25,20 @@ export const createCodexAdapter = (input: {
   eventStore: EventStore;
   methods: MethodRegistry;
   runPromise: <A>(effect: Effect.Effect<A, unknown>) => Promise<A>;
+  workspaceDir?: string;
 }): CodexAdapter => {
   let processHandle: ChildProcessWithoutNullStreams | null = null;
   let nextId = 1;
   let initialized = false;
   let connectedAt: string | null = null;
   const pending = new Map<number, PendingRequest>();
+  const threadChatBindings = new Map<string, string>();
+
+  const asRecord = (value: unknown): Record<string, unknown> =>
+    value && typeof value === "object" ? value as Record<string, unknown> : {};
+
+  const asString = (value: unknown): string | undefined =>
+    typeof value === "string" && value.length > 0 ? value : undefined;
 
   const appendCodexEvent = (type: string, payload: unknown) =>
     input.runPromise(
@@ -47,6 +55,35 @@ export const createCodexAdapter = (input: {
         })
       )
     );
+
+  const appendChatAgentEvent = (type: string, payload: Record<string, unknown>) => {
+    const threadId = asString(payload.threadId);
+    const chatId = threadId ? threadChatBindings.get(threadId) : undefined;
+    if (!chatId) {
+      return;
+    }
+
+    void input.runPromise(
+      input.eventStore.append(
+        createEvent({
+          type,
+          payload: {
+            chatId,
+            ...payload
+          },
+          scope: {
+            panelId: chatId,
+            agentId: "codex"
+          },
+          actor: {
+            kind: "agent",
+            id: "codex",
+            name: "Codex"
+          }
+        })
+      )
+    );
+  };
 
   const send = (message: CodexRpcMessage) => {
     if (!processHandle) {
@@ -66,6 +103,82 @@ export const createCodexAdapter = (input: {
 
   const notify = (method: string, params?: unknown) => {
     send({ method, params });
+  };
+
+  const bindThreadToChat = async (chatId: string, threadId: string, reason: string) => {
+    threadChatBindings.set(threadId, chatId);
+    await input.runPromise(
+      input.eventStore.append(
+        createEvent({
+          type: "chat.codex_thread.bound",
+          payload: {
+            chatId,
+            threadId,
+            reason
+          },
+          scope: {
+            panelId: chatId,
+            agentId: "codex"
+          }
+        })
+      )
+    );
+  };
+
+  const getBoundThreadId = async (chatId: string): Promise<string | undefined> => {
+    for (const [threadId, boundChatId] of threadChatBindings.entries()) {
+      if (boundChatId === chatId) {
+        return threadId;
+      }
+    }
+
+    const events = await input.runPromise(input.eventStore.list());
+    const binding = events
+      .filter((event) => event.type === "chat.codex_thread.bound")
+      .map((event) => asRecord(event.payload))
+      .filter((payload) => payload.chatId === chatId)
+      .at(-1);
+    const threadId = asString(binding?.threadId);
+    if (threadId) {
+      threadChatBindings.set(threadId, chatId);
+    }
+    return threadId;
+  };
+
+  const mapNotificationToChat = (method: string, params: unknown) => {
+    const payload = asRecord(params);
+    if (method === "item/agentMessage/delta") {
+      appendChatAgentEvent("chat.agent_message.delta", {
+        threadId: payload.threadId,
+        turnId: payload.turnId,
+        itemId: payload.itemId,
+        delta: payload.delta
+      });
+      return;
+    }
+
+    if (method === "item/completed") {
+      const item = asRecord(payload.item);
+      if (item.type === "agentMessage") {
+        appendChatAgentEvent("chat.agent_message.completed", {
+          threadId: payload.threadId,
+          turnId: payload.turnId,
+          itemId: item.id ?? payload.itemId,
+          content: item.text
+        });
+      }
+      return;
+    }
+
+    if (method === "turn/completed") {
+      const turn = asRecord(payload.turn);
+      appendChatAgentEvent("chat.codex_turn.completed", {
+        threadId: turn.threadId ?? payload.threadId,
+        turnId: turn.id ?? payload.turnId,
+        status: turn.status,
+        error: turn.error
+      });
+    }
   };
 
   const handleMessage = (message: CodexRpcMessage) => {
@@ -88,6 +201,7 @@ export const createCodexAdapter = (input: {
         method: message.method,
         params: message.params
       });
+      mapNotificationToChat(message.method, message.params);
     }
   };
 
@@ -257,6 +371,104 @@ export const createCodexAdapter = (input: {
           Effect.promise(async () => {
             await ensureInitialized();
             return request("turn/start", methodInput);
+          })
+      })
+    );
+
+    await input.runPromise(
+      input.methods.register({
+        id: "chats/sendToCodex",
+        title: "Send chat message to Codex",
+        description: "Durably records a user message, binds the chat to a Codex thread, and starts a Codex turn.",
+        owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        handler: (methodInput) =>
+          Effect.promise(async () => {
+            await ensureInitialized();
+            const payload = methodInput as {
+              chatId?: string;
+              content?: string;
+              cwd?: string;
+              model?: string;
+              effort?: string;
+            };
+            const chatId = payload.chatId ?? "chat-main";
+            const content = payload.content?.trim();
+            if (!content) {
+              throw new Error("chats/sendToCodex requires content");
+            }
+
+            const userMessage = await input.runPromise(
+              input.eventStore.append(
+                createEvent({
+                  type: "chat.user_message.submitted",
+                  payload: {
+                    chatId,
+                    content,
+                    targetAgent: "codex"
+                  },
+                  scope: {
+                    panelId: chatId,
+                    agentId: "codex"
+                  },
+                  actor: {
+                    kind: "user",
+                    id: "local-user",
+                    name: "Local User"
+                  }
+                })
+              )
+            );
+
+            let threadId = await getBoundThreadId(chatId);
+            let threadResult: unknown = null;
+            if (!threadId) {
+              threadResult = await request("thread/start", {
+                cwd: payload.cwd ?? input.workspaceDir,
+                approvalPolicy: "never",
+                sandbox: "workspace-write",
+                personality: "friendly",
+                serviceName: "plastic"
+              });
+              const thread = asRecord(asRecord(threadResult).thread);
+              threadId = asString(thread.id);
+              if (!threadId) {
+                throw new Error("Codex thread/start did not return thread.id");
+              }
+              await bindThreadToChat(chatId, threadId, "chats/sendToCodex");
+            }
+
+            const turnResult = await request("turn/start", {
+              threadId,
+              input: [{ type: "text", text: content }],
+              ...(payload.model ? { model: payload.model } : {}),
+              ...(payload.effort ? { effort: payload.effort } : {})
+            });
+
+            await input.runPromise(
+              input.eventStore.append(
+                createEvent({
+                  type: "chat.codex_turn.started",
+                  payload: {
+                    chatId,
+                    threadId,
+                    userMessageId: userMessage.id,
+                    turn: asRecord(turnResult).turn ?? turnResult,
+                    thread: threadResult ? asRecord(threadResult).thread ?? threadResult : null
+                  },
+                  scope: {
+                    panelId: chatId,
+                    agentId: "codex"
+                  }
+                })
+              )
+            );
+
+            return {
+              chatId,
+              threadId,
+              userMessage,
+              turn: asRecord(turnResult).turn ?? turnResult
+            };
           })
       })
     );
