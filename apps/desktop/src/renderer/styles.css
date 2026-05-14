@@ -112,6 +112,23 @@ button {
   margin: 0;
 }
 
+.chat-log {
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.chat-message {
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.muted {
+  color: color-mix(in srgb, currentColor 58%, transparent);
+}
+
 .add-panel {
   border-style: dashed;
 }

@@ -102,6 +102,69 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
+      id: "chats/addButton",
+      title: "Add chat button",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) => {
+        const buttonInput = input as {
+          chatId?: string;
+          button?: {
+            id?: string;
+            label?: string;
+            action?: {
+              method: string;
+              input?: unknown;
+            };
+          };
+        };
+        const chatId = buttonInput.chatId ?? "chat-main";
+        const button = buttonInput.button;
+        if (!button?.id || !button.label || !button.action?.method) {
+          throw new Error("chats/addButton requires button.id, button.label, and button.action.method");
+        }
+
+        return store.append(
+          createEvent({
+            type: "panel.button.added",
+            payload: {
+              panelId: chatId,
+              button
+            },
+            scope: { panelId: chatId }
+          })
+        );
+      }
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "chats/injectUserMessage",
+      title: "Inject user message into chat",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) => {
+        const messageInput = input as { chatId?: string; content?: string };
+        const chatId = messageInput.chatId ?? "chat-main";
+        if (!messageInput.content) {
+          throw new Error("chats/injectUserMessage requires content");
+        }
+
+        return store.append(
+          createEvent({
+            type: "chat.user_message.injected",
+            payload: {
+              chatId,
+              content: messageInput.content
+            },
+            scope: { panelId: chatId }
+          })
+        );
+      }
+    })
+  );
+
+  await runPromise(
+    methods.register({
       id: "deixis/listVisibleRefs",
       title: "List visible UI references",
       owner: { kind: "runtime", id: "plastic.runtime" },
