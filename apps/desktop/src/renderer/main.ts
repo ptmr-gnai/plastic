@@ -314,7 +314,7 @@ const render = async (force = false) => {
           <div class="chat-message-row chat-message-row-${message.role}" data-plastic-ref="${escapeHtml(message.id)}">
             <div class="chat-message chat-message-${message.role}">
               <span>${labelForRole(message.role)}</span>
-              <div>${escapeHtml(message.content)}</div>
+              <div class="chat-message-content">${escapeHtml(message.content.trim())}</div>
               ${message.streaming ? `<em>Streaming...</em>` : ""}
             </div>
           </div>

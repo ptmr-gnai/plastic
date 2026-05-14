@@ -231,7 +231,6 @@ button {
   max-width: 86%;
   overflow-wrap: anywhere;
   padding: 10px 12px;
-  white-space: pre-wrap;
 }
 
 .chat-message span {
@@ -257,6 +256,10 @@ button {
 
 .chat-message-system {
   background: color-mix(in srgb, #b45309 12%, canvas);
+}
+
+.chat-message-content {
+  white-space: pre-wrap;
 }
 
 .chat-message em {
