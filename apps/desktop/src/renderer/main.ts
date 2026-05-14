@@ -380,6 +380,17 @@ const render = async (force = false) => {
     return `<p>${escapeHtml(panel.body ?? "This panel is projected from the durable event stream.")}</p>`;
   };
 
+  const renderAddPanelControls = () => `
+    <h2>Add panel</h2>
+    <p>Ask an agent to create a new panel, button, workflow, or extension. New panels accumulate to the right.</p>
+    <div class="flow-row">
+      <button data-action="create-chat" data-plastic-command="chats/createCodexChat">New chat</button>
+      <button data-action="create-document" data-plastic-command="panels/create">Document</button>
+      <button data-action="create-tasks" data-plastic-command="panels/create">Tasks</button>
+      <button data-action="create-panel" data-plastic-command="panels/create">Generic</button>
+    </div>
+  `;
+
   root.innerHTML = `
     <section class="workspace ${topbarCollapsed ? "workspace-topbar-collapsed" : ""}" data-plastic-ref="workspace:default">
       <header class="topbar" data-plastic-ref="runtime:topbar">
@@ -407,16 +418,13 @@ const render = async (force = false) => {
                 <p class="eyebrow">${escapeHtml(panel.subtitle ?? panel.kind)}</p>
                 <h2>${escapeHtml(panel.title)}</h2>
               </div>
+              <button class="panel-close" data-close-panel="${escapeHtml(panel.id)}" data-panel-kind="${escapeHtml(panel.kind)}" data-plastic-command="${panel.kind === "chat" ? "chats/close" : "panels/close"}">Close</button>
             </header>
             ${renderPanelBody(panel)}
           </article>
         `).join("")}
         <article class="panel add-panel" data-plastic-ref="panel:add">
-          <h2>Add panel</h2>
-          <p>Ask an agent to create a new panel, button, workflow, or extension. New panels accumulate to the right.</p>
-          <div class="flow-row">
-            <button data-action="create-panel" data-plastic-command="panels/create">Create panel</button>
-          </div>
+          ${renderAddPanelControls()}
         </article>
       </div>
     </section>
@@ -464,6 +472,19 @@ const render = async (force = false) => {
     });
   });
 
+  root.querySelectorAll<HTMLButtonElement>("[data-close-panel]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const panelId = button.dataset.closePanel;
+      if (!panelId) {
+        return;
+      }
+      const method = button.dataset.panelKind === "chat" ? "chats/close" : "panels/close";
+      const input = button.dataset.panelKind === "chat" ? { chatId: panelId } : { id: panelId };
+      await callPlastic(method, input);
+      await render(true);
+    });
+  });
+
   root.querySelector<HTMLButtonElement>("[data-action='codex-connect']")?.addEventListener("click", async () => {
     await callPlastic("codex/initialize", {});
     await render(true);
@@ -475,6 +496,38 @@ const render = async (force = false) => {
       kind: "generic",
       extensionId: "plastic.user",
       body: "Created from the GUI through panels/create.",
+      order: panels.length + 1
+    });
+    await render(true);
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-action='create-chat']")?.addEventListener("click", async () => {
+    const result = await callPlastic("chats/createCodexChat", {}) as { panelId?: string };
+    await render(true);
+    if (result.panelId) {
+      await callPlastic("windows/focusPanel", { panelId: result.panelId });
+    }
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-action='create-document']")?.addEventListener("click", async () => {
+    await callPlastic("panels/create", {
+      title: "Document",
+      kind: "document",
+      extensionId: "plastic.document",
+      subtitle: "Markdown editor and preview",
+      body: "The document panel starts as a projection of durable document events.",
+      order: panels.length + 1
+    });
+    await render(true);
+  });
+
+  root.querySelector<HTMLButtonElement>("[data-action='create-tasks']")?.addEventListener("click", async () => {
+    await callPlastic("panels/create", {
+      title: "Tasks",
+      kind: "tasks",
+      extensionId: "plastic.tasks",
+      subtitle: "Tasks and recurring work",
+      body: "Recurring tasks can learn from usage and propose new buttons or flows.",
       order: panels.length + 1
     });
     await render(true);

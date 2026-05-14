@@ -684,6 +684,71 @@ export const createCodexAdapter = (input: {
 
     await input.runPromise(
       input.methods.register({
+        id: "chats/close",
+        title: "Close chat",
+        description: "Closes a chat panel and interrupts any in-progress Codex turn before removing it.",
+        owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        handler: (methodInput) =>
+          Effect.promise(async () => {
+            const payload = methodInput as { chatId?: string; reason?: string };
+            const chatId = payload.chatId ?? "chat-main";
+            const binding = await getChatBinding(chatId);
+            let interruptResult: unknown = null;
+            if (binding.threadId && binding.activeTurnId && binding.activeTurnStatus === "inProgress") {
+              await ensureInitialized();
+              interruptResult = await request("turn/interrupt", {
+                threadId: binding.threadId,
+                turnId: binding.activeTurnId
+              });
+            }
+
+            const closedEvent = await input.runPromise(
+              input.eventStore.append(
+                createEvent({
+                  type: "chat.session.closed",
+                  payload: {
+                    chatId,
+                    threadId: binding.threadId,
+                    activeTurnId: binding.activeTurnId,
+                    activeTurnStatus: binding.activeTurnStatus,
+                    interrupted: Boolean(interruptResult),
+                    reason: payload.reason ?? "closed"
+                  },
+                  scope: {
+                    panelId: chatId,
+                    agentId: "codex"
+                  }
+                })
+              )
+            );
+
+            const panelEvent = await input.runPromise(
+              input.eventStore.append(
+                createEvent({
+                  type: "panel.removed",
+                  payload: {
+                    id: chatId,
+                    reason: payload.reason ?? "chat closed"
+                  },
+                  scope: { panelId: chatId }
+                })
+              )
+            );
+
+            return {
+              chatId,
+              binding,
+              interrupted: Boolean(interruptResult),
+              interruptResult,
+              closedEvent,
+              panelEvent
+            };
+          })
+      })
+    );
+
+    await input.runPromise(
+      input.methods.register({
         id: "chats/sendToCodex",
         title: "Send chat message to Codex",
         description: "Durably records a user message, binds the chat to a Codex thread, and starts a Codex turn.",

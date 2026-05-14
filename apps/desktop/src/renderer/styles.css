@@ -134,7 +134,15 @@ button {
   align-items: start;
   display: flex;
   flex: 0 0 auto;
+  gap: 12px;
   justify-content: space-between;
+}
+
+.panel-close {
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  flex: 0 0 auto;
+  font-size: 12px;
+  padding: 5px 8px;
 }
 
 .panel p {

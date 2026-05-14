@@ -299,9 +299,18 @@ const bundledPanels = [
 const ensureBundledPanels = async (store: EventStore) => {
   const events = await runPromise(store.list());
   const existingPanelIds = new Set(projectPanels(events).map((panel) => panel.id));
+  const introducedPanelIds = new Set(
+    events
+      .filter((event) => event.type === "panel.created")
+      .map((event) => {
+        const payload = event.payload as { id?: string };
+        return payload.id ?? event.scope.panelId;
+      })
+      .filter((id): id is string => Boolean(id))
+  );
 
   for (const panel of bundledPanels) {
-    if (existingPanelIds.has(panel.id)) {
+    if (existingPanelIds.has(panel.id) || introducedPanelIds.has(panel.id)) {
       continue;
     }
 
@@ -548,6 +557,32 @@ const registerRuntimeMethods = async (store: EventStore) => {
             payload: {
               id: panelInput.id,
               reason: panelInput.reason
+            },
+            scope: { panelId: panelInput.id }
+          })
+        );
+      }
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "panels/close",
+      title: "Close panel",
+      description: "Closes a panel from the current workspace projection by appending panel.removed.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) => {
+        const panelInput = input as { id?: string; reason?: string };
+        if (!panelInput.id) {
+          throw new Error("panels/close requires id");
+        }
+
+        return store.append(
+          createEvent({
+            type: "panel.removed",
+            payload: {
+              id: panelInput.id,
+              reason: panelInput.reason ?? "closed"
             },
             scope: { panelId: panelInput.id }
           })
