@@ -145,6 +145,37 @@ export const createCodexAdapter = (input: {
     return threadId;
   };
 
+  const startThreadForChat = async (chatId: string, payload: {
+    cwd?: string;
+    reason: string;
+  }) => {
+    const threadResult = await request("thread/start", {
+      cwd: payload.cwd ?? input.workspaceDir,
+      approvalPolicy: "never",
+      sandbox: "workspace-write",
+      personality: "friendly",
+      serviceName: "plastic"
+    });
+    const thread = asRecord(asRecord(threadResult).thread);
+    const threadId = asString(thread.id);
+    if (!threadId) {
+      throw new Error("Codex thread/start did not return thread.id");
+    }
+    await bindThreadToChat(chatId, threadId, payload.reason);
+    return { threadId, threadResult };
+  };
+
+  const threadStartPayload = (reason: string, cwd?: string) => {
+    const payload: { reason: string; cwd?: string } = { reason };
+    if (cwd) {
+      payload.cwd = cwd;
+    }
+    return payload;
+  };
+
+  const isThreadNotFoundError = (error: unknown) =>
+    error instanceof Error && error.message.includes("thread not found");
+
   const mapNotificationToChat = (method: string, params: unknown) => {
     const payload = asRecord(params);
     if (method === "item/agentMessage/delta") {
@@ -422,27 +453,50 @@ export const createCodexAdapter = (input: {
             let threadId = await getBoundThreadId(chatId);
             let threadResult: unknown = null;
             if (!threadId) {
-              threadResult = await request("thread/start", {
-                cwd: payload.cwd ?? input.workspaceDir,
-                approvalPolicy: "never",
-                sandbox: "workspace-write",
-                personality: "friendly",
-                serviceName: "plastic"
-              });
-              const thread = asRecord(asRecord(threadResult).thread);
-              threadId = asString(thread.id);
-              if (!threadId) {
-                throw new Error("Codex thread/start did not return thread.id");
-              }
-              await bindThreadToChat(chatId, threadId, "chats/sendToCodex");
+              const started = await startThreadForChat(chatId, threadStartPayload("chats/sendToCodex", payload.cwd));
+              threadId = started.threadId;
+              threadResult = started.threadResult;
             }
 
-            const turnResult = await request("turn/start", {
+            const turnInput = {
               threadId,
               input: [{ type: "text", text: content }],
               ...(payload.model ? { model: payload.model } : {}),
               ...(payload.effort ? { effort: payload.effort } : {})
-            });
+            };
+
+            let turnResult: unknown;
+            try {
+              turnResult = await request("turn/start", turnInput);
+            } catch (error) {
+              if (!isThreadNotFoundError(error)) {
+                throw error;
+              }
+              const staleThreadId = threadId;
+              await input.runPromise(
+                input.eventStore.append(
+                  createEvent({
+                    type: "chat.codex_thread.stale",
+                    payload: {
+                      chatId,
+                      threadId: staleThreadId,
+                      error: error instanceof Error ? error.message : String(error)
+                    },
+                    scope: {
+                      panelId: chatId,
+                      agentId: "codex"
+                    }
+                  })
+                )
+              );
+              const started = await startThreadForChat(chatId, threadStartPayload("stale thread rebind", payload.cwd));
+              threadId = started.threadId;
+              threadResult = started.threadResult;
+              turnResult = await request("turn/start", {
+                ...turnInput,
+                threadId
+              });
+            }
 
             await input.runPromise(
               input.eventStore.append(
