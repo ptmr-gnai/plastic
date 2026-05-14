@@ -99,6 +99,7 @@ const callPlastic = async (method: string, input?: unknown): Promise<unknown> =>
 };
 
 let lastRenderedEventCount = -1;
+let topbarCollapsed = window.localStorage.getItem("plastic.topbarCollapsed") === "true";
 
 const isNearBottom = (element: HTMLElement) =>
   element.scrollHeight - element.scrollTop - element.clientHeight < 48;
@@ -265,27 +266,35 @@ const render = async (force = false) => {
     const chatMessages = buildChatMessages(panel.id);
     const peer = chatPanels.find((candidate) => candidate.id !== panel.id);
     return `
-    <div class="flow-row" data-plastic-ref="chat-buttons:${escapeHtml(panel.id)}">
-      ${chatButtons.map((button) => `
-        <button
-          data-chat-button="${escapeHtml(button.id)}"
-          data-plastic-ref="panel-button:${escapeHtml(button.id)}"
-          data-plastic-command="${escapeHtml(button.action.method)}"
-        >${escapeHtml(button.label)}</button>
-      `).join("")}
-    </div>
-    <div class="chat-log" data-chat-log="${escapeHtml(panel.id)}" data-plastic-ref="chat-log:${escapeHtml(panel.id)}">
-      ${chatMessages.length > 0 ? chatMessages.map((message) => `
-        <p class="chat-message chat-message-${message.role}" data-plastic-ref="${escapeHtml(message.id)}">
-          <span>${labelForRole(message.role)}</span>
-          ${escapeHtml(message.content)}${message.streaming ? `<em>Streaming...</em>` : ""}
-        </p>
-      `).join("") : `<p class="muted">${peer ? `This chat can relay messages to ${escapeHtml(peer.title)}.` : "Injected user messages will appear here."}</p>`}
-    </div>
-    <form class="chat-compose" data-chat-compose="${escapeHtml(panel.id)}" data-plastic-ref="chat-compose:${escapeHtml(panel.id)}">
-      <textarea name="content" rows="4" placeholder="Message Codex from ${escapeHtml(panel.title)}"></textarea>
-      <button type="submit" data-plastic-command="chats/sendToCodex">Send</button>
-    </form>
+    <section class="chat-shell" data-plastic-ref="chat-shell:${escapeHtml(panel.id)}">
+      <details class="chat-actions" data-plastic-ref="chat-buttons:${escapeHtml(panel.id)}">
+        <summary>Actions</summary>
+        <div class="flow-row">
+          ${chatButtons.map((button) => `
+            <button
+              data-chat-button="${escapeHtml(button.id)}"
+              data-plastic-ref="panel-button:${escapeHtml(button.id)}"
+              data-plastic-command="${escapeHtml(button.action.method)}"
+            >${escapeHtml(button.label)}</button>
+          `).join("")}
+        </div>
+      </details>
+      <div class="chat-log" data-chat-log="${escapeHtml(panel.id)}" data-plastic-ref="chat-log:${escapeHtml(panel.id)}">
+        ${chatMessages.length > 0 ? chatMessages.map((message) => `
+          <div class="chat-message-row chat-message-row-${message.role}" data-plastic-ref="${escapeHtml(message.id)}">
+            <div class="chat-message chat-message-${message.role}">
+              <span>${labelForRole(message.role)}</span>
+              <div>${escapeHtml(message.content)}</div>
+              ${message.streaming ? `<em>Streaming...</em>` : ""}
+            </div>
+          </div>
+        `).join("") : `<p class="muted chat-empty">${peer ? `This chat can send panel messages to ${escapeHtml(peer.title)}.` : "Messages will appear here."}</p>`}
+      </div>
+      <form class="chat-compose" data-chat-compose="${escapeHtml(panel.id)}" data-plastic-ref="chat-compose:${escapeHtml(panel.id)}">
+        <textarea name="content" rows="1" placeholder="Message ${escapeHtml(panel.title)}"></textarea>
+        <button type="submit" data-plastic-command="chats/sendToCodex">Send</button>
+      </form>
+    </section>
   `;
   };
 
@@ -342,7 +351,7 @@ const render = async (force = false) => {
   };
 
   root.innerHTML = `
-    <section class="workspace" data-plastic-ref="workspace:default">
+    <section class="workspace ${topbarCollapsed ? "workspace-topbar-collapsed" : ""}" data-plastic-ref="workspace:default">
       <header class="topbar" data-plastic-ref="runtime:topbar">
         <div>
           <p class="eyebrow">Plastic</p>
@@ -352,7 +361,13 @@ const render = async (force = false) => {
         <div class="topbar-actions">
           <button data-action="theme" data-theme="light" data-plastic-command="app/setTheme">Light</button>
           <button data-action="theme" data-theme="dark" data-plastic-command="app/setTheme">Dark</button>
+          <button data-action="toggle-topbar" data-plastic-ref="topbar:toggle">${topbarCollapsed ? "Show" : "Hide"}</button>
         </div>
+      </header>
+      <header class="topbar-mini" data-plastic-ref="runtime:topbar-mini">
+        <strong>Plastic</strong>
+        <span>Events ${state.events.count} · Methods ${methods.length}</span>
+        <button data-action="toggle-topbar" data-plastic-ref="topbar:toggle-mini">Show</button>
       </header>
       <div class="rail" data-plastic-ref="window-layout:main">
         ${panels.map((panel) => `
@@ -380,6 +395,14 @@ const render = async (force = false) => {
   root.querySelectorAll<HTMLButtonElement>("[data-action='theme']").forEach((button) => {
     button.addEventListener("click", async () => {
       await callPlastic("app/setTheme", { theme: button.dataset.theme });
+      await render(true);
+    });
+  });
+
+  root.querySelectorAll<HTMLButtonElement>("[data-action='toggle-topbar']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      topbarCollapsed = !topbarCollapsed;
+      window.localStorage.setItem("plastic.topbarCollapsed", String(topbarCollapsed));
       await render(true);
     });
   });
@@ -452,6 +475,14 @@ const render = async (force = false) => {
       });
       form.reset();
       await render(true);
+    });
+
+    compose.querySelector<HTMLTextAreaElement>("textarea")?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.shiftKey) {
+        return;
+      }
+      event.preventDefault();
+      compose.requestSubmit();
     });
   });
 

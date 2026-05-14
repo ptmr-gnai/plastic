@@ -2,14 +2,14 @@
   color-scheme: light;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f4f0e8;
-  color: #1d1c1a;
+  background: #f6f7f8;
+  color: #1b1f23;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  background: #171717;
-  color: #f3efe7;
+  background: #141619;
+  color: #f2f4f7;
 }
 
 * {
@@ -39,12 +39,39 @@ button {
   height: 100vh;
 }
 
+.workspace-topbar-collapsed {
+  grid-template-rows: auto 1fr;
+}
+
 .topbar {
   align-items: center;
   border-bottom: 1px solid color-mix(in srgb, currentColor 16%, transparent);
   display: flex;
   justify-content: space-between;
   padding: 18px 22px;
+}
+
+.workspace-topbar-collapsed .topbar {
+  display: none;
+}
+
+.topbar-mini {
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  display: none;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 6px 14px;
+}
+
+.workspace-topbar-collapsed .topbar-mini {
+  display: flex;
+}
+
+.topbar-mini span {
+  color: color-mix(in srgb, currentColor 60%, transparent);
+  font-size: 12px;
 }
 
 .topbar h1,
@@ -58,6 +85,7 @@ button {
 .topbar-actions,
 .flow-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -81,6 +109,7 @@ button {
 }
 
 .rail {
+  align-items: stretch;
   display: grid;
   gap: 14px;
   grid-auto-columns: minmax(340px, 420px);
@@ -91,19 +120,20 @@ button {
 }
 
 .panel {
-  align-content: start;
   background: color-mix(in srgb, canvas 78%, currentColor 4%);
   border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
   border-radius: 8px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  min-height: calc(100vh - 120px);
+  min-height: 0;
   padding: 18px;
 }
 
 .panel-header {
   align-items: start;
   display: flex;
+  flex: 0 0 auto;
   justify-content: space-between;
 }
 
@@ -112,19 +142,64 @@ button {
   margin: 0;
 }
 
+.chat-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.chat-actions {
+  border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  flex: 0 0 auto;
+  padding-bottom: 10px;
+}
+
+.chat-actions summary {
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.2;
+  list-style: none;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.chat-actions summary::-webkit-details-marker {
+  display: none;
+}
+
 .chat-log {
-  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
-  display: grid;
-  gap: 8px;
-  max-height: 46vh;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
   overflow: auto;
-  padding-top: 12px;
+  padding: 2px 2px 8px;
+}
+
+.chat-message-row {
+  display: flex;
+}
+
+.chat-message-row-agent,
+.chat-message-row-peer,
+.chat-message-row-system {
+  justify-content: flex-start;
+}
+
+.chat-message-row-user {
+  justify-content: flex-end;
 }
 
 .chat-message {
-  background: color-mix(in srgb, currentColor 7%, transparent);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 14px;
+  line-height: 1.45;
+  max-width: 86%;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
   white-space: pre-wrap;
 }
 
@@ -137,15 +212,20 @@ button {
 }
 
 .chat-message-agent {
-  background: color-mix(in srgb, #0f766e 14%, canvas);
+  background: color-mix(in srgb, canvas 82%, currentColor 8%);
 }
 
 .chat-message-user {
-  background: color-mix(in srgb, #2563eb 10%, canvas);
+  background: #2563eb;
+  color: white;
 }
 
 .chat-message-peer {
-  background: color-mix(in srgb, #7c3aed 10%, canvas);
+  background: color-mix(in srgb, #0f766e 14%, canvas);
+}
+
+.chat-message-system {
+  background: color-mix(in srgb, #b45309 12%, canvas);
 }
 
 .chat-message em {
@@ -157,20 +237,31 @@ button {
 }
 
 .chat-compose {
+  align-items: end;
+  border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent);
   display: grid;
+  flex: 0 0 auto;
   gap: 8px;
+  grid-template-columns: 1fr auto;
+  padding-top: 12px;
 }
 
 .chat-compose textarea {
   background: color-mix(in srgb, canvas 86%, currentColor 3%);
   border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
-  border-radius: 8px;
+  border-radius: 14px;
   color: inherit;
   font: inherit;
   line-height: 1.4;
-  min-height: 96px;
-  padding: 10px;
+  max-height: 180px;
+  min-height: 42px;
+  padding: 10px 12px;
   resize: vertical;
+}
+
+.chat-empty {
+  margin: auto;
+  text-align: center;
 }
 
 .muted {

@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, type Rectangle } from "electron";
 import { Effect } from "effect";
 import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticState, projectExtensions, projectPanels, projectWindows, type EventStore, type PlasticEvent } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
@@ -37,6 +37,11 @@ type WindowVisibleRefs = {
   refs: VisibleRef[];
 };
 
+type ScreenshotInput = {
+  windowId?: number;
+  ref?: string;
+};
+
 const buildStatus = () => ({
   service: "plastic.build",
   status: "running",
@@ -67,6 +72,55 @@ const listVisibleRefs = async (): Promise<WindowVisibleRefs[]> => {
     refs.push({ windowId: window.id, refs: windowRefs });
   }
   return refs;
+};
+
+const findWindow = (windowId?: number) => {
+  if (windowId !== undefined) {
+    return BrowserWindow.getAllWindows().find((window) => window.id === windowId) ?? null;
+  }
+  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
+};
+
+const captureWindow = async (input: ScreenshotInput = {}) => {
+  const target = findWindow(input.windowId);
+  if (!target) {
+    throw new Error("No window available");
+  }
+
+  let rect: Rectangle | undefined;
+  if (input.ref) {
+    const measured = await target.webContents.executeJavaScript(`
+      (() => {
+        const ref = ${JSON.stringify(input.ref)};
+        const element = [...document.querySelectorAll("[data-plastic-ref]")]
+          .find((candidate) => candidate.dataset.plasticRef === ref);
+        if (!element) {
+          return null;
+        }
+        const rect = element.getBoundingClientRect();
+        return {
+          x: Math.max(0, Math.floor(rect.x)),
+          y: Math.max(0, Math.floor(rect.y)),
+          width: Math.max(1, Math.ceil(rect.width)),
+          height: Math.max(1, Math.ceil(rect.height))
+        };
+      })()
+    `) as Rectangle | null;
+    if (!measured) {
+      throw new Error(`No visible element for ref ${input.ref}`);
+    }
+    rect = measured;
+  }
+
+  const image = await target.webContents.capturePage(rect);
+  const size = image.getSize();
+  return {
+    windowId: target.id,
+    ref: input.ref ?? null,
+    width: size.width,
+    height: size.height,
+    dataUrl: image.toDataURL()
+  };
 };
 
 const findRecentEvents = (events: PlasticEvent[], predicate: (event: PlasticEvent) => boolean, limit = 20) =>
@@ -718,6 +772,17 @@ const registerRuntimeMethods = async (store: EventStore) => {
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: () =>
         Effect.promise(listVisibleRefs)
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "windows/screenshot",
+      title: "Capture window screenshot",
+      description: "Captures the focused window, a specific window id, or a visible data-plastic-ref region as a data URL.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(() => captureWindow(input as ScreenshotInput | undefined))
     })
   );
 
