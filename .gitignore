@@ -9,4 +9,5 @@ dist-electron/
 !.env.example
 .clay/events/
 .clay/snapshots/
+vendor/codex/
 
