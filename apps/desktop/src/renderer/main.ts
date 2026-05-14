@@ -45,7 +45,7 @@ type ChatButton = {
 type ChatMessage = {
   id: string;
   content: string;
-  role: "user" | "agent" | "system";
+  role: "user" | "agent" | "system" | "peer";
   streaming?: boolean;
 };
 
@@ -103,17 +103,36 @@ let lastRenderedEventCount = -1;
 const isNearBottom = (element: HTMLElement) =>
   element.scrollHeight - element.scrollTop - element.clientHeight < 48;
 
+const labelForRole = (role: ChatMessage["role"]) => {
+  if (role === "agent") {
+    return "Codex";
+  }
+  if (role === "peer") {
+    return "Peer";
+  }
+  if (role === "user") {
+    return "You";
+  }
+  return "System";
+};
+
 const render = async (force = false) => {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) {
     return;
   }
 
-  const existingChatLog = root.querySelector<HTMLElement>("[data-plastic-ref='chat-log:chat-main']");
-  const chatScroll = existingChatLog ? {
-    top: existingChatLog.scrollTop,
-    stickToBottom: isNearBottom(existingChatLog)
-  } : null;
+  const chatScroll = new Map<string, { top: number; stickToBottom: boolean }>();
+  root.querySelectorAll<HTMLElement>("[data-chat-log]").forEach((element) => {
+    const chatId = element.dataset.chatLog;
+    if (!chatId) {
+      return;
+    }
+    chatScroll.set(chatId, {
+      top: element.scrollTop,
+      stickToBottom: isNearBottom(element)
+    });
+  });
 
   const state = await callPlastic("plastic/state") as PlasticState;
   const events = await callPlastic("events/list") as PlasticEvent[];
@@ -130,89 +149,122 @@ const render = async (force = false) => {
     .filter((event) => event.type === "panel.button.added")
     .map((event) => (event.payload as { button?: ChatButton }).button)
     .filter((button): button is ChatButton => Boolean(button));
-  const chatButtons = [
-    {
-      id: "summarize-project",
-      label: "Summarize project",
+  const chatPanels = panels.filter((panel) => panel.kind === "chat");
+
+  const buildChatButtons = (chatId: string): ChatButton[] => {
+    const peer = chatPanels.find((panel) => panel.id !== chatId);
+    const peerButtons: ChatButton[] = peer ? [{
+      id: `send-to-${peer.id}`,
+      label: `Send to ${peer.title}`,
       action: {
-        method: "chats/sendToCodex",
+        method: "chats/relayMessage",
         input: {
-          chatId: "chat-main",
-          content: "Summarize the current project and suggest next steps."
+          fromChatId: chatId,
+          toChatId: peer.id,
+          content: `Message from ${chatId} at ${new Date().toLocaleTimeString()}.`
         }
       }
-    },
-    {
-      id: "make-task-list",
-      label: "Make task list",
-      action: {
-        method: "chats/sendToCodex",
-        input: {
-          chatId: "chat-main",
-          content: "Turn the current conversation into a task list."
+    }] : [];
+
+    return [
+      {
+        id: `summarize-${chatId}`,
+        label: "Summarize",
+        action: {
+          method: "chats/sendToCodex",
+          input: {
+            chatId,
+            content: "Summarize this chat and suggest next steps."
+          }
         }
-      }
-    },
-    ...addedButtons
-  ];
-  const agentMessages = new Map<string, ChatMessage>();
-  const chatMessages = events.flatMap<ChatMessage>((event, index) => {
-    if (event.type === "chat.user_message.injected" || event.type === "chat.user_message.submitted") {
-      return [{
-        id: `message-${index}`,
-        role: "user",
-        content: (event.payload as { content?: string }).content ?? ""
-      } satisfies ChatMessage];
-    }
+      },
+      ...peerButtons,
+      ...addedButtons.filter((button) => {
+        const input = button.action.input as { chatId?: string } | undefined;
+        return input?.chatId === undefined || input.chatId === chatId;
+      })
+    ];
+  };
 
-    if (event.type === "chat.agent_message.delta") {
-      const payload = event.payload as { itemId?: string; delta?: string };
-      const id = payload.itemId ?? `agent-${index}`;
-      const existing = agentMessages.get(id) ?? {
-        id,
-        role: "agent",
-        content: "",
-        streaming: true
-      } satisfies ChatMessage;
-      existing.content += payload.delta ?? "";
-      existing.streaming = true;
-      agentMessages.set(id, existing);
-      return [];
-    }
+  const buildChatMessages = (chatId: string) => {
+    const agentMessages = new Map<string, ChatMessage>();
+    const messages = events.flatMap<ChatMessage>((event, index) => {
+      const payload = event.payload as {
+        chatId?: string;
+        fromChatId?: string;
+        toChatId?: string;
+        content?: string;
+        itemId?: string;
+        delta?: string;
+        status?: string;
+        error?: { message?: string };
+      };
 
-    if (event.type === "chat.agent_message.completed") {
-      const payload = event.payload as { itemId?: string; content?: string };
-      const id = payload.itemId ?? `agent-${index}`;
-      const existing = agentMessages.get(id) ?? {
-        id,
-        role: "agent",
-        content: "",
-        streaming: false
-      } satisfies ChatMessage;
-      existing.content = payload.content ?? existing.content;
-      existing.streaming = false;
-      agentMessages.set(id, existing);
-      return [];
-    }
-
-    if (event.type === "chat.codex_turn.completed") {
-      const payload = event.payload as { status?: string; error?: { message?: string } };
-      if (payload.status === "failed") {
+      if ((event.type === "chat.user_message.injected" || event.type === "chat.user_message.submitted") && payload.chatId === chatId) {
         return [{
-          id: `turn-${index}`,
+          id: `message-${chatId}-${index}`,
+          role: "user",
+          content: payload.content ?? ""
+        } satisfies ChatMessage];
+      }
+
+      if (event.type === "chat.panel_message.relayed" && payload.toChatId === chatId) {
+        return [{
+          id: `relay-${chatId}-${index}`,
+          role: "peer",
+          content: `${payload.fromChatId}: ${payload.content ?? ""}`
+        } satisfies ChatMessage];
+      }
+
+      if (event.type === "chat.agent_message.delta" && payload.chatId === chatId) {
+        const id = payload.itemId ?? `agent-${chatId}-${index}`;
+        const existing = agentMessages.get(id) ?? {
+          id,
+          role: "agent",
+          content: "",
+          streaming: true
+        } satisfies ChatMessage;
+        existing.content += payload.delta ?? "";
+        existing.streaming = true;
+        agentMessages.set(id, existing);
+        return [];
+      }
+
+      if (event.type === "chat.agent_message.completed" && payload.chatId === chatId) {
+        const id = payload.itemId ?? `agent-${chatId}-${index}`;
+        const existing = agentMessages.get(id) ?? {
+          id,
+          role: "agent",
+          content: "",
+          streaming: false
+        } satisfies ChatMessage;
+        existing.content = payload.content ?? existing.content;
+        existing.streaming = false;
+        agentMessages.set(id, existing);
+        return [];
+      }
+
+      if (event.type === "chat.codex_turn.completed" && payload.chatId === chatId && payload.status === "failed") {
+        return [{
+          id: `turn-${chatId}-${index}`,
           role: "system",
           content: payload.error?.message ?? "Codex turn failed."
         } satisfies ChatMessage];
       }
-    }
 
-    return [];
-  });
-  chatMessages.push(...agentMessages.values());
+      return [];
+    });
+    messages.push(...agentMessages.values());
+    return messages;
+  };
   document.documentElement.dataset.theme = state.app.theme;
 
-  const renderChatPanel = () => `
-    <div class="flow-row" data-plastic-ref="chat-buttons:chat-main">
+  const renderChatPanel = (panel: PlasticPanel) => {
+    const chatButtons = buildChatButtons(panel.id);
+    const chatMessages = buildChatMessages(panel.id);
+    const peer = chatPanels.find((candidate) => candidate.id !== panel.id);
+    return `
+    <div class="flow-row" data-plastic-ref="chat-buttons:${escapeHtml(panel.id)}">
       ${chatButtons.map((button) => `
         <button
           data-chat-button="${escapeHtml(button.id)}"
@@ -221,19 +273,20 @@ const render = async (force = false) => {
         >${escapeHtml(button.label)}</button>
       `).join("")}
     </div>
-    <div class="chat-log" data-plastic-ref="chat-log:chat-main">
+    <div class="chat-log" data-chat-log="${escapeHtml(panel.id)}" data-plastic-ref="chat-log:${escapeHtml(panel.id)}">
       ${chatMessages.length > 0 ? chatMessages.map((message) => `
         <p class="chat-message chat-message-${message.role}" data-plastic-ref="${escapeHtml(message.id)}">
-          <span>${message.role === "agent" ? "Codex" : message.role === "user" ? "You" : "System"}</span>
+          <span>${labelForRole(message.role)}</span>
           ${escapeHtml(message.content)}${message.streaming ? `<em>Streaming...</em>` : ""}
         </p>
-      `).join("") : `<p class="muted">Injected user messages will appear here.</p>`}
+      `).join("") : `<p class="muted">${peer ? `This chat can relay messages to ${escapeHtml(peer.title)}.` : "Injected user messages will appear here."}</p>`}
     </div>
-    <form class="chat-compose" data-plastic-ref="chat-compose:chat-main">
-      <textarea name="content" rows="4" placeholder="Message Codex through Plastic"></textarea>
+    <form class="chat-compose" data-chat-compose="${escapeHtml(panel.id)}" data-plastic-ref="chat-compose:${escapeHtml(panel.id)}">
+      <textarea name="content" rows="4" placeholder="Message Codex from ${escapeHtml(panel.title)}"></textarea>
       <button type="submit" data-plastic-command="chats/sendToCodex">Send</button>
     </form>
   `;
+  };
 
   const renderCodexPanel = () => `
     <p>Status: ${codexStatus.connected ? "connected" : "disconnected"}${codexStatus.initialized ? " and initialized" : ""}</p>
@@ -273,7 +326,7 @@ const render = async (force = false) => {
 
   const renderPanelBody = (panel: PlasticPanel) => {
     if (panel.kind === "chat") {
-      return renderChatPanel();
+      return renderChatPanel(panel);
     }
 
     if (panel.kind === "agent-runtime" && panel.id === "codex") {
@@ -332,7 +385,9 @@ const render = async (force = false) => {
 
   root.querySelectorAll<HTMLButtonElement>("[data-chat-button]").forEach((button) => {
     button.addEventListener("click", async () => {
-      const chatButton = chatButtons.find((candidate) => candidate.id === button.dataset.chatButton);
+      const chatButton = chatPanels
+        .flatMap((panel) => buildChatButtons(panel.id))
+        .find((candidate) => candidate.id === button.dataset.chatButton);
       if (!chatButton) {
         return;
       }
@@ -381,27 +436,29 @@ const render = async (force = false) => {
     });
   });
 
-  root.querySelector<HTMLFormElement>(".chat-compose")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget as HTMLFormElement;
-    const content = new FormData(form).get("content")?.toString() ?? "";
-    if (content.trim().length === 0) {
-      return;
-    }
-    await callPlastic("chats/sendToCodex", {
-      chatId: "chat-main",
-      content
+  root.querySelectorAll<HTMLFormElement>(".chat-compose").forEach((compose) => {
+    compose.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget as HTMLFormElement;
+      const chatId = form.dataset.chatCompose ?? "chat-main";
+      const content = new FormData(form).get("content")?.toString() ?? "";
+      if (content.trim().length === 0) {
+        return;
+      }
+      await callPlastic("chats/sendToCodex", {
+        chatId,
+        content
+      });
+      form.reset();
+      await render(true);
     });
-    form.reset();
-    await render(true);
   });
 
-  const nextChatLog = root.querySelector<HTMLElement>("[data-plastic-ref='chat-log:chat-main']");
-  if (nextChatLog && chatScroll) {
-    nextChatLog.scrollTop = chatScroll.stickToBottom ? nextChatLog.scrollHeight : chatScroll.top;
-  } else if (nextChatLog) {
-    nextChatLog.scrollTop = nextChatLog.scrollHeight;
-  }
+  root.querySelectorAll<HTMLElement>("[data-chat-log]").forEach((element) => {
+    const chatId = element.dataset.chatLog;
+    const scroll = chatId ? chatScroll.get(chatId) : undefined;
+    element.scrollTop = scroll ? scroll.stickToBottom ? element.scrollHeight : scroll.top : element.scrollHeight;
+  });
 };
 
 void render(true);

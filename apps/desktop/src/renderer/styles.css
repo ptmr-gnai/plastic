@@ -144,6 +144,10 @@ button {
   background: color-mix(in srgb, #2563eb 10%, canvas);
 }
 
+.chat-message-peer {
+  background: color-mix(in srgb, #7c3aed 10%, canvas);
+}
+
 .chat-message em {
   color: color-mix(in srgb, currentColor 58%, transparent);
   display: block;

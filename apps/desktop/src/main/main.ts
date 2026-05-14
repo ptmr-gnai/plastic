@@ -172,13 +172,22 @@ const bundledPanels = [
     order: 0
   },
   {
+    id: "chat-peer",
+    title: "Peer Chat",
+    kind: "chat",
+    extensionId: "plastic.chat",
+    subtitle: "Second conversation surface",
+    body: "A second chat panel for cross-panel message passing.",
+    order: 1
+  },
+  {
     id: "doc-main",
     title: "Document",
     kind: "document",
     extensionId: "plastic.document",
     subtitle: "Markdown editor and preview",
     body: "The document panel starts as a projection of durable document events.",
-    order: 1
+    order: 2
   },
   {
     id: "tasks-main",
@@ -187,7 +196,7 @@ const bundledPanels = [
     extensionId: "plastic.tasks",
     subtitle: "Tasks and recurring work",
     body: "Recurring tasks can learn from usage and propose new buttons or flows.",
-    order: 2
+    order: 3
   },
   {
     id: "codex",
@@ -196,7 +205,7 @@ const bundledPanels = [
     extensionId: "plastic.codex",
     subtitle: "Embodied agent runtime",
     body: "Codex is available as an agent runtime that can observe and drive Plastic.",
-    order: 3
+    order: 4
   },
   {
     id: "agent-dev",
@@ -205,7 +214,7 @@ const bundledPanels = [
     extensionId: "plastic.agent-dev",
     subtitle: "Control plane cockpit",
     body: "Snapshot, self-test, visible refs, and build controls for agents building Plastic.",
-    order: 4
+    order: 5
   }
 ];
 
@@ -695,6 +704,40 @@ const registerRuntimeMethods = async (store: EventStore) => {
               content: messageInput.content
             },
             scope: { panelId: chatId }
+          })
+        );
+      }
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "chats/relayMessage",
+      title: "Relay chat message",
+      description: "Writes a durable message from one chat panel into another chat panel.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) => {
+        const messageInput = input as { fromChatId?: string; toChatId?: string; content?: string };
+        if (!messageInput.fromChatId || !messageInput.toChatId || !messageInput.content) {
+          throw new Error("chats/relayMessage requires fromChatId, toChatId, and content");
+        }
+
+        return store.append(
+          createEvent({
+            type: "chat.panel_message.relayed",
+            payload: {
+              fromChatId: messageInput.fromChatId,
+              toChatId: messageInput.toChatId,
+              chatId: messageInput.toChatId,
+              content: messageInput.content
+            },
+            scope: { panelId: messageInput.toChatId },
+            meta: {
+              links: [
+                { rel: "source-chat", href: "panels/get", method: "panels/get", target: messageInput.fromChatId },
+                { rel: "target-chat", href: "panels/get", method: "panels/get", target: messageInput.toChatId }
+              ]
+            }
           })
         );
       }
