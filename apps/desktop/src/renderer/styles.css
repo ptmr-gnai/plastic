@@ -246,8 +246,8 @@ button {
 }
 
 .chat-message-user {
-  background: #2563eb;
-  color: white;
+  background: color-mix(in srgb, #2563eb 14%, canvas);
+  color: inherit;
 }
 
 .chat-message-peer {
