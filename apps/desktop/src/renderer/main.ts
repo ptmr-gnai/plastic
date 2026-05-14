@@ -184,6 +184,14 @@ const render = async (force = false) => {
 
     return [
       {
+        id: `new-chat-${chatId}`,
+        label: "New chat",
+        action: {
+          method: "chats/createCodexChat",
+          input: {}
+        }
+      },
+      {
         id: `summarize-${chatId}`,
         label: "Summarize",
         action: {
@@ -437,8 +445,11 @@ const render = async (force = false) => {
       if (!chatButton) {
         return;
       }
-      await callPlastic(chatButton.action.method, chatButton.action.input);
+      const result = await callPlastic(chatButton.action.method, chatButton.action.input) as { panelId?: string } | undefined;
       await render(true);
+      if (chatButton.action.method === "chats/createCodexChat" && result?.panelId) {
+        await callPlastic("windows/focusPanel", { panelId: result.panelId });
+      }
     });
   });
 

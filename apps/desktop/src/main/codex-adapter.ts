@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 import { Effect } from "effect";
-import { createEvent, type EventStore, type MethodRegistry } from "@plastic/core";
+import { createEvent, projectPanels, type EventStore, type MethodRegistry } from "@plastic/core";
 
 interface CodexRpcMessage {
   id?: number;
@@ -567,6 +567,74 @@ export const createCodexAdapter = (input: {
             return {
               chatId,
               threadId,
+              thread: asRecord(threadResult).thread ?? threadResult
+            };
+          })
+      })
+    );
+
+    await input.runPromise(
+      input.methods.register({
+        id: "chats/createCodexChat",
+        title: "Create Codex chat",
+        description: "Creates a new chat panel, starts a fresh Codex thread, and binds them.",
+        owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        handler: (methodInput) =>
+          Effect.promise(async () => {
+            await ensureInitialized();
+            const payload = methodInput as {
+              id?: string;
+              title?: string;
+              cwd?: string;
+              order?: number;
+              params?: Record<string, unknown>;
+            };
+            const events = await input.runPromise(input.eventStore.list());
+            const panels = projectPanels(events);
+            const chatCount = panels.filter((panel) => panel.kind === "chat").length;
+            const panelId = payload.id ?? `chat-${crypto.randomUUID().slice(0, 8)}`;
+            const title = payload.title ?? `Chat ${chatCount + 1}`;
+            const order = payload.order ?? Math.max(0, ...panels.map((panel) => panel.order)) + 1;
+            const threadResult = await request("thread/start", {
+              cwd: payload.cwd ?? input.workspaceDir,
+              approvalPolicy: "never",
+              sandbox: "workspace-write",
+              personality: "friendly",
+              serviceName: "plastic",
+              ...payload.params
+            });
+            const thread = asRecord(asRecord(threadResult).thread);
+            const threadId = asString(thread.id);
+            if (!threadId) {
+              throw new Error("Codex thread/start did not return thread.id");
+            }
+
+            const panelEvent = await input.runPromise(
+              input.eventStore.append(
+                createEvent({
+                  type: "panel.created",
+                  payload: {
+                    id: panelId,
+                    title,
+                    kind: "chat",
+                    extensionId: "plastic.chat",
+                    subtitle: "Markdown conversation surface",
+                    body: "Fresh Codex chat created through chats/createCodexChat.",
+                    order
+                  },
+                  scope: {
+                    panelId,
+                    extensionId: "plastic.chat"
+                  }
+                })
+              )
+            );
+            await bindThreadToChat(panelId, threadId, "chats/createCodexChat");
+            return {
+              panelId,
+              chatId: panelId,
+              threadId,
+              panelEvent,
               thread: asRecord(threadResult).thread ?? threadResult
             };
           })

@@ -74,6 +74,27 @@ const listVisibleRefs = async (): Promise<WindowVisibleRefs[]> => {
   return refs;
 };
 
+const scrollRefIntoViewScript = (ref: string) => `
+  (() => {
+    const ref = ${JSON.stringify(ref)};
+    const element = [...document.querySelectorAll("[data-plastic-ref]")]
+      .find((candidate) => candidate.dataset.plasticRef === ref);
+    if (!element) {
+      return false;
+    }
+    const rail = document.querySelector(".rail");
+    if (rail && rail.contains(element)) {
+      const railRect = rail.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
+      rail.scrollLeft += rect.left - railRect.left - Math.max(0, (rail.clientWidth - rect.width) / 2);
+      rail.scrollTop += rect.top - railRect.top - Math.max(0, (rail.clientHeight - rect.height) / 2);
+    } else {
+      element.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+    }
+    return true;
+  })()
+`;
+
 const findWindow = (windowId?: number) => {
   if (windowId !== undefined) {
     return BrowserWindow.getAllWindows().find((window) => window.id === windowId) ?? null;
@@ -90,13 +111,15 @@ const captureWindow = async (input: ScreenshotInput = {}) => {
   let rect: Rectangle | undefined;
   if (input.ref) {
     const measured = await target.webContents.executeJavaScript(`
-      (() => {
+      (async () => {
         const ref = ${JSON.stringify(input.ref)};
         const element = [...document.querySelectorAll("[data-plastic-ref]")]
           .find((candidate) => candidate.dataset.plasticRef === ref);
         if (!element) {
           return null;
         }
+        ${scrollRefIntoViewScript(input.ref)}
+        await new Promise((resolve) => requestAnimationFrame(resolve));
         const rect = element.getBoundingClientRect();
         return {
           x: Math.max(0, Math.floor(rect.x)),
@@ -572,14 +595,7 @@ const registerRuntimeMethods = async (store: EventStore) => {
           const ref = `panel:${panelId}`;
           const result = [];
           for (const window of BrowserWindow.getAllWindows()) {
-            const found = await window.webContents.executeJavaScript(`
-              (() => {
-                const element = document.querySelector('[data-plastic-ref="${ref}"]');
-                if (!element) return false;
-                element.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-                return true;
-              })()
-            `) as boolean;
+            const found = await window.webContents.executeJavaScript(scrollRefIntoViewScript(ref)) as boolean;
             if (found) {
               window.focus();
             }
@@ -604,14 +620,7 @@ const registerRuntimeMethods = async (store: EventStore) => {
           }
           const result = [];
           for (const window of BrowserWindow.getAllWindows()) {
-            const found = await window.webContents.executeJavaScript(`
-              (() => {
-                const element = document.querySelector('[data-plastic-ref="${ref}"]');
-                if (!element) return false;
-                element.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-                return true;
-              })()
-            `) as boolean;
+            const found = await window.webContents.executeJavaScript(scrollRefIntoViewScript(ref)) as boolean;
             if (found) {
               window.focus();
             }
