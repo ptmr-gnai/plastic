@@ -1,0 +1,15 @@
+{
+  "id": "workspace.hello-panel",
+  "title": "Hello Panel",
+  "panels": [
+    {
+      "id": "hello-panel",
+      "title": "Hello",
+      "kind": "extension",
+      "subtitle": "Workspace extension",
+      "body": "This panel comes from .clay/extensions/hello-panel.",
+      "order": 8
+    }
+  ],
+  "methods": []
+}

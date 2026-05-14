@@ -6,6 +6,7 @@ import { Effect } from "effect";
 import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticState, projectPanels, projectWindows, type EventStore } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
+import { registerExtensionMethods, scanWorkspaceExtensions } from "./extension-loader.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
 const clayDir = join(workspaceDir, ".clay");
@@ -645,7 +646,34 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
 
 await ensureBundledPanels(eventStore);
 await registerRuntimeMethods(eventStore);
+await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await codexAdapter.registerMethods();
+const discoveredExtensions = await scanWorkspaceExtensions(workspaceDir);
+for (const extension of discoveredExtensions) {
+  await runPromise(
+    eventStore.append(
+      createEvent({
+        type: "extension.discovered",
+        payload: {
+          id: extension.id,
+          title: extension.title,
+          source: extension.source,
+          path: extension.path,
+          entry: extension.entry,
+          manifestPath: extension.manifestPath,
+          manifest: {
+            id: extension.id,
+            title: extension.title,
+            panels: extension.panels,
+            methods: extension.methods.map((method) => method.id)
+          },
+          errors: extension.errors
+        },
+        scope: { extensionId: extension.id }
+      })
+    )
+  );
+}
 await runPromise(
   eventStore.append(
     createEvent({

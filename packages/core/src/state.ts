@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import type { EventStore } from "./event-store.js";
+import { projectExtensions } from "./extensions.js";
 import type { MethodRegistry, PlasticResource } from "./methods.js";
 import { projectPanels, projectWindows } from "./panels.js";
 
@@ -24,6 +25,7 @@ export const buildPlasticState = (
     const registeredMethods = yield* methods.list();
     const themeEvents = events.filter((event) => event.type === "theme.changed");
     const lastTheme = themeEvents.at(-1)?.payload as { theme?: "light" | "dark" } | undefined;
+    const extensions = projectExtensions(events);
     const panels = projectPanels(events);
     const windows = projectWindows(events, panels);
 
@@ -49,6 +51,7 @@ export const buildPlasticState = (
             { rel: "self", href: "plastic/state", method: "plastic/state" },
             { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
             { rel: "events", href: "events/list", method: "events/list" },
+            { rel: "extensions", href: "extensions/list", method: "extensions/list" },
             { rel: "panels", href: "panels/list", method: "panels/list" },
             { rel: "windows", href: "windows/list", method: "windows/list" }
           ],
@@ -67,7 +70,24 @@ export const buildPlasticState = (
               id: "create-window",
               title: "Create window",
               method: "windows/create"
+            },
+            {
+              id: "scan-extensions",
+              title: "Scan extensions",
+              method: "extensions/scan"
             }
+          ]
+        },
+        {
+          id: "extensions",
+          kind: "collection",
+          title: "Extensions",
+          state: { count: extensions.length, items: extensions },
+          links: [{ rel: "self", href: "extensions/list", method: "extensions/list" }],
+          actions: [
+            { id: "scan", title: "Scan extensions", method: "extensions/scan" },
+            { id: "get", title: "Get extension", method: "extensions/get" },
+            { id: "register-panel", title: "Register extension panel", method: "extensions/registerPanel" }
           ]
         },
         {
