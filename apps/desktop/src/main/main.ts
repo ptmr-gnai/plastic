@@ -1530,7 +1530,7 @@ const registerRuntimeMethods = async (store: EventStore) => {
             .slice(afterIndex >= 0 ? afterIndex + 1 : Math.max(0, events.length - (verifyInput.limit ?? 200)))
             .filter((event) => {
               const payload = asRecord(event.payload);
-              return payload.ref === verifyInput.ref;
+              return (event.type === "deixis.ref.filled" || event.type === "deixis.ref.clicked") && payload.ref === verifyInput.ref;
             });
           const timelineInput: TimelineInput = { limit: Math.min(verifyInput.limit ?? 20, 100) };
           if (panelId) {
