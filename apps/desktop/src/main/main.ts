@@ -1520,7 +1520,7 @@ const registerRuntimeMethods = async (store: EventStore) => {
               if (verifyInput.expectedContent) {
                 const payload = asRecord(event.payload);
                 const content = asString(payload.content) ?? "";
-                if (!content.includes(verifyInput.expectedContent)) {
+                if (content !== verifyInput.expectedContent) {
                   return false;
                 }
               }
