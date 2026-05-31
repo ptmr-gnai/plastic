@@ -28,9 +28,33 @@ type PlasticPanel = {
   title: string;
   kind: string;
   extensionId: string;
+  rendererId?: string;
   subtitle?: string;
   body?: string;
   order: number;
+};
+
+type PlasticExtension = {
+  id: string;
+  title: string;
+  renderers: Array<{
+    id: string;
+    title?: string;
+    panelKinds: string[];
+  }>;
+};
+
+type PanelRendererContext = {
+  panel: PlasticPanel;
+};
+
+type PanelRenderer = {
+  id: string;
+  extensionId: string;
+  panelKinds: string[];
+  closeMethod: string;
+  closeInputKey: string;
+  render: (context: PanelRendererContext) => string;
 };
 
 type ChatButton = {
@@ -128,6 +152,15 @@ const labelForRole = (role: ChatMessage["role"]) => {
   return "System";
 };
 
+const genericPanelRenderer = (id: string, extensionId: string, panelKinds: string[] = ["generic"]): PanelRenderer => ({
+  id,
+  extensionId,
+  panelKinds,
+  closeMethod: "panels/close",
+  closeInputKey: "id",
+  render: ({ panel }) => `<p>${escapeHtml(panel.body ?? "This panel is projected from the durable event stream.")}</p>`
+});
+
 const renderNow = async (force = false) => {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) {
@@ -149,9 +182,8 @@ const renderNow = async (force = false) => {
   const state = await callPlastic("plastic/state") as PlasticState;
   const methods = await callPlastic("plastic/methods") as Array<{ id: string }>;
   const panels = await callPlastic("panels/list") as PlasticPanel[];
+  const extensions = await callPlastic("extensions/list") as PlasticExtension[];
   const codexStatus = await callPlastic("codex/status") as CodexStatus;
-  const agentDevPanelVisible = panels.some((panel) => panel.kind === "agent-dev");
-  const snapshot = agentDevPanelVisible ? await callPlastic("plastic/snapshot") as PlasticSnapshot : null;
   if (!force && state.events.count === lastRenderedEventCount) {
     return;
   }
@@ -160,19 +192,6 @@ const renderNow = async (force = false) => {
   const addedButtons = buttonEvents
     .map((event) => (event.payload as { button?: ChatButton }).button)
     .filter((button): button is ChatButton => Boolean(button));
-  const chatPanels = panels.filter((panel) => panel.kind === "chat");
-  const chatBindings = new Map<string, ChatBinding>(
-    await Promise.all(chatPanels.map(async (panel) => {
-      const binding = await callPlastic("chats/getBinding", { chatId: panel.id }) as ChatBinding;
-      return [panel.id, binding] as const;
-    }))
-  );
-  const chatMessageLists = new Map<string, ChatMessage[]>(
-    await Promise.all(chatPanels.map(async (panel) => {
-      const messages = await callPlastic("chats/messages", { chatId: panel.id, limit: 80 }) as ChatMessage[];
-      return [panel.id, messages] as const;
-    }))
-  );
 
   const buildChatButtons = (chatId: string): ChatButton[] => {
     const peer = chatPanels.find((panel) => panel.id !== chatId);
@@ -220,7 +239,7 @@ const renderNow = async (force = false) => {
 
   document.documentElement.dataset.theme = state.app.theme;
 
-  const renderChatPanel = (panel: PlasticPanel) => {
+  const renderChatPanel = ({ panel }: PanelRendererContext) => {
     const chatButtons = buildChatButtons(panel.id);
     const chatMessages = chatMessageLists.get(panel.id) ?? [];
     const binding = chatBindings.get(panel.id);
@@ -301,21 +320,92 @@ const renderNow = async (force = false) => {
     `;
   };
 
-  const renderPanelBody = (panel: PlasticPanel) => {
-    if (panel.kind === "chat") {
-      return renderChatPanel(panel);
+  const panelRenderers = new Map<string, PanelRenderer>([
+    [
+      "plastic.chat.chat-panel",
+      {
+        id: "plastic.chat.chat-panel",
+        extensionId: "plastic.chat",
+        panelKinds: ["chat"],
+        closeMethod: "chats/close",
+        closeInputKey: "chatId",
+        render: renderChatPanel
+      }
+    ],
+    [
+      "plastic.codex.runtime-panel",
+      {
+        id: "plastic.codex.runtime-panel",
+        extensionId: "plastic.codex",
+        panelKinds: ["agent-runtime"],
+        closeMethod: "panels/close",
+        closeInputKey: "id",
+        render: renderCodexPanel
+      }
+    ],
+    [
+      "plastic.agent-dev.panel",
+      {
+        id: "plastic.agent-dev.panel",
+        extensionId: "plastic.agent-dev",
+        panelKinds: ["agent-dev"],
+        closeMethod: "panels/close",
+        closeInputKey: "id",
+        render: renderAgentDevPanel
+      }
+    ],
+    [
+      "plastic.document.markdown-panel",
+      genericPanelRenderer("plastic.document.markdown-panel", "plastic.document", ["document"])
+    ],
+    [
+      "plastic.tasks.tasks-panel",
+      genericPanelRenderer("plastic.tasks.tasks-panel", "plastic.tasks", ["tasks"])
+    ],
+    [
+      "plastic.generic.panel",
+      genericPanelRenderer("plastic.generic.panel", "plastic.runtime")
+    ]
+  ]);
+
+  for (const extension of extensions) {
+    for (const renderer of extension.renderers) {
+      if (!panelRenderers.has(renderer.id)) {
+        panelRenderers.set(renderer.id, genericPanelRenderer(renderer.id, extension.id, renderer.panelKinds));
+      }
+    }
+  }
+
+  const resolvePanelRenderer = (panel: PlasticPanel): PanelRenderer => {
+    if (panel.rendererId && panelRenderers.has(panel.rendererId)) {
+      return panelRenderers.get(panel.rendererId) ?? panelRenderers.get("plastic.generic.panel")!;
     }
 
-    if (panel.kind === "agent-runtime" && panel.id === "codex") {
-      return renderCodexPanel();
+    const extension = extensions.find((candidate) => candidate.id === panel.extensionId);
+    const rendererContribution = extension?.renderers.find((renderer) => renderer.panelKinds.includes(panel.kind))
+      ?? extension?.renderers[0];
+    if (rendererContribution && panelRenderers.has(rendererContribution.id)) {
+      return panelRenderers.get(rendererContribution.id) ?? panelRenderers.get("plastic.generic.panel")!;
     }
 
-    if (panel.kind === "agent-dev") {
-      return renderAgentDevPanel();
-    }
-
-    return `<p>${escapeHtml(panel.body ?? "This panel is projected from the durable event stream.")}</p>`;
+    return panelRenderers.get("plastic.generic.panel")!;
   };
+
+  const chatPanels = panels.filter((panel) => resolvePanelRenderer(panel).id === "plastic.chat.chat-panel");
+  const agentDevPanelVisible = panels.some((panel) => resolvePanelRenderer(panel).id === "plastic.agent-dev.panel");
+  const snapshot = agentDevPanelVisible ? await callPlastic("plastic/snapshot") as PlasticSnapshot : null;
+  const chatBindings = new Map<string, ChatBinding>(
+    await Promise.all(chatPanels.map(async (panel) => {
+      const binding = await callPlastic("chats/getBinding", { chatId: panel.id }) as ChatBinding;
+      return [panel.id, binding] as const;
+    }))
+  );
+  const chatMessageLists = new Map<string, ChatMessage[]>(
+    await Promise.all(chatPanels.map(async (panel) => {
+      const messages = await callPlastic("chats/messages", { chatId: panel.id, limit: 80 }) as ChatMessage[];
+      return [panel.id, messages] as const;
+    }))
+  );
 
   const renderAddPanelControls = () => `
     <h2>Add panel</h2>
@@ -348,18 +438,27 @@ const renderNow = async (force = false) => {
         <button data-action="toggle-topbar" data-plastic-ref="topbar:toggle-mini">Show</button>
       </header>
       <div class="rail" data-plastic-ref="window-layout:main">
-        ${panels.map((panel) => `
+        ${panels.map((panel) => {
+          const renderer = resolvePanelRenderer(panel);
+          return `
           <article class="panel" data-plastic-ref="panel:${escapeHtml(panel.id)}" data-plastic-panel="${escapeHtml(panel.id)}" data-plastic-extension="${escapeHtml(panel.extensionId)}">
             <header class="panel-header">
               <div>
                 <p class="eyebrow">${escapeHtml(panel.subtitle ?? panel.kind)}</p>
                 <h2>${escapeHtml(panel.title)}</h2>
               </div>
-              <button class="panel-close" data-close-panel="${escapeHtml(panel.id)}" data-panel-kind="${escapeHtml(panel.kind)}" data-plastic-command="${panel.kind === "chat" ? "chats/close" : "panels/close"}">Close</button>
+              <button
+                class="panel-close"
+                data-close-panel="${escapeHtml(panel.id)}"
+                data-close-method="${escapeHtml(renderer.closeMethod)}"
+                data-close-input-key="${escapeHtml(renderer.closeInputKey)}"
+                data-plastic-command="${escapeHtml(renderer.closeMethod)}"
+              >Close</button>
             </header>
-            ${renderPanelBody(panel)}
+            ${renderer.render({ panel })}
           </article>
-        `).join("")}
+        `;
+        }).join("")}
         <article class="panel add-panel" data-plastic-ref="panel:add">
           ${renderAddPanelControls()}
         </article>
@@ -415,8 +514,9 @@ const renderNow = async (force = false) => {
       if (!panelId) {
         return;
       }
-      const method = button.dataset.panelKind === "chat" ? "chats/close" : "panels/close";
-      const input = button.dataset.panelKind === "chat" ? { chatId: panelId } : { id: panelId };
+      const method = button.dataset.closeMethod ?? "panels/close";
+      const inputKey = button.dataset.closeInputKey ?? "id";
+      const input = { [inputKey]: panelId };
       await callPlastic(method, input);
       await render(true);
     });

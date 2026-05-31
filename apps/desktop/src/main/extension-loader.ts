@@ -169,6 +169,7 @@ export const registerExtensionMethods = async (input: {
                         id: extension.id,
                         title: extension.title,
                         panels: extension.panels,
+                        renderers: extension.renderers,
                         methods: extension.methods.map((method) => method.id)
                       },
                       errors: extension.errors
@@ -271,6 +272,7 @@ export const registerExtensionMethods = async (input: {
                   title: contribution.title,
                   kind: contribution.kind ?? "extension",
                   extensionId: extension.id,
+                  rendererId: contribution.rendererId,
                   subtitle: contribution.subtitle ?? extension.title,
                   body: contribution.body ?? `Panel contributed by ${extension.title}.`,
                   order: input.order ?? contribution.order

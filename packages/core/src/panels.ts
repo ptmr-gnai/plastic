@@ -5,6 +5,7 @@ export interface PlasticPanel {
   title: string;
   kind: string;
   extensionId: string;
+  rendererId?: string;
   subtitle?: string;
   body?: string;
   windowId?: string;
@@ -54,6 +55,9 @@ export const projectPanels = (events: PlasticEvent[]): PlasticPanel[] => {
         extensionId: asString(payload.extensionId, event.scope.extensionId ?? "plastic.user"),
         order: asNumber(payload.order) ?? panels.size
       };
+      if (typeof payload.rendererId === "string") {
+        panel.rendererId = payload.rendererId;
+      }
       if (typeof payload.subtitle === "string") {
         panel.subtitle = payload.subtitle;
       }
@@ -94,6 +98,18 @@ export const projectPanels = (events: PlasticEvent[]): PlasticPanel[] => {
           movedPanel.windowId = payload.windowId;
         }
         panels.set(id, movedPanel);
+      }
+    }
+
+    if (event.type === "panel.renderer.bound") {
+      const id = asString(payload.id, event.scope.panelId ?? "");
+      const panel = panels.get(id);
+      if (panel && typeof payload.rendererId === "string") {
+        panels.set(id, {
+          ...panel,
+          rendererId: payload.rendererId,
+          extensionId: asString(payload.extensionId, panel.extensionId)
+        });
       }
     }
 

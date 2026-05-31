@@ -4,9 +4,16 @@ export interface PlasticExtensionPanelContribution {
   id: string;
   title: string;
   kind?: string;
+  rendererId?: string;
   subtitle?: string;
   body?: string;
   order?: number;
+}
+
+export interface PlasticExtensionRendererContribution {
+  id: string;
+  title?: string;
+  panelKinds: string[];
 }
 
 export interface PlasticExtensionMethodContribution {
@@ -23,6 +30,7 @@ export interface PlasticExtension {
   entry?: string;
   manifestPath?: string;
   panels: PlasticExtensionPanelContribution[];
+  renderers: PlasticExtensionRendererContribution[];
   methods: PlasticExtensionMethodContribution[];
   errors: string[];
 }
@@ -52,6 +60,9 @@ const asPanelContributions = (value: unknown): PlasticExtensionPanelContribution
       if (typeof item.kind === "string") {
         panel.kind = item.kind;
       }
+      if (typeof item.rendererId === "string") {
+        panel.rendererId = item.rendererId;
+      }
       if (typeof item.subtitle === "string") {
         panel.subtitle = item.subtitle;
       }
@@ -63,6 +74,22 @@ const asPanelContributions = (value: unknown): PlasticExtensionPanelContribution
       }
       return panel;
     });
+};
+
+const asRendererContributions = (value: unknown): PlasticExtensionRendererContribution[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => asRecord(item))
+    .filter((item) => typeof item.id === "string")
+    .map((item) => ({
+      id: asString(item.id, ""),
+      ...(typeof item.title === "string" ? { title: item.title } : {}),
+      panelKinds: asStringArray(item.panelKinds)
+    }))
+    .filter((item) => item.id.length > 0);
 };
 
 const asMethodContributions = (value: unknown): PlasticExtensionMethodContribution[] =>
@@ -84,6 +111,7 @@ export const extensionFromManifest = (input: {
     title: asString(manifest.title ?? manifest.name, input.fallbackTitle ?? input.fallbackId),
     source: input.source ?? "workspace",
     panels: asPanelContributions(manifest.panels),
+    renderers: asRendererContributions(manifest.renderers),
     methods: asMethodContributions(manifest.methods),
     errors: input.errors ?? []
   };

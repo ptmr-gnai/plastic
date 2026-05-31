@@ -590,65 +590,163 @@ const panelIdFromRef = (ref: string) => {
   return messageMatch?.[1];
 };
 
-const bundledPanels = [
+const bundledExtensions = [
   {
-    id: "chat-main",
+    id: "plastic.chat",
     title: "Chat",
-    kind: "chat",
-    extensionId: "plastic.chat",
-    subtitle: "Markdown conversation surface",
-    body: "Agent messages and user messages land in Plastic's shared event stream.",
-    order: 0
+    renderers: [
+      {
+        id: "plastic.chat.chat-panel",
+        title: "Chat panel",
+        panelKinds: ["chat"]
+      }
+    ],
+    panels: [
+      {
+        id: "chat-main",
+        title: "Chat",
+        kind: "chat",
+        rendererId: "plastic.chat.chat-panel",
+        subtitle: "Markdown conversation surface",
+        body: "Agent messages and user messages land in Plastic's shared event stream.",
+        order: 0
+      },
+      {
+        id: "chat-peer",
+        title: "Peer Chat",
+        kind: "chat",
+        rendererId: "plastic.chat.chat-panel",
+        subtitle: "Second conversation surface",
+        body: "A second chat panel for cross-panel message passing.",
+        order: 1
+      }
+    ]
   },
   {
-    id: "chat-peer",
-    title: "Peer Chat",
-    kind: "chat",
-    extensionId: "plastic.chat",
-    subtitle: "Second conversation surface",
-    body: "A second chat panel for cross-panel message passing.",
-    order: 1
-  },
-  {
-    id: "doc-main",
+    id: "plastic.document",
     title: "Document",
-    kind: "document",
-    extensionId: "plastic.document",
-    subtitle: "Markdown editor and preview",
-    body: "The document panel starts as a projection of durable document events.",
-    order: 2
+    renderers: [
+      {
+        id: "plastic.document.markdown-panel",
+        title: "Markdown document panel",
+        panelKinds: ["document"]
+      }
+    ],
+    panels: [
+      {
+        id: "doc-main",
+        title: "Document",
+        kind: "document",
+        rendererId: "plastic.document.markdown-panel",
+        subtitle: "Markdown editor and preview",
+        body: "The document panel starts as a projection of durable document events.",
+        order: 2
+      }
+    ]
   },
   {
-    id: "tasks-main",
+    id: "plastic.tasks",
     title: "Tasks",
-    kind: "tasks",
-    extensionId: "plastic.tasks",
-    subtitle: "Tasks and recurring work",
-    body: "Recurring tasks can learn from usage and propose new buttons or flows.",
-    order: 3
+    renderers: [
+      {
+        id: "plastic.tasks.tasks-panel",
+        title: "Tasks panel",
+        panelKinds: ["tasks"]
+      }
+    ],
+    panels: [
+      {
+        id: "tasks-main",
+        title: "Tasks",
+        kind: "tasks",
+        rendererId: "plastic.tasks.tasks-panel",
+        subtitle: "Tasks and recurring work",
+        body: "Recurring tasks can learn from usage and propose new buttons or flows.",
+        order: 3
+      }
+    ]
   },
   {
-    id: "codex",
+    id: "plastic.codex",
     title: "Codex",
-    kind: "agent-runtime",
-    extensionId: "plastic.codex",
-    subtitle: "Embodied agent runtime",
-    body: "Codex is available as an agent runtime that can observe and drive Plastic.",
-    order: 4
+    renderers: [
+      {
+        id: "plastic.codex.runtime-panel",
+        title: "Codex runtime panel",
+        panelKinds: ["agent-runtime"]
+      }
+    ],
+    panels: [
+      {
+        id: "codex",
+        title: "Codex",
+        kind: "agent-runtime",
+        rendererId: "plastic.codex.runtime-panel",
+        subtitle: "Embodied agent runtime",
+        body: "Codex is available as an agent runtime that can observe and drive Plastic.",
+        order: 4
+      }
+    ]
   },
   {
-    id: "agent-dev",
+    id: "plastic.agent-dev",
     title: "Agent Dev",
-    kind: "agent-dev",
-    extensionId: "plastic.agent-dev",
-    subtitle: "Control plane cockpit",
-    body: "Snapshot, self-test, visible refs, and build controls for agents building Plastic.",
-    order: 5
+    renderers: [
+      {
+        id: "plastic.agent-dev.panel",
+        title: "Agent dev panel",
+        panelKinds: ["agent-dev"]
+      }
+    ],
+    panels: [
+      {
+        id: "agent-dev",
+        title: "Agent Dev",
+        kind: "agent-dev",
+        rendererId: "plastic.agent-dev.panel",
+        subtitle: "Control plane cockpit",
+        body: "Snapshot, self-test, visible refs, and build controls for agents building Plastic.",
+        order: 5
+      }
+    ]
   }
 ];
 
+const ensureBundledExtensions = async (store: EventStore) => {
+  const events = await runPromise(store.list());
+  const existingExtensionIds = new Set(projectExtensions(events).map((extension) => extension.id));
+  for (const extension of bundledExtensions) {
+    if (existingExtensionIds.has(extension.id)) {
+      continue;
+    }
+
+    await runPromise(
+      store.append(
+        createEvent({
+          type: "extension.discovered",
+          payload: {
+            id: extension.id,
+            title: extension.title,
+            source: "bundled",
+            manifest: extension,
+            errors: []
+          },
+          scope: { extensionId: extension.id },
+          meta: {
+            links: [
+              { rel: "self", href: "extensions/get", method: "extensions/get", target: extension.id },
+              { rel: "extensions", href: "extensions/list", method: "extensions/list" }
+            ]
+          }
+        })
+      )
+    );
+  }
+};
+
 const ensureBundledPanels = async (store: EventStore) => {
   const events = await runPromise(store.list());
+  const extensions = projectExtensions(events);
   const existingPanelIds = new Set(projectPanels(events).map((panel) => panel.id));
   const introducedPanelIds = new Set(
     events
@@ -660,16 +758,64 @@ const ensureBundledPanels = async (store: EventStore) => {
       .filter((id): id is string => Boolean(id))
   );
 
-  for (const panel of bundledPanels) {
-    if (existingPanelIds.has(panel.id) || introducedPanelIds.has(panel.id)) {
+  for (const extension of extensions.filter((candidate) => candidate.source === "bundled")) {
+    for (const panel of extension.panels) {
+      if (existingPanelIds.has(panel.id) || introducedPanelIds.has(panel.id)) {
+        continue;
+      }
+
+      await runPromise(
+        store.append(
+          createEvent({
+            type: "panel.created",
+            payload: {
+              ...panel,
+              extensionId: extension.id
+            },
+            scope: {
+              panelId: panel.id,
+              extensionId: extension.id
+            },
+            meta: {
+              links: [
+                { rel: "panel", href: "panels/get", method: "panels/get", target: panel.id },
+                { rel: "extension", href: "extensions/get", method: "extensions/get", target: extension.id }
+              ]
+            }
+          })
+        )
+      );
+    }
+  }
+};
+
+const ensurePanelRendererBindings = async (store: EventStore) => {
+  const events = await runPromise(store.list());
+  const extensions = projectExtensions(events);
+  const panels = projectPanels(events);
+
+  for (const panel of panels) {
+    if (panel.rendererId) {
+      continue;
+    }
+
+    const extension = extensions.find((candidate) => candidate.id === panel.extensionId);
+    const renderer = extension?.renderers.find((candidate) => candidate.panelKinds.includes(panel.kind))
+      ?? extension?.renderers[0];
+    if (!renderer) {
       continue;
     }
 
     await runPromise(
       store.append(
         createEvent({
-          type: "panel.created",
-          payload: panel,
+          type: "panel.renderer.bound",
+          payload: {
+            id: panel.id,
+            extensionId: panel.extensionId,
+            rendererId: renderer.id,
+            reason: "matched extension renderer contribution"
+          },
           scope: {
             panelId: panel.id,
             extensionId: panel.extensionId
@@ -2080,7 +2226,9 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
   }
 });
 
+await ensureBundledExtensions(eventStore);
 await ensureBundledPanels(eventStore);
+await ensurePanelRendererBindings(eventStore);
 await registerRuntimeMethods(eventStore);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await registerPanelMailboxMethods({ eventStore, methods, runPromise });

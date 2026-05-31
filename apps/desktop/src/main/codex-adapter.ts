@@ -915,6 +915,7 @@ export const createCodexAdapter = (input: {
                     title,
                     kind: "chat",
                     extensionId: "plastic.chat",
+                    rendererId: "plastic.chat.chat-panel",
                     subtitle: "Markdown conversation surface",
                     body: "Fresh Codex chat created through chats/createCodexChat.",
                     order
