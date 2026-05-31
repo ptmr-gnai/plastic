@@ -188,6 +188,11 @@ export const createCodexAdapter = (input: {
   };
 
   const bindThreadToChat = async (chatId: string, threadId: string, reason: string) => {
+    for (const [existingThreadId, existingChatId] of threadChatBindings.entries()) {
+      if (existingChatId === chatId && existingThreadId !== threadId) {
+        threadChatBindings.delete(existingThreadId);
+      }
+    }
     threadChatBindings.set(threadId, chatId);
     await input.runPromise(
       input.eventStore.append(
