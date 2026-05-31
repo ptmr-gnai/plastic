@@ -1490,6 +1490,14 @@ const registerRuntimeMethods = async (store: EventStore) => {
           if (!refInput.ref) {
             throw new Error("deixis/clickRef requires ref");
           }
+          const latestFilledValue = await runPromise(store.list()).then((events) => {
+            const filled = events
+              .filter((event) => event.type === "deixis.ref.filled")
+              .map((event) => asRecord(event.payload))
+              .filter((payload) => payload.ref === refInput.ref && typeof payload.value === "string")
+              .at(-1);
+            return typeof filled?.value === "string" ? filled.value : undefined;
+          });
           const target = findWindow(refInput.windowId);
           if (!target) {
             throw new Error("No window available");
@@ -1497,6 +1505,7 @@ const registerRuntimeMethods = async (store: EventStore) => {
           const result = await target.webContents.executeJavaScript(`
             (() => {
               const ref = ${JSON.stringify(refInput.ref)};
+              const latestFilledValue = ${JSON.stringify(latestFilledValue)};
               const element = [...document.querySelectorAll("[data-plastic-ref]")]
                 .find((candidate) => candidate.dataset.plasticRef === ref);
               if (!element) {
@@ -1504,6 +1513,12 @@ const registerRuntimeMethods = async (store: EventStore) => {
               }
               ${scrollRefIntoViewScript(refInput.ref)}
               if (element instanceof HTMLFormElement) {
+                const field = element.querySelector("textarea, input");
+                if (field && latestFilledValue !== undefined && field.value.trim().length === 0) {
+                  field.value = latestFilledValue;
+                  field.dispatchEvent(new Event("input", { bubbles: true }));
+                  field.dispatchEvent(new Event("change", { bubbles: true }));
+                }
                 element.requestSubmit();
               } else {
                 element.click();
@@ -1589,6 +1604,7 @@ const registerRuntimeMethods = async (store: EventStore) => {
                   ref: refInput.ref,
                   windowId: target.id,
                   valueLength: refInput.value.length,
+                  value: refInput.value,
                   result
                 }
               })
