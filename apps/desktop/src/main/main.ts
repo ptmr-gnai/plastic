@@ -1,5 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { mkdirSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
+import { spawn as spawnProcess } from "node:child_process";
+import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain, type Rectangle } from "electron";
 import { Effect } from "effect";
@@ -10,18 +13,65 @@ import { registerExtensionMethods, scanWorkspaceExtensions } from "./extension-l
 import { registerPanelMailboxMethods } from "./panel-methods.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
-const clayDir = join(workspaceDir, ".clay");
-const eventPath = join(clayDir, "events", "events.jsonl");
-mkdirSync(join(clayDir, "events"), { recursive: true });
+const plasticDir = join(workspaceDir, ".plastic");
+const eventPath = join(plasticDir, "events", "events.jsonl");
+mkdirSync(join(plasticDir, "events"), { recursive: true });
 
 const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(effect);
 
+const runLocalCommand = async (command: string, args: string[]) =>
+  new Promise<{ command: string; args: string[]; exitCode: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string }>((resolve, reject) => {
+    const child = spawnProcess(command, args, {
+      cwd: workspaceDir,
+      env: process.env
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    child.on("error", reject);
+    child.on("exit", (exitCode, signal) => {
+      resolve({ command, args, exitCode, signal, stdout, stderr });
+    });
+  });
+
 const eventStore = await createJsonlEventStore(eventPath);
 const methods = createMethodRegistry();
-const codexAdapter = createCodexAdapter({ eventStore, methods, runPromise, workspaceDir });
 const windows = new Set<BrowserWindow>();
 const eventStreamClients = new Set<ServerResponse>();
 const processStartedAt = new Date().toISOString();
+const runtimeHost = process.env.PLASTIC_RUNTIME_HOST ?? "0.0.0.0";
+const runtimePort = Number(process.env.PLASTIC_RUNTIME_PORT ?? 7331);
+const buildHost = process.env.PLASTIC_BUILD_HOST ?? "127.0.0.1";
+const buildPort = Number(process.env.PLASTIC_BUILD_PORT ?? 7332);
+
+const getHostRpcUrls = () => {
+  const urls = [`http://127.0.0.1:${runtimePort}/rpc`];
+  for (const interfaces of Object.values(networkInterfaces())) {
+    for (const candidate of interfaces ?? []) {
+      if (candidate.family === "IPv4" && !candidate.internal) {
+        urls.push(`http://${candidate.address}:${runtimePort}/rpc`);
+      }
+    }
+  }
+  urls.push(`http://host.docker.internal:${runtimePort}/rpc`);
+  return [...new Set(urls)];
+};
+
+const runtimeRpcUrls = getHostRpcUrls();
+const preferredRuntimeRpcUrl = process.env.PLASTIC_RPC_URL ?? runtimeRpcUrls[1] ?? runtimeRpcUrls[0] ?? `http://127.0.0.1:${runtimePort}/rpc`;
+const codexAdapter = createCodexAdapter({
+  eventStore,
+  methods,
+  runPromise,
+  workspaceDir,
+  runtimeRpcUrl: preferredRuntimeRpcUrl,
+  runtimeRpcUrls
+});
 
 type VisibleRef = {
   ref?: string;
@@ -42,16 +92,47 @@ type ScreenshotInput = {
   ref?: string;
 };
 
+type RefInput = {
+  windowId?: number;
+  ref?: string;
+  value?: string;
+};
+
+type EventScopeInput = {
+  panelId?: string;
+  agentId?: string;
+  extensionId?: string;
+  windowId?: string;
+};
+
+type TimelineInput = {
+  after?: string;
+  before?: string;
+  limit?: number;
+  scope?: EventScopeInput;
+  includeRaw?: boolean;
+  includeDeltas?: boolean;
+};
+
+type AgentOrientInput = {
+  agentId?: string;
+  panelId?: string;
+  windowId?: number | string;
+  eventCursor?: string;
+};
+
 const buildStatus = () => ({
   service: "plastic.build",
   status: "running",
   workspaceDir,
-  clayDir,
-  extensionsDir: join(clayDir, "extensions"),
+  plasticDir,
+  extensionsDir: join(plasticDir, "extensions"),
   eventPath,
   viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,
-  runtimeSocket: "http://127.0.0.1:7331",
-  buildSocket: "http://127.0.0.1:7332",
+  runtimeSocket: `http://${runtimeHost}:${runtimePort}`,
+  runtimeRpcUrl: preferredRuntimeRpcUrl,
+  runtimeRpcUrls,
+  buildSocket: `http://${buildHost}:${buildPort}`,
   pid: process.pid,
   startedAt: processStartedAt
 });
@@ -149,6 +230,97 @@ const captureWindow = async (input: ScreenshotInput = {}) => {
 const findRecentEvents = (events: PlasticEvent[], predicate: (event: PlasticEvent) => boolean, limit = 20) =>
   events.filter(predicate).slice(-limit);
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? value as Record<string, unknown> : {};
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === "string" && value.length > 0 ? value : undefined;
+
+const eventSummary = (event: PlasticEvent) => {
+  const payload = asRecord(event.payload);
+  const scope = event.scope ?? { workspaceId: "default" };
+  switch (event.type) {
+    case "panel.created":
+      return `Created ${asString(payload.kind) ?? "panel"} panel ${asString(payload.title) ?? asString(payload.id) ?? scope.panelId ?? "unknown"}.`;
+    case "panel.removed":
+      return `Removed panel ${asString(payload.id) ?? scope.panelId ?? "unknown"}.`;
+    case "chat.user_message.submitted":
+      return `User sent a message to ${asString(payload.chatId) ?? scope.panelId ?? "a chat panel"}.`;
+    case "chat.user_message.injected":
+      return `Injected a user message into ${asString(payload.chatId) ?? scope.panelId ?? "a chat panel"}.`;
+    case "chat.agent_message.completed":
+      return `Agent completed a message in ${asString(payload.chatId) ?? scope.panelId ?? "a chat panel"}.`;
+    case "chat.codex_thread.bound":
+      return `Bound ${asString(payload.chatId) ?? scope.panelId ?? "a chat panel"} to Codex thread ${asString(payload.threadId) ?? "unknown"}.`;
+    case "bridge.plastic_rpc.requested":
+      return `Requested Plastic RPC method ${asString(payload.method) ?? "unknown"} through the agent bridge.`;
+    case "bridge.plastic_rpc.completed":
+      return `Completed Plastic RPC method ${asString(payload.method) ?? "unknown"} through the agent bridge with ok=${String(payload.ok)}.`;
+    case "bridge.plastic_rpc_tool.called":
+      return `Codex app-server called plastic_rpc for ${asString(payload.method) ?? "unknown"}.`;
+    case "extension.scaffolded":
+      return `Scaffolded extension ${asString(payload.id) ?? scope.extensionId ?? "unknown"}.`;
+    case "extension.discovered":
+      return `Discovered extension ${asString(payload.title) ?? asString(payload.id) ?? scope.extensionId ?? "unknown"}.`;
+    case "build.typecheck.completed":
+      return `Typecheck completed with ok=${String(payload.ok)}.`;
+    case "plastic.self_test.completed":
+      return `Plastic self-test completed with ok=${String(payload.ok)}.`;
+    default:
+      return `${event.type} by ${event.actor.name ?? event.actor.id}.`;
+  }
+};
+
+const eventMatchesScope = (event: PlasticEvent, scope?: EventScopeInput) => {
+  if (!scope) {
+    return true;
+  }
+  if (scope.panelId && event.scope.panelId !== scope.panelId) {
+    return false;
+  }
+  if (scope.agentId && event.scope.agentId !== scope.agentId) {
+    return false;
+  }
+  if (scope.extensionId && event.scope.extensionId !== scope.extensionId) {
+    return false;
+  }
+  if (scope.windowId && event.scope.windowId !== scope.windowId) {
+    return false;
+  }
+  return true;
+};
+
+const buildTimeline = (events: PlasticEvent[], input: TimelineInput = {}) => {
+  const afterIndex = input.after ? events.findIndex((event) => event.id === input.after) : -1;
+  const beforeIndex = input.before ? events.findIndex((event) => event.id === input.before) : events.length;
+  const start = afterIndex >= 0 ? afterIndex + 1 : 0;
+  const end = beforeIndex >= 0 ? beforeIndex : events.length;
+  const limit = Math.max(1, Math.min(input.limit ?? 25, 200));
+  const filtered = events
+    .slice(start, end)
+    .filter((event) => eventMatchesScope(event, input.scope))
+    .filter((event) => input.includeDeltas || !event.type.endsWith(".delta") && !event.type.includes("_delta"))
+    .slice(-limit);
+
+  return {
+    latestEventId: events.at(-1)?.id ?? null,
+    eventCount: events.length,
+    cursor: events.at(-1)?.id ?? null,
+    items: filtered.map((event) => ({
+      eventId: event.id,
+      timestamp: event.timestamp,
+      actor: event.actor,
+      scope: event.scope,
+      type: event.type,
+      summary: eventSummary(event),
+      causes: event.causationId ? [event.causationId] : [],
+      effects: [],
+      links: event.meta.links ?? [],
+      ...(input.includeRaw ? { raw: event } : {})
+    }))
+  };
+};
+
 const sourceHintsFor = (input: { ref?: string; panelId?: string; extensionId?: string; command?: string }) => {
   const hints = new Set<string>();
   if (input.ref?.startsWith("panel:") || input.panelId) {
@@ -163,7 +335,7 @@ const sourceHintsFor = (input: { ref?: string; panelId?: string; extensionId?: s
   }
   if (input.extensionId?.startsWith("workspace.")) {
     hints.add("apps/desktop/src/main/extension-loader.ts");
-    hints.add(".clay/extensions");
+    hints.add(".plastic/extensions");
   }
   if (input.command?.startsWith("codex/")) {
     hints.add("apps/desktop/src/main/codex-adapter.ts");
@@ -342,7 +514,38 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Plastic state",
       description: "Returns HATEOAS-style app state.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: () => buildPlasticState(store, methods)
+      handler: () =>
+        Effect.map(buildPlasticState(store, methods), (state) => ({
+          ...state,
+          bus: {
+            runtimeRpcUrl: preferredRuntimeRpcUrl,
+            runtimeRpcUrls,
+            runtimeHost,
+            runtimePort
+          },
+          resources: [
+            ...state.resources,
+            {
+              id: "rpc-bus",
+              kind: "service",
+              title: "Plastic RPC Bus",
+              state: {
+                runtimeRpcUrl: preferredRuntimeRpcUrl,
+                runtimeRpcUrls,
+                runtimeHost,
+                runtimePort
+              },
+              links: [
+                { rel: "rpc", href: preferredRuntimeRpcUrl, method: "http/post" },
+                { rel: "state", href: "plastic/state", method: "plastic/state" },
+                { rel: "methods", href: "plastic/methods", method: "plastic/methods" }
+              ],
+              actions: [
+                { id: "call", title: "Call RPC method", method: "rpc/call" }
+              ]
+            }
+          ]
+        }))
     })
   );
 
@@ -353,6 +556,25 @@ const registerRuntimeMethods = async (store: EventStore) => {
       description: "Lists all registered RPC methods.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: () => methods.list()
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "rpc/call",
+      title: "Call RPC method",
+      description: "Calls any registered Plastic RPC method through the shared method registry.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) => Effect.promise(async () => {
+        const rpcInput = input as { method?: string; input?: unknown };
+        if (!rpcInput.method) {
+          throw new Error("rpc/call requires method");
+        }
+        if (rpcInput.method === "rpc/call") {
+          throw new Error("rpc/call cannot call itself");
+        }
+        return runPromise(methods.call(rpcInput.method, rpcInput.input));
+      })
     })
   );
 
@@ -389,6 +611,7 @@ const registerRuntimeMethods = async (store: EventStore) => {
           await record("deixis:listVisibleRefs", async () => ({ windows: (await listVisibleRefs()).length }));
           await record("build:status", () => buildStatus());
           await record("codex:status", () => codexAdapter.status());
+          await record("bridge:status", () => runPromise(methods.call("bridge/status", {})));
 
           const ok = checks.every((check) => check.ok);
           const event = await runPromise(
@@ -410,6 +633,155 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "List events",
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: () => store.list()
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "events/timeline",
+      title: "Event timeline",
+      description: "Returns deterministic, agent-readable summaries of recent events with cursors and links.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.map(store.list(), (events) => buildTimeline(events, input as TimelineInput | undefined))
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "agent/orient",
+      title: "Orient agent",
+      description: "Returns a compact local orientation packet for an embodied agent or panel.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(async () => {
+          const orientInput = input as AgentOrientInput | undefined;
+          const events = await runPromise(store.list());
+          const panels = projectPanels(events);
+          const windowsModel = projectWindows(events);
+          const visibleRefWindows = await listVisibleRefs().catch(() => []);
+          const methodList = await runPromise(methods.list());
+
+          const panelId = orientInput?.panelId ?? orientInput?.agentId;
+          const currentPanel = panelId ? panels.find((panel) => panel.id === panelId) : undefined;
+          const focusedWindow = findWindow(typeof orientInput?.windowId === "number" ? orientInput.windowId : undefined);
+          const modelWindow = panelId
+            ? windowsModel.find((window) => window.panelIds.includes(panelId))
+            : windowsModel.find((window) => window.electronWindowId === focusedWindow?.id) ?? windowsModel[0];
+          const electronWindowId = typeof orientInput?.windowId === "number"
+            ? orientInput.windowId
+            : modelWindow?.electronWindowId ?? focusedWindow?.id;
+          const visibleRefs = visibleRefWindows
+            .filter((windowRefs) => electronWindowId === undefined || windowRefs.windowId === electronWindowId)
+            .flatMap((windowRefs) => windowRefs.refs.map((ref) => ({ windowId: windowRefs.windowId, ...ref })));
+          const localVisibleRefs = panelId
+            ? visibleRefs.filter((ref) => ref.panel === panelId || ref.ref?.includes(panelId))
+            : visibleRefs;
+          const orderedPanels = [...panels].sort((left, right) => left.order - right.order);
+          const currentIndex = currentPanel ? orderedPanels.findIndex((panel) => panel.id === currentPanel.id) : -1;
+          const neighboringPanels = currentIndex >= 0
+            ? orderedPanels.slice(Math.max(0, currentIndex - 2), currentIndex + 3).filter((panel) => panel.id !== currentPanel?.id)
+            : orderedPanels.slice(0, 5);
+          const recommendedMethodIds = [
+            "agent/orient",
+            "plastic/state",
+            "events/timeline",
+            "plastic/methods",
+            "chats/sendToCodex",
+            "chats/createCodexChat",
+            "deixis/listVisibleRefs",
+            "deixis/resolveRef",
+            "deixis/fillRef",
+            "deixis/clickRef",
+            "windows/screenshot"
+          ];
+          const recommendedMethods = methodList
+            .filter((method) => recommendedMethodIds.includes(method.id))
+            .map((method) => ({
+              id: method.id,
+              title: method.title,
+              description: method.description,
+              owner: method.owner
+            }));
+          const binding = panelId && methodList.some((method) => method.id === "chats/getBinding")
+            ? await runPromise(methods.call("chats/getBinding", { chatId: panelId })).catch((error) => ({
+              error: error instanceof Error ? error.message : String(error)
+            }))
+            : null;
+          const timelineInput: TimelineInput = { limit: 20 };
+          if (orientInput?.eventCursor) {
+            timelineInput.after = orientInput.eventCursor;
+          }
+          if (panelId) {
+            timelineInput.scope = { panelId };
+          }
+          const timeline = buildTimeline(events, timelineInput);
+          const globalTimeline = timeline.items.length > 0
+            ? timeline
+            : buildTimeline(events, orientInput?.eventCursor ? { after: orientInput.eventCursor, limit: 20 } : { limit: 20 });
+          const agentId = orientInput?.agentId ?? (panelId ? `agent:${panelId}` : "agent:unknown");
+
+          return {
+            agent: {
+              id: agentId,
+              name: currentPanel?.title ? `${currentPanel.title} agent` : "Plastic agent",
+              runtime: currentPanel?.kind === "chat" ? "codex" : "plastic",
+              role: "embodied workspace collaborator"
+            },
+            embodiment: {
+              panelId: panelId ?? null,
+              threadId: asString(asRecord(binding).threadId) ?? null,
+              windowId: modelWindow?.id ?? (electronWindowId ? `electron:${electronWindowId}` : null),
+              electronWindowId: electronWindowId ?? null,
+              projectDir: workspaceDir,
+              backend: currentPanel?.kind === "chat" ? "codex" : null,
+              binding
+            },
+            visibleContext: {
+              focusedPanelId: panelId ?? currentPanel?.id ?? null,
+              currentPanel: currentPanel ?? null,
+              neighboringPanels,
+              visibleRefs: localVisibleRefs.slice(0, 40)
+            },
+            memory: {
+              latestEventId: events.at(-1)?.id ?? null,
+              eventCount: events.length,
+              eventCursor: events.at(-1)?.id ?? null,
+              sinceCursor: globalTimeline.items,
+              recentUserIntents: globalTimeline.items.filter((item) => item.type.includes("user_message")).slice(-8),
+              recentAgentActions: globalTimeline.items.filter((item) =>
+                item.actor.kind === "agent" ||
+                item.type.startsWith("bridge.") ||
+                item.type.startsWith("codex.") ||
+                item.type.includes("agent_message")
+              ).slice(-12)
+            },
+            capabilities: {
+              methods: recommendedMethods,
+              recommendedActions: [
+                { id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId, eventCursor: events.at(-1)?.id } },
+                { id: "read-state", title: "Read full Plastic state", method: "plastic/state" },
+                { id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: events.at(-1)?.id } },
+                ...(panelId ? [{ id: "send-chat", title: "Send a message through this chat", method: "chats/sendToCodex", input: { chatId: panelId } }] : []),
+                { id: "inspect-visible-refs", title: "Inspect visible refs", method: "deixis/listVisibleRefs" },
+                { id: "capture-screenshot", title: "Capture screenshot", method: "windows/screenshot" }
+              ],
+              links: [
+                { rel: "self", href: "agent/orient", method: "agent/orient" },
+                { rel: "state", href: "plastic/state", method: "plastic/state" },
+                { rel: "timeline", href: "events/timeline", method: "events/timeline" },
+                { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+                { rel: "visible-refs", href: "deixis/listVisibleRefs", method: "deixis/listVisibleRefs" }
+              ]
+            },
+            obligations: {
+              orientBeforeMutation: true,
+              verifyAfterMutation: true,
+              durableEventsRequired: true,
+              callPlasticStateBeforeGuessingIds: true
+            }
+          };
+        })
     })
   );
 
@@ -696,6 +1068,120 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
+      id: "build/typecheck",
+      title: "Run typecheck",
+      description: "Runs pnpm typecheck, records stdout/stderr, and appends a durable build.typecheck.completed event.",
+      owner: { kind: "runtime", id: "plastic.build" },
+      handler: () =>
+        Effect.promise(async () => {
+          const startedAt = new Date().toISOString();
+          const result = await runLocalCommand("pnpm", ["typecheck"]);
+          const ok = result.exitCode === 0;
+          const event = await runPromise(
+            store.append(
+              createEvent({
+                type: "build.typecheck.completed",
+                payload: {
+                  ok,
+                  startedAt,
+                  completedAt: new Date().toISOString(),
+                  command: result.command,
+                  args: result.args,
+                  exitCode: result.exitCode,
+                  signal: result.signal,
+                  stdout: result.stdout.slice(-20000),
+                  stderr: result.stderr.slice(-20000)
+                }
+              })
+            )
+          );
+          return { ok, ...result, eventId: event.id };
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "extensions/scaffold",
+      title: "Scaffold extension",
+      description: "Creates a simple workspace extension under .plastic/extensions and records the scaffold event.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(async () => {
+          const extensionInput = input as {
+            id?: string;
+            title?: string;
+            panelId?: string;
+            panelTitle?: string;
+            body?: string;
+            kind?: string;
+          };
+          const rawId = extensionInput.id ?? `agent-panel-${crypto.randomUUID().slice(0, 8)}`;
+          const safeId = rawId
+            .replace(/^workspace\./, "")
+            .replace(/[^a-zA-Z0-9._-]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .toLowerCase();
+          if (!safeId) {
+            throw new Error("extensions/scaffold requires a usable id");
+          }
+          const extensionId = `workspace.${safeId}`;
+          const panelId = extensionInput.panelId ?? `${safeId}.panel`;
+          const title = extensionInput.title ?? extensionInput.panelTitle ?? safeId;
+          const panelTitle = extensionInput.panelTitle ?? title;
+          const extensionDir = join(plasticDir, "extensions", safeId);
+          const manifestPath = join(extensionDir, "plastic.extension.json");
+          const entryPath = join(extensionDir, "index.tsx");
+          const manifest = {
+            id: extensionId,
+            title,
+            panels: [
+              {
+                id: panelId,
+                title: panelTitle,
+                kind: extensionInput.kind ?? "extension",
+                subtitle: "Workspace extension",
+                body: extensionInput.body ?? `Generated extension panel ${panelTitle}.`
+              }
+            ],
+            methods: []
+          };
+          await mkdir(extensionDir, { recursive: true });
+          await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+          await writeFile(
+            entryPath,
+            [
+              "export default {",
+              `  id: ${JSON.stringify(extensionId)},`,
+              `  title: ${JSON.stringify(title)}`,
+              "};",
+              ""
+            ].join("\n"),
+            "utf8"
+          );
+          const event = await runPromise(
+            store.append(
+              createEvent({
+                type: "extension.scaffolded",
+                payload: {
+                  id: extensionId,
+                  title,
+                  panelId,
+                  extensionDir,
+                  manifestPath,
+                  entryPath
+                },
+                scope: { extensionId }
+              })
+            )
+          );
+          return { extensionId, panelId, extensionDir, manifestPath, entryPath, manifest, eventId: event.id };
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
       id: "renderer/reload",
       title: "Reload renderer",
       description: "Reloads all Electron renderer windows.",
@@ -918,6 +1404,122 @@ const registerRuntimeMethods = async (store: EventStore) => {
         })
     })
   );
+
+  await runPromise(
+    methods.register({
+      id: "deixis/clickRef",
+      title: "Click visible UI reference",
+      description: "Clicks a visible data-plastic-ref in the focused or selected window and records the action.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(async () => {
+          const refInput = input as RefInput;
+          if (!refInput.ref) {
+            throw new Error("deixis/clickRef requires ref");
+          }
+          const target = findWindow(refInput.windowId);
+          if (!target) {
+            throw new Error("No window available");
+          }
+          const result = await target.webContents.executeJavaScript(`
+            (() => {
+              const ref = ${JSON.stringify(refInput.ref)};
+              const element = [...document.querySelectorAll("[data-plastic-ref]")]
+                .find((candidate) => candidate.dataset.plasticRef === ref);
+              if (!element) {
+                return { clicked: false, reason: "ref not found" };
+              }
+              ${scrollRefIntoViewScript(refInput.ref)}
+              element.click();
+              return {
+                clicked: true,
+                ref,
+                tag: element.tagName.toLowerCase(),
+                text: (element.innerText || element.textContent || "").slice(0, 240)
+              };
+            })()
+          `) as unknown;
+          const event = await runPromise(
+            store.append(
+              createEvent({
+                type: "deixis.ref.clicked",
+                payload: {
+                  ref: refInput.ref,
+                  windowId: target.id,
+                  result
+                }
+              })
+            )
+          );
+          return { windowId: target.id, ref: refInput.ref, result, eventId: event.id };
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "deixis/fillRef",
+      title: "Fill visible UI reference",
+      description: "Fills an input or textarea inside a visible data-plastic-ref and records the action.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(async () => {
+          const refInput = input as RefInput;
+          if (!refInput.ref) {
+            throw new Error("deixis/fillRef requires ref");
+          }
+          if (refInput.value === undefined) {
+            throw new Error("deixis/fillRef requires value");
+          }
+          const target = findWindow(refInput.windowId);
+          if (!target) {
+            throw new Error("No window available");
+          }
+          const result = await target.webContents.executeJavaScript(`
+            (() => {
+              const ref = ${JSON.stringify(refInput.ref)};
+              const value = ${JSON.stringify(refInput.value)};
+              const root = [...document.querySelectorAll("[data-plastic-ref]")]
+                .find((candidate) => candidate.dataset.plasticRef === ref);
+              if (!root) {
+                return { filled: false, reason: "ref not found" };
+              }
+              ${scrollRefIntoViewScript(refInput.ref)}
+              const element = root.matches("input, textarea")
+                ? root
+                : root.querySelector("textarea, input");
+              if (!element) {
+                return { filled: false, reason: "no input or textarea found" };
+              }
+              element.focus();
+              element.value = value;
+              element.dispatchEvent(new Event("input", { bubbles: true }));
+              element.dispatchEvent(new Event("change", { bubbles: true }));
+              return {
+                filled: true,
+                ref,
+                tag: element.tagName.toLowerCase(),
+                length: value.length
+              };
+            })()
+          `) as unknown;
+          const event = await runPromise(
+            store.append(
+              createEvent({
+                type: "deixis.ref.filled",
+                payload: {
+                  ref: refInput.ref,
+                  windowId: target.id,
+                  valueLength: refInput.value.length,
+                  result
+                }
+              })
+            )
+          );
+          return { windowId: target.id, ref: refInput.ref, result, eventId: event.id };
+        })
+    })
+  );
 };
 
 const readJsonBody = async (request: IncomingMessage): Promise<unknown> =>
@@ -1018,7 +1620,7 @@ const startRuntimeSocket = () => {
     }
   });
 
-  server.listen(7331, "127.0.0.1");
+  server.listen(runtimePort, runtimeHost);
   return server;
 };
 
@@ -1065,7 +1667,7 @@ const startBuildSocket = () => {
     sendJson(response, 404, { ok: false, error: "Not found" });
   });
 
-  server.listen(7332, "127.0.0.1");
+  server.listen(buildPort, buildHost);
   return server;
 };
 

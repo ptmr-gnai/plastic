@@ -485,14 +485,14 @@ Every extension should define:
 
 ### 8.2 Extension Source Layout
 
-User extensions live under the workspace-local `/.clay/extensions` folder. The loader should support both single-file and folder-based extensions:
+User extensions live under the workspace-local `/.plastic/extensions` folder. The loader should support both single-file and folder-based extensions:
 
 ```text
-.clay/
+.plastic/
   extensions/
     quick-note.tsx
     review-panel/
-      clay.extension.json
+      plastic.extension.json
       index.tsx
       main.ts
       styles.css
@@ -527,7 +527,7 @@ Initial recommendation:
 
 Users with only the packaged binary should be able to:
 
-- create extension files in `/.clay/extensions`;
+- create extension files in `/.plastic/extensions`;
 - add TypeScript source;
 - define a manifest;
 - have the app compile or load it;
@@ -670,7 +670,7 @@ extensions/
   bundled/documents/
   bundled/tasks/
   examples/
-.clay/
+.plastic/
   extensions/
 docs/
 ```
@@ -733,7 +733,7 @@ docs/
 ### Milestone 6: Extension Panels
 
 - Define extension manifest.
-- Load local extensions from `/.clay/extensions`.
+- Load local extensions from `/.plastic/extensions`.
 - Support single-file `.tsx` extensions and folder extensions.
 - Mount an extension panel.
 - Register extension commands.
@@ -791,7 +791,7 @@ docs/
 - Chat model: Markdown chat transcript first.
 - Tasks model: normal tasks plus recurring tasks/crons from the first useful version.
 - Agent integration: Codex first, via ACP or SDK depending on the most stable app-server surface.
-- Extension location: workspace-local `/.clay/extensions`.
+- Extension location: workspace-local `/.plastic/extensions`.
 - Layout model: horizontal infinite scroll with multi-window support.
 - Deixis model: stable metadata on rendered elements, durable annotations, and source/fiber traversal.
 
@@ -815,7 +815,7 @@ A successful first prototype should let a user:
 14. Point at something in the app, comment on it, and have an agent resolve that reference to source/runtime context.
 15. Connect an external script over RPC and list/control panels.
 16. Connect a Codex-backed agent adapter.
-17. Add a simple extension panel from `/.clay/extensions`.
+17. Add a simple extension panel from `/.plastic/extensions`.
 18. Change extension source and see the panel hot-reload.
 19. Ask an agent to scaffold a new panel extension.
 20. Run a cron that learns from recent usage and proposes a new button or flow.

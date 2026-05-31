@@ -13,7 +13,7 @@ import {
 type RunPromise = <A>(effect: Effect.Effect<A, unknown>) => Promise<A>;
 
 const extensionFileExtensions = new Set([".ts", ".tsx", ".js", ".jsx"]);
-const manifestNames = ["clay.extension.json", "plastic.extension.json"];
+const manifestNames = ["plastic.extension.json"];
 const entryNames = ["index.tsx", "index.ts", "main.ts", "main.tsx", "index.js", "main.js"];
 
 const normalizeId = (value: string): string =>
@@ -102,7 +102,7 @@ const discoverFolderExtension = async (workspaceDir: string, path: string): Prom
 };
 
 export const scanWorkspaceExtensions = async (workspaceDir: string): Promise<PlasticExtension[]> => {
-  const extensionsDir = join(workspaceDir, ".clay", "extensions");
+  const extensionsDir = join(workspaceDir, ".plastic", "extensions");
   if (!await pathExists(extensionsDir)) {
     return [];
   }
@@ -142,7 +142,7 @@ export const registerExtensionMethods = async (input: {
     methods.register({
       id: "extensions/scan",
       title: "Scan workspace extensions",
-      description: "Discovers extensions under .clay/extensions and writes durable extension.discovered events.",
+      description: "Discovers extensions under .plastic/extensions and writes durable extension.discovered events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: () =>
         Effect.promise(async () => {

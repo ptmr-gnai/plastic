@@ -425,17 +425,17 @@ Extensions are the app surface. Bundled panels are extensions. User panels are e
 Workspace-local extensions live at:
 
 ```text
-.clay/extensions/
+.plastic/extensions/
 ```
 
 Supported extension forms:
 
 ```text
-.clay/extensions/quick-note.tsx
-.clay/extensions/command-pack.ts
-.clay/extensions/review-panel/index.tsx
-.clay/extensions/review-panel/main.ts
-.clay/extensions/review-panel/clay.extension.json
+.plastic/extensions/quick-note.tsx
+.plastic/extensions/command-pack.ts
+.plastic/extensions/review-panel/index.tsx
+.plastic/extensions/review-panel/main.ts
+.plastic/extensions/review-panel/plastic.extension.json
 ```
 
 ### 6.2 Manifest
@@ -632,7 +632,7 @@ Permission boundaries can be added later without changing the RPC/event architec
 5. Add build socket stub.
 6. Add horizontal window/panel shell.
 7. Add bundled chat/document/tasks extensions.
-8. Add `.clay/extensions` loader.
+8. Add `.plastic/extensions` loader.
 9. Add single-file `.tsx` panel support.
 10. Add chat buttons and `chats/injectUserMessage`.
 11. Add DOM metadata and `deixis/listVisibleRefs`.

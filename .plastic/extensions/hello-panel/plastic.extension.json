@@ -7,7 +7,7 @@
       "title": "Hello",
       "kind": "extension",
       "subtitle": "Workspace extension",
-      "body": "This panel comes from .clay/extensions/hello-panel.",
+      "body": "This panel comes from .plastic/extensions/hello-panel.",
       "order": 8
     }
   ],

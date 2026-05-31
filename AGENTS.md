@@ -18,8 +18,8 @@ Read these first:
 - Write meaningful app actions to the event log.
 - Keep v0 fully permissive, but preserve method metadata for future permissions.
 - Everything above the protected runtime is an extension, including bundled chat/document/tasks panels.
-- Extensions live in `.clay/extensions`.
-- Support both single-file `.tsx` extensions and folder extensions with `index.tsx`, `main.ts`, and optional `clay.extension.json`.
+- Extensions live in `.plastic/extensions`.
+- Support both single-file `.tsx` extensions and folder extensions with `index.tsx`, `main.ts`, and optional `plastic.extension.json`.
 - Maintain HATEOAS-style discovery: agents should learn available methods/actions from `plastic/state` and `plastic/methods`.
 - Preserve the two-channel model: runtime control and build control.
 - Preserve the deixis model: visible UI should be pointable, commentable, and traceable to app/source/runtime context where possible.

@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { Effect } from "effect";
 import { createEvent, projectPanels, type EventStore, type MethodRegistry } from "@plastic/core";
@@ -29,10 +30,15 @@ export const createCodexAdapter = (input: {
   methods: MethodRegistry;
   runPromise: <A>(effect: Effect.Effect<A, unknown>) => Promise<A>;
   workspaceDir?: string;
+  runtimeRpcUrl?: string;
+  runtimeRpcUrls?: string[];
 }): CodexAdapter => {
   let processHandle: ChildProcessWithoutNullStreams | null = null;
   let nextId = 1;
   let initialized = false;
+  let plasticMcpConfigured = false;
+  let plasticMcpLastError: string | null = null;
+  let bridgeMcpThreadId: string | null = null;
   let connectedAt: string | null = null;
   const pending = new Map<number, PendingRequest>();
   const threadChatBindings = new Map<string, string>();
@@ -42,6 +48,11 @@ export const createCodexAdapter = (input: {
 
   const asString = (value: unknown): string | undefined =>
     typeof value === "string" && value.length > 0 ? value : undefined;
+
+  const runtimeRpcUrl = input.runtimeRpcUrl ?? "http://127.0.0.1:7331/rpc";
+  const runtimeRpcUrls = input.runtimeRpcUrls ?? [runtimeRpcUrl];
+  const workspaceDir = input.workspaceDir ?? process.cwd();
+  const plasticMcpServerPath = join(workspaceDir, "scripts", "plastic-mcp-server.mjs");
 
   const appendCodexEvent = (type: string, payload: unknown) =>
     input.runPromise(
@@ -95,6 +106,17 @@ export const createCodexAdapter = (input: {
     processHandle.stdin.write(`${JSON.stringify(message)}\n`);
   };
 
+  const respondToServerRequest = (id: number, result: unknown) => {
+    send({ id, result });
+  };
+
+  const rejectServerRequest = (id: number, error: unknown) => {
+    send({
+      id,
+      error: error instanceof Error ? { message: error.message } : { message: String(error) }
+    });
+  };
+
   const request = async (method: string, params?: unknown): Promise<unknown> => {
     const id = nextId;
     nextId += 1;
@@ -121,6 +143,49 @@ export const createCodexAdapter = (input: {
   };
 
   const requestAlias = (method: string, methodInput: unknown) => request(method, methodInput);
+
+  const configurePlasticMcp = async () => {
+    const value = {
+      command: "node",
+      args: [plasticMcpServerPath],
+      env: {
+        PLASTIC_RPC_URL: runtimeRpcUrl,
+        PLASTIC_MCP_ACTOR_ID: "plastic.mcp"
+      },
+      default_tools_enabled: true
+    };
+
+    try {
+      const writeResult = await request("config/value/write", {
+        keyPath: "mcp_servers.plastic",
+        value,
+        mergeStrategy: "upsert"
+      });
+      const reloadResult = await request("config/mcpServer/reload");
+      plasticMcpConfigured = true;
+      plasticMcpLastError = null;
+      await appendCodexEvent("bridge.plastic_mcp.configured", {
+        server: "plastic",
+        tool: "plastic_rpc",
+        path: plasticMcpServerPath,
+        runtimeRpcUrl,
+        writeResult,
+        reloadResult
+      });
+      return { configured: true, value, writeResult, reloadResult };
+    } catch (error) {
+      plasticMcpConfigured = false;
+      plasticMcpLastError = error instanceof Error ? error.message : String(error);
+      await appendCodexEvent("bridge.plastic_mcp.configure_failed", {
+        server: "plastic",
+        tool: "plastic_rpc",
+        path: plasticMcpServerPath,
+        runtimeRpcUrl,
+        error: plasticMcpLastError
+      });
+      throw error;
+    }
+  };
 
   const bindThreadToChat = async (chatId: string, threadId: string, reason: string) => {
     threadChatBindings.set(threadId, chatId);
@@ -195,6 +260,23 @@ export const createCodexAdapter = (input: {
     };
   };
 
+  const developerInstructionsForChat = (chatId: string) => [
+    "You are an agent embodied inside Plastic, an agent-native Electron workspace.",
+    `Your current chat panel id is ${chatId}.`,
+    `Plastic RPC is the control bus. Preferred endpoint: ${runtimeRpcUrl}.`,
+    `Fallback endpoints: ${runtimeRpcUrls.join(", ")}.`,
+    "You have an MCP tool named plastic_rpc. Prefer that tool for Plastic RPC calls because command sandboxes may not open local TCP sockets.",
+    "plastic_rpc input is { method: string, input?: object }. It returns the exact Plastic RPC result as JSON text.",
+    "Use the HTTP bus for app control only if plastic_rpc is unavailable. Do not assume 127.0.0.1 works; use PLASTIC_RPC_URL or the preferred endpoint first.",
+    `Before mutating the app or answering orientation questions, call plastic_rpc with method agent/orient and input {"panelId":${JSON.stringify(chatId)}}.`,
+    "Use the returned eventCursor on later agent/orient or events/timeline calls to learn what changed since you last looked.",
+    "After mutating Plastic, verify with the orientation packet's recommended actions, visible refs, screenshots, timeline, or build/typecheck methods.",
+    "Call plastic/state before guessing panel ids. It returns panels, methods, links, actions, windows, visible refs, and event counts.",
+    "RPC shape: POST the JSON object {\"method\":\"plastic/state\",\"input\":{}} to the bus URL with content-type application/json.",
+    "To create another chat, call method chats/createCodexChat. To send a mailbox message between panels, call panels/sendMessage. To make another chat agent react, call chats/sendToCodex for that target chat.",
+    "Everything meaningful should go through Plastic RPC and the durable event stream."
+  ].join("\n");
+
   const startThreadForChat = async (chatId: string, payload: {
     cwd?: string;
     reason: string;
@@ -202,9 +284,10 @@ export const createCodexAdapter = (input: {
     const threadResult = await request("thread/start", {
       cwd: payload.cwd ?? input.workspaceDir,
       approvalPolicy: "never",
-      sandbox: "workspace-write",
+      sandbox: "danger-full-access",
       personality: "friendly",
-      serviceName: "plastic"
+      serviceName: "plastic",
+      developerInstructions: developerInstructionsForChat(chatId)
     });
     const thread = asRecord(asRecord(threadResult).thread);
     const threadId = asString(thread.id);
@@ -319,6 +402,65 @@ export const createCodexAdapter = (input: {
         method: message.method,
         params: message.params
       });
+      if (message.method === "item/tool/call") {
+        const requestId = message.id;
+        void (async () => {
+          try {
+            const params = asRecord(message.params);
+            const namespace = asString(params.namespace);
+            const tool = asString(params.tool);
+            if (!((namespace === undefined && tool === "plastic_rpc") || (namespace === "plastic" && tool === "rpc"))) {
+              throw new Error(`Unsupported dynamic tool: ${namespace ? `${namespace}.` : ""}${tool ?? "unknown"}`);
+            }
+
+            const args = asRecord(params.arguments);
+            const method = asString(args.method);
+            if (!method) {
+              throw new Error("plastic_rpc requires arguments.method");
+            }
+
+            const value = await input.runPromise(input.methods.call(method, args.input));
+            const result = {
+              contentItems: [
+                {
+                  type: "inputText",
+                  text: JSON.stringify({ ok: true, value })
+                }
+              ],
+              success: true
+            };
+            await appendCodexEvent("codex.server_request.responded", {
+              id: requestId,
+              method: message.method,
+              tool: `${namespace}.${tool}`,
+              rpcMethod: method,
+              result
+            });
+            respondToServerRequest(requestId, result);
+          } catch (error) {
+            const result = {
+              contentItems: [
+                {
+                  type: "inputText",
+                  text: JSON.stringify({
+                    ok: false,
+                    error: error instanceof Error ? error.message : String(error)
+                  })
+                }
+              ],
+              success: false
+            };
+            await appendCodexEvent("codex.server_request.responded", {
+              id: requestId,
+              method: message.method,
+              result
+            });
+            respondToServerRequest(requestId, result);
+          }
+        })();
+        return;
+      }
+      rejectServerRequest(message.id, new Error(`Unsupported server request: ${message.method}`));
       return;
     }
 
@@ -344,7 +486,12 @@ export const createCodexAdapter = (input: {
 
     processHandle = spawn(codexPath, ["app-server", "--listen", "stdio://"], {
       cwd: process.cwd(),
-      env: process.env
+      env: {
+        ...process.env,
+        PLASTIC_RPC_URL: runtimeRpcUrl,
+        PLASTIC_RPC_URLS: runtimeRpcUrls.join(","),
+        PLASTIC_RUNTIME_PORT: String(new URL(runtimeRpcUrl).port || 7331)
+      }
     });
     connectedAt = new Date().toISOString();
 
@@ -407,6 +554,7 @@ export const createCodexAdapter = (input: {
     notify("initialized");
     initialized = true;
     await appendCodexEvent("codex.connection.initialized", { result });
+    await configurePlasticMcp();
     return result;
   };
 
@@ -424,7 +572,13 @@ export const createCodexAdapter = (input: {
     initialized,
     pid: processHandle?.pid ?? null,
     connectedAt,
-    pendingRequests: pending.size
+    pendingRequests: pending.size,
+    plasticMcp: {
+      configured: plasticMcpConfigured,
+      lastError: plasticMcpLastError,
+      serverPath: plasticMcpServerPath,
+      runtimeRpcUrl
+    }
   });
 
   const registerMethods = async () => {
@@ -493,6 +647,142 @@ export const createCodexAdapter = (input: {
       })
     );
 
+    await input.runPromise(
+      input.methods.register({
+        id: "bridge/configurePlasticMcp",
+        title: "Configure Plastic MCP bridge",
+        description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
+        owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        handler: () =>
+          Effect.promise(async () => {
+            await ensureInitialized();
+            return configurePlasticMcp();
+          })
+      })
+    );
+
+    await input.runPromise(
+      input.methods.register({
+        id: "bridge/status",
+        title: "Plastic bridge status",
+        description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
+        owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        handler: () =>
+          Effect.promise(async () => {
+            await ensureInitialized();
+            let mcpStatus: unknown = null;
+            let mcpError: string | null = null;
+            try {
+              mcpStatus = await request("mcpServerStatus/list", {
+                detail: "full",
+                limit: 50
+              });
+            } catch (error) {
+              mcpError = error instanceof Error ? error.message : String(error);
+            }
+            return {
+              plasticMcpConfigured,
+              plasticMcpLastError,
+              plasticMcpServerPath,
+              runtimeRpcUrl,
+              mcpStatus,
+              mcpError
+            };
+          })
+      })
+    );
+
+    await input.runPromise(
+      input.methods.register({
+        id: "bridge/test",
+        title: "Test Plastic MCP bridge",
+        description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
+        owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        handler: () =>
+          Effect.promise(async () => {
+            await ensureInitialized();
+            const status = await request("mcpServerStatus/list", {
+              detail: "full",
+              limit: 50
+            });
+            const text = JSON.stringify(status);
+            const ok = text.includes("plastic") && text.includes("plastic_rpc");
+            const event = await appendCodexEvent("bridge.plastic_mcp.tested", {
+              ok,
+              status
+            });
+            return { ok, status, eventId: event.id };
+          })
+      })
+    );
+
+    await input.runPromise(
+      input.methods.register({
+        id: "bridge/callPlasticRpcTool",
+        title: "Call Plastic RPC through MCP",
+        description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
+        owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        handler: (methodInput) =>
+          Effect.promise(async () => {
+            await ensureInitialized();
+            await configurePlasticMcp();
+            const payload = methodInput as {
+              threadId?: string;
+              method?: string;
+              input?: Record<string, unknown>;
+            };
+            if (!payload.method) {
+              throw new Error("bridge/callPlasticRpcTool requires method");
+            }
+            if (!payload.threadId && !bridgeMcpThreadId) {
+              const threadResult = await request("thread/start", {
+                cwd: input.workspaceDir,
+                approvalPolicy: "never",
+                sandbox: "danger-full-access",
+                personality: "friendly",
+                serviceName: "plastic",
+                developerInstructions:
+                  "You are a Plastic bridge validation thread. Use the plastic_rpc MCP tool when asked to observe or control Plastic."
+              });
+              const thread = asRecord(asRecord(threadResult).thread);
+              const threadId = asString(thread.id);
+              if (!threadId) {
+                throw new Error("Codex thread/start did not return thread.id");
+              }
+              bridgeMcpThreadId = threadId;
+              await appendCodexEvent("bridge.plastic_mcp.thread_started", {
+                threadId,
+                thread: asRecord(threadResult).thread ?? threadResult
+              });
+            }
+
+            const threadId = payload.threadId ?? bridgeMcpThreadId;
+            if (!threadId) {
+              throw new Error("bridge/callPlasticRpcTool requires threadId");
+            }
+            const result = await request("mcpServer/tool/call", {
+              threadId,
+              server: "plastic",
+              tool: "plastic_rpc",
+              arguments: {
+                method: payload.method,
+                input: payload.input ?? {}
+              },
+              meta: {
+                source: "plastic.bridge"
+              }
+            });
+            const event = await appendCodexEvent("bridge.plastic_rpc_tool.called", {
+              threadId,
+              method: payload.method,
+              input: payload.input ?? {},
+              result
+            });
+            return { threadId, result, eventId: event.id };
+          })
+      })
+    );
+
     await registerCodexAlias("codex/threadStart", "Start Codex thread", "thread/start");
     await registerCodexAlias("codex/threadResume", "Resume Codex thread", "thread/resume");
     await registerCodexAlias("codex/threadFork", "Fork Codex thread", "thread/fork");
@@ -553,9 +843,10 @@ export const createCodexAdapter = (input: {
             const threadResult = await request("thread/start", {
               cwd: payload.cwd ?? input.workspaceDir,
               approvalPolicy: "never",
-              sandbox: "workspace-write",
+              sandbox: "danger-full-access",
               personality: "friendly",
               serviceName: "plastic",
+              developerInstructions: developerInstructionsForChat(chatId),
               ...payload.params
             });
             const thread = asRecord(asRecord(threadResult).thread);
@@ -598,9 +889,10 @@ export const createCodexAdapter = (input: {
             const threadResult = await request("thread/start", {
               cwd: payload.cwd ?? input.workspaceDir,
               approvalPolicy: "never",
-              sandbox: "workspace-write",
+              sandbox: "danger-full-access",
               personality: "friendly",
               serviceName: "plastic",
+              developerInstructions: developerInstructionsForChat(panelId),
               ...payload.params
             });
             const thread = asRecord(asRecord(threadResult).thread);
