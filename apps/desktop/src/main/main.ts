@@ -99,6 +99,15 @@ type RefInput = {
   value?: string;
 };
 
+type VerifyRefActionInput = {
+  ref?: string;
+  panelId?: string;
+  expectedEventType?: string;
+  expectedContent?: string;
+  after?: string;
+  limit?: number;
+};
+
 type EventScopeInput = {
   panelId?: string;
   agentId?: string;
@@ -240,6 +249,9 @@ const captureWindow = async (input: ScreenshotInput = {}) => {
 const findRecentEvents = (events: PlasticEvent[], predicate: (event: PlasticEvent) => boolean, limit = 20) =>
   events.filter(predicate).slice(-limit);
 
+const isNoisyEvent = (event: PlasticEvent) =>
+  event.type.endsWith(".delta") || event.type.includes("_delta");
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
 
@@ -309,7 +321,7 @@ const buildTimeline = (events: PlasticEvent[], input: TimelineInput = {}) => {
   const filtered = events
     .slice(start, end)
     .filter((event) => eventMatchesScope(event, input.scope))
-    .filter((event) => input.includeDeltas || !event.type.endsWith(".delta") && !event.type.includes("_delta"))
+    .filter((event) => input.includeDeltas || !isNoisyEvent(event))
     .slice(-limit);
 
   return {
@@ -1362,10 +1374,12 @@ const registerRuntimeMethods = async (store: EventStore) => {
           const lineage = findRecentEvents(
             events,
             (event) =>
-              event.scope.panelId === panelId ||
-              event.scope.extensionId === extensionId ||
-              event.type.includes(panelId ?? "__no_panel__") ||
-              event.type.includes(extensionId ?? "__no_extension__"),
+              !isNoisyEvent(event) && (
+                event.scope.panelId === panelId ||
+                event.scope.extensionId === extensionId ||
+                event.type.includes(panelId ?? "__no_panel__") ||
+                event.type.includes(extensionId ?? "__no_extension__")
+              ),
             12
           );
           const refTimelineInput: TimelineInput = { limit: 12 };
@@ -1430,6 +1444,7 @@ const registerRuntimeMethods = async (store: EventStore) => {
             lineage,
             verification: [
               ...(panelId ? [
+                { id: "verify-ref-action", title: "Verify ref action", method: "deixis/verifyRefAction", input: { ref, panelId, limit: 30 } },
                 { id: "timeline-after-action", title: "Verify panel timeline", method: "events/timeline", input: { scope: { panelId }, limit: 12 } }
               ] : []),
               { id: "visible-after-action", title: "Verify visible refs", method: "deixis/listVisibleRefs" },
@@ -1474,6 +1489,91 @@ const registerRuntimeMethods = async (store: EventStore) => {
             throw new Error("No window available");
           }
           return target.webContents.executeJavaScript(code);
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "deixis/verifyRefAction",
+      title: "Verify ref action",
+      description: "Verifies that a recent ref-driven action produced the expected durable event.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(async () => {
+          const verifyInput = input as VerifyRefActionInput;
+          if (!verifyInput.ref) {
+            throw new Error("deixis/verifyRefAction requires ref");
+          }
+          const events = await runPromise(store.list());
+          const panelId = verifyInput.panelId ?? panelIdFromRef(verifyInput.ref);
+          const afterIndex = verifyInput.after ? events.findIndex((event) => event.id === verifyInput.after) : -1;
+          const candidates = events
+            .slice(afterIndex >= 0 ? afterIndex + 1 : Math.max(0, events.length - (verifyInput.limit ?? 200)))
+            .filter((event) => {
+              if (panelId && event.scope.panelId !== panelId) {
+                return false;
+              }
+              if (verifyInput.expectedEventType && event.type !== verifyInput.expectedEventType) {
+                return false;
+              }
+              if (verifyInput.expectedContent) {
+                const payload = asRecord(event.payload);
+                const content = asString(payload.content) ?? "";
+                if (!content.includes(verifyInput.expectedContent)) {
+                  return false;
+                }
+              }
+              return true;
+            });
+          const refEvents = events
+            .slice(afterIndex >= 0 ? afterIndex + 1 : Math.max(0, events.length - (verifyInput.limit ?? 200)))
+            .filter((event) => {
+              const payload = asRecord(event.payload);
+              return payload.ref === verifyInput.ref;
+            });
+          const timelineInput: TimelineInput = { limit: Math.min(verifyInput.limit ?? 20, 100) };
+          if (panelId) {
+            timelineInput.scope = { panelId };
+          }
+          if (verifyInput.after) {
+            timelineInput.after = verifyInput.after;
+          }
+          const timeline = buildTimeline(events, timelineInput);
+          const ok = candidates.length > 0;
+          const result = {
+            ok,
+            ref: verifyInput.ref,
+            panelId: panelId ?? null,
+            expectedEventType: verifyInput.expectedEventType ?? null,
+            expectedContent: verifyInput.expectedContent ?? null,
+            matchedEvents: candidates.slice(-10).map((event) => ({
+              eventId: event.id,
+              type: event.type,
+              timestamp: event.timestamp,
+              summary: eventSummary(event),
+              payload: event.payload
+            })),
+            refEvents: refEvents.slice(-10).map((event) => ({
+              eventId: event.id,
+              type: event.type,
+              timestamp: event.timestamp,
+              payload: event.payload
+            })),
+            latestEventId: events.at(-1)?.id ?? null,
+            eventCursor: events.at(-1)?.id ?? null,
+            timeline
+          };
+          const event = await runPromise(
+            store.append(
+              createEvent({
+                type: "deixis.ref_action.verified",
+                payload: result,
+                ...(panelId ? { scope: { panelId } } : {})
+              })
+            )
+          );
+          return { ...result, verificationEventId: event.id };
         })
     })
   );
