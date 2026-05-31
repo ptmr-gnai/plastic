@@ -108,6 +108,9 @@ const callPlastic = async (method: string, input?: unknown): Promise<unknown> =>
 
 let lastRenderedEventCount = -1;
 let topbarCollapsed = window.localStorage.getItem("plastic.topbarCollapsed") === "true";
+let renderInFlight: Promise<void> | null = null;
+let renderQueued = false;
+let renderQueuedForce = false;
 
 const isNearBottom = (element: HTMLElement) =>
   element.scrollHeight - element.scrollTop - element.clientHeight < 48;
@@ -125,7 +128,7 @@ const labelForRole = (role: ChatMessage["role"]) => {
   return "System";
 };
 
-const render = async (force = false) => {
+const renderNow = async (force = false) => {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) {
     return;
@@ -144,18 +147,17 @@ const render = async (force = false) => {
   });
 
   const state = await callPlastic("plastic/state") as PlasticState;
-  const events = await callPlastic("events/list") as PlasticEvent[];
   const methods = await callPlastic("plastic/methods") as Array<{ id: string }>;
   const panels = await callPlastic("panels/list") as PlasticPanel[];
   const codexStatus = await callPlastic("codex/status") as CodexStatus;
   const agentDevPanelVisible = panels.some((panel) => panel.kind === "agent-dev");
   const snapshot = agentDevPanelVisible ? await callPlastic("plastic/snapshot") as PlasticSnapshot : null;
-  if (!force && events.length === lastRenderedEventCount) {
+  if (!force && state.events.count === lastRenderedEventCount) {
     return;
   }
-  lastRenderedEventCount = events.length;
-  const addedButtons = events
-    .filter((event) => event.type === "panel.button.added")
+  lastRenderedEventCount = state.events.count;
+  const buttonEvents = await callPlastic("events/list", { types: ["panel.button.added"], limit: 100 }) as PlasticEvent[];
+  const addedButtons = buttonEvents
     .map((event) => (event.payload as { button?: ChatButton }).button)
     .filter((button): button is ChatButton => Boolean(button));
   const chatPanels = panels.filter((panel) => panel.kind === "chat");
@@ -163,6 +165,12 @@ const render = async (force = false) => {
     await Promise.all(chatPanels.map(async (panel) => {
       const binding = await callPlastic("chats/getBinding", { chatId: panel.id }) as ChatBinding;
       return [panel.id, binding] as const;
+    }))
+  );
+  const chatMessageLists = new Map<string, ChatMessage[]>(
+    await Promise.all(chatPanels.map(async (panel) => {
+      const messages = await callPlastic("chats/messages", { chatId: panel.id, limit: 80 }) as ChatMessage[];
+      return [panel.id, messages] as const;
     }))
   );
 
@@ -210,90 +218,11 @@ const render = async (force = false) => {
     ];
   };
 
-  const buildChatMessages = (chatId: string) => {
-    const agentMessages = new Map<string, ChatMessage>();
-    const messages: ChatMessage[] = [];
-    events.forEach((event, index) => {
-      const payload = event.payload as {
-        chatId?: string;
-        fromPanelId?: string;
-        toPanelId?: string;
-        content?: string;
-        itemId?: string;
-        delta?: string;
-        status?: string;
-        error?: { message?: string };
-      };
-
-      if ((event.type === "chat.user_message.injected" || event.type === "chat.user_message.submitted") && payload.chatId === chatId) {
-        messages.push({
-          id: `message-${chatId}-${index}`,
-          role: "user",
-          content: payload.content ?? ""
-        });
-        return;
-      }
-
-      if (event.type === "panel.message.sent" && payload.toPanelId === chatId) {
-        messages.push({
-          id: `panel-message-${chatId}-${index}`,
-          role: "peer",
-          content: `${payload.fromPanelId}: ${payload.content ?? ""}`
-        });
-        return;
-      }
-
-      if (event.type === "chat.agent_message.delta" && payload.chatId === chatId) {
-        const id = payload.itemId ?? `agent-${chatId}-${index}`;
-        let existing = agentMessages.get(id);
-        if (!existing) {
-          existing = {
-            id,
-            role: "agent",
-            content: "",
-            streaming: true
-          };
-          agentMessages.set(id, existing);
-          messages.push(existing);
-        }
-        existing.content += payload.delta ?? "";
-        existing.streaming = true;
-        return;
-      }
-
-      if (event.type === "chat.agent_message.completed" && payload.chatId === chatId) {
-        const id = payload.itemId ?? `agent-${chatId}-${index}`;
-        let existing = agentMessages.get(id);
-        if (!existing) {
-          existing = {
-            id,
-            role: "agent",
-            content: "",
-            streaming: false
-          };
-          agentMessages.set(id, existing);
-          messages.push(existing);
-        }
-        existing.content = payload.content ?? existing.content;
-        existing.streaming = false;
-        return;
-      }
-
-      if (event.type === "chat.codex_turn.completed" && payload.chatId === chatId && payload.status === "failed") {
-        messages.push({
-          id: `turn-${chatId}-${index}`,
-          role: "system",
-          content: payload.error?.message ?? "Codex turn failed."
-        });
-      }
-    });
-    return messages;
-  };
   document.documentElement.dataset.theme = state.app.theme;
 
   const renderChatPanel = (panel: PlasticPanel) => {
     const chatButtons = buildChatButtons(panel.id);
-    const chatMessages = buildChatMessages(panel.id);
+    const chatMessages = chatMessageLists.get(panel.id) ?? [];
     const binding = chatBindings.get(panel.id);
     const turnRunning = binding?.activeTurnStatus === "inProgress";
     const peer = chatPanels.find((candidate) => candidate.id !== panel.id);
@@ -598,10 +527,34 @@ const render = async (force = false) => {
   });
 };
 
+const render = async (force = false): Promise<void> => {
+  renderQueuedForce = renderQueuedForce || force;
+
+  if (renderInFlight) {
+    renderQueued = true;
+    return renderInFlight;
+  }
+
+  renderInFlight = (async () => {
+    try {
+      do {
+        const forceNextRender = renderQueuedForce;
+        renderQueued = false;
+        renderQueuedForce = false;
+        await renderNow(forceNextRender);
+      } while (renderQueued);
+    } finally {
+      renderInFlight = null;
+    }
+  })();
+
+  return renderInFlight;
+};
+
 void render(true);
 const events = new EventSource("http://127.0.0.1:7331/events/stream");
 events.addEventListener("plastic.event", () => {
-  void render(true);
+  void render();
 });
 
 events.onerror = () => {

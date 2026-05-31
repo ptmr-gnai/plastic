@@ -124,6 +124,29 @@ type TimelineInput = {
   includeDeltas?: boolean;
 };
 
+type EventListInput = {
+  after?: string;
+  before?: string;
+  limit?: number | "all";
+  scope?: EventScopeInput;
+  types?: string[];
+  includeDeltas?: boolean;
+};
+
+type ChatMessagesInput = {
+  chatId?: string;
+  limit?: number;
+};
+
+type ChatMessageProjection = {
+  id: string;
+  eventId: string;
+  timestamp: string;
+  content: string;
+  role: "user" | "agent" | "system" | "peer";
+  streaming: boolean;
+};
+
 type AgentOrientInput = {
   agentId?: string;
   panelId?: string;
@@ -343,6 +366,127 @@ const buildTimeline = (events: PlasticEvent[], input: TimelineInput = {}) => {
   };
 };
 
+const selectEvents = (events: PlasticEvent[], input: EventListInput = {}) => {
+  const afterIndex = input.after ? events.findIndex((event) => event.id === input.after) : -1;
+  const beforeIndex = input.before ? events.findIndex((event) => event.id === input.before) : events.length;
+  const start = afterIndex >= 0 ? afterIndex + 1 : 0;
+  const end = beforeIndex >= 0 ? beforeIndex : events.length;
+  const typeSet = input.types ? new Set(input.types) : null;
+  const selected = events
+    .slice(start, end)
+    .filter((event) => eventMatchesScope(event, input.scope))
+    .filter((event) => !typeSet || typeSet.has(event.type))
+    .filter((event) => input.includeDeltas || !isNoisyEvent(event));
+
+  if (input.limit === "all") {
+    return selected;
+  }
+
+  const limit = Math.max(1, Math.min(input.limit ?? 500, 5_000));
+  return selected.slice(-limit);
+};
+
+const buildChatMessagesForPanel = (events: PlasticEvent[], input: ChatMessagesInput = {}) => {
+  const chatId = input.chatId ?? "chat-main";
+  const limit = Math.max(1, Math.min(input.limit ?? 80, 500));
+  const completedAgentMessageIds = new Set<string>();
+  const firstDeltaOrder = new Map<string, number>();
+
+  events.forEach((event, index) => {
+    const payload = asRecord(event.payload);
+    if (asString(payload.chatId) !== chatId) {
+      return;
+    }
+
+    if (event.type === "chat.agent_message.delta") {
+      const itemId = asString(payload.itemId) ?? `agent:${event.id}`;
+      if (!firstDeltaOrder.has(itemId)) {
+        firstDeltaOrder.set(itemId, index);
+      }
+      return;
+    }
+
+    if (event.type === "chat.agent_message.completed") {
+      completedAgentMessageIds.add(asString(payload.itemId) ?? `agent:${event.id}`);
+    }
+  });
+
+  const messages: Array<ChatMessageProjection & { order: number }> = [];
+  const agentMessages = new Map<string, ChatMessageProjection & { order: number }>();
+  const pushMessage = (event: PlasticEvent, order: number, role: ChatMessageProjection["role"], content: string, streaming = false) => {
+    messages.push({
+      id: `message:${chatId}:${event.id}`,
+      eventId: event.id,
+      timestamp: event.timestamp,
+      role,
+      content,
+      streaming,
+      order
+    });
+  };
+  const ensureAgentMessage = (event: PlasticEvent, itemId: string, order: number) => {
+    let existing = agentMessages.get(itemId);
+    if (!existing) {
+      existing = {
+        id: `message:${chatId}:${itemId}`,
+        eventId: event.id,
+        timestamp: event.timestamp,
+        role: "agent",
+        content: "",
+        streaming: false,
+        order
+      };
+      agentMessages.set(itemId, existing);
+      messages.push(existing);
+    }
+    existing.order = Math.min(existing.order, order);
+    return existing;
+  };
+
+  events.forEach((event, index) => {
+    const payload = asRecord(event.payload);
+
+    if ((event.type === "chat.user_message.injected" || event.type === "chat.user_message.submitted") && asString(payload.chatId) === chatId) {
+      pushMessage(event, index, "user", asString(payload.content) ?? "");
+      return;
+    }
+
+    if (event.type === "panel.message.sent" && asString(payload.toPanelId) === chatId) {
+      pushMessage(event, index, "peer", `${asString(payload.fromPanelId) ?? "panel"}: ${asString(payload.content) ?? ""}`);
+      return;
+    }
+
+    if (event.type === "chat.agent_message.delta" && asString(payload.chatId) === chatId) {
+      const itemId = asString(payload.itemId) ?? `agent:${event.id}`;
+      if (completedAgentMessageIds.has(itemId)) {
+        return;
+      }
+      const existing = ensureAgentMessage(event, itemId, firstDeltaOrder.get(itemId) ?? index);
+      existing.content += asString(payload.delta) ?? "";
+      existing.streaming = true;
+      return;
+    }
+
+    if (event.type === "chat.agent_message.completed" && asString(payload.chatId) === chatId) {
+      const itemId = asString(payload.itemId) ?? `agent:${event.id}`;
+      const existing = ensureAgentMessage(event, itemId, firstDeltaOrder.get(itemId) ?? index);
+      existing.content = asString(payload.content) ?? existing.content;
+      existing.streaming = false;
+      return;
+    }
+
+    if (event.type === "chat.codex_turn.completed" && asString(payload.chatId) === chatId && asString(payload.status) === "failed") {
+      const error = asRecord(payload.error);
+      pushMessage(event, index, "system", asString(error.message) ?? "Codex turn failed.");
+    }
+  });
+
+  return messages
+    .sort((left, right) => left.order - right.order)
+    .slice(-limit)
+    .map(({ order: _order, ...message }) => message);
+};
+
 const sourceHintsFor = (input: { ref?: string; panelId?: string; extensionId?: string; command?: string }) => {
   const hints = new Set<string>();
   if (input.ref?.startsWith("panel:") || input.panelId) {
@@ -434,6 +578,9 @@ const resolveVisibleRef = async (ref: string) => {
 };
 
 const panelIdFromRef = (ref: string) => {
+  if (ref.startsWith("message:")) {
+    return ref.split(":")[1];
+  }
   for (const prefix of ["panel:", "chat-compose:", "chat-shell:", "chat-status:", "chat-buttons:", "chat-log:"]) {
     if (ref.startsWith(prefix)) {
       return ref.slice(prefix.length);
@@ -663,8 +810,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
     methods.register({
       id: "events/list",
       title: "List events",
+      description: "Lists bounded raw events with optional type, scope, cursor, and delta filters.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: () => store.list()
+      handler: (input) =>
+        Effect.map(store.list(), (events) => selectEvents(events, input as EventListInput | undefined))
     })
   );
 
@@ -676,6 +825,17 @@ const registerRuntimeMethods = async (store: EventStore) => {
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: (input) =>
         Effect.map(store.list(), (events) => buildTimeline(events, input as TimelineInput | undefined))
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "chats/messages",
+      title: "Chat messages",
+      description: "Returns the bounded chat transcript projection for one chat panel without exposing raw stream deltas to the renderer.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.map(store.list(), (events) => buildChatMessagesForPanel(events, input as ChatMessagesInput | undefined))
     })
   );
 
