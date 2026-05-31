@@ -80,6 +80,7 @@ type VisibleRef = {
   command?: string;
   tag: string;
   text: string;
+  bounds?: Rectangle;
 };
 
 type WindowVisibleRefs = {
@@ -147,7 +148,16 @@ const listVisibleRefs = async (): Promise<WindowVisibleRefs[]> => {
         extension: element.dataset.plasticExtension,
         command: element.dataset.plasticCommand,
         tag: element.tagName.toLowerCase(),
-        text: (element.innerText || element.textContent || "").slice(0, 240)
+        text: (element.innerText || element.textContent || "").slice(0, 240),
+        bounds: (() => {
+          const rect = element.getBoundingClientRect();
+          return {
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          };
+        })()
       }))
     `) as VisibleRef[];
     refs.push({ windowId: window.id, refs: windowRefs });
@@ -409,6 +419,16 @@ const resolveVisibleRef = async (ref: string) => {
     }
   }
   return null;
+};
+
+const panelIdFromRef = (ref: string) => {
+  for (const prefix of ["panel:", "chat-compose:", "chat-shell:", "chat-status:", "chat-buttons:", "chat-log:"]) {
+    if (ref.startsWith(prefix)) {
+      return ref.slice(prefix.length);
+    }
+  }
+  const messageMatch = ref.match(/^message-([^-]+-.+)-\d+$/);
+  return messageMatch?.[1];
 };
 
 const bundledPanels = [
@@ -1333,11 +1353,12 @@ const registerRuntimeMethods = async (store: EventStore) => {
           const panels = projectPanels(events);
           const extensions = projectExtensions(events);
           const visible = await resolveVisibleRef(ref);
-          const panelId = visible?.ref.panel ?? (ref.startsWith("panel:") ? ref.slice("panel:".length) : undefined);
+          const panelId = visible?.ref.panel ?? panelIdFromRef(ref);
           const panel = panelId ? panels.find((candidate) => candidate.id === panelId) : undefined;
           const extensionId = visible?.ref.extension ?? panel?.extensionId;
           const extension = extensionId ? extensions.find((candidate) => candidate.id === extensionId) : undefined;
-          const command = visible?.ref.command;
+          const isChatCompose = ref.startsWith("chat-compose:");
+          const command = visible?.ref.command ?? (isChatCompose ? "chats/sendToCodex" : undefined);
           const lineage = findRecentEvents(
             events,
             (event) =>
@@ -1347,6 +1368,16 @@ const registerRuntimeMethods = async (store: EventStore) => {
               event.type.includes(extensionId ?? "__no_extension__"),
             12
           );
+          const refTimelineInput: TimelineInput = { limit: 12 };
+          if (panelId) {
+            refTimelineInput.scope = { panelId };
+          }
+          const timeline = buildTimeline(events, refTimelineInput);
+          const binding = panelId && panel?.kind === "chat"
+            ? await runPromise(methods.call("chats/getBinding", { chatId: panelId })).catch((error) => ({
+              error: error instanceof Error ? error.message : String(error)
+            }))
+            : null;
 
           const sourceHintInput: { ref?: string; panelId?: string; extensionId?: string; command?: string } = { ref };
           if (panelId) {
@@ -1361,16 +1392,58 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
           return {
             ref,
+            element: visible ? {
+              windowId: visible.windowId,
+              tag: visible.ref.tag,
+              text: visible.ref.text,
+              bounds: visible.ref.bounds ?? null,
+              attributes: {
+                "data-plastic-ref": visible.ref.ref ?? ref,
+                ...(visible.ref.panel ? { "data-plastic-panel": visible.ref.panel } : {}),
+                ...(visible.ref.extension ? { "data-plastic-extension": visible.ref.extension } : {}),
+                ...(visible.ref.command ? { "data-plastic-command": visible.ref.command } : {})
+              }
+            } : null,
             visible,
+            ownership: {
+              panelId: panelId ?? null,
+              extensionId: extensionId ?? null,
+              methodId: command ?? null,
+              commandId: command ?? null,
+              agentId: panel?.kind === "chat" ? "codex" : null
+            },
+            state: {
+              panel: panel ?? null,
+              extension: extension ?? null,
+              binding,
+              timeline,
+              resourceLinks: [
+                ...(panelId ? [{ rel: "panel", href: "panels/get", method: "panels/get", target: panelId }] : []),
+                ...(extensionId ? [{ rel: "extension", href: "extensions/get", method: "extensions/get", target: extensionId }] : []),
+                ...(panelId ? [{ rel: "timeline", href: "events/timeline", method: "events/timeline", target: panelId }] : [])
+              ]
+            },
             panel,
             extension,
             command,
             sourceHints: sourceHintsFor(sourceHintInput),
             lineage,
+            verification: [
+              ...(panelId ? [
+                { id: "timeline-after-action", title: "Verify panel timeline", method: "events/timeline", input: { scope: { panelId }, limit: 12 } }
+              ] : []),
+              { id: "visible-after-action", title: "Verify visible refs", method: "deixis/listVisibleRefs" },
+              { id: "screenshot-after-action", title: "Verify screenshot", method: "windows/screenshot", input: { ref } }
+            ],
             actions: [
               ...(panelId ? [
                 { id: "get-panel", title: "Get panel", method: "panels/get", input: { id: panelId } },
                 { id: "rename-panel", title: "Rename panel", method: "panels/rename" }
+              ] : []),
+              ...(isChatCompose && panelId ? [
+                { id: "fill-compose", title: "Fill chat compose", method: "deixis/fillRef", input: { ref, value: "" } },
+                { id: "send-compose", title: "Submit chat compose", method: "deixis/clickRef", input: { ref } },
+                { id: "send-chat-direct", title: "Send chat message directly", method: "chats/sendToCodex", input: { chatId: panelId, content: "" } }
               ] : []),
               ...(extensionId ? [
                 { id: "get-extension", title: "Get extension", method: "extensions/get", input: { id: extensionId } }
@@ -1430,11 +1503,16 @@ const registerRuntimeMethods = async (store: EventStore) => {
                 return { clicked: false, reason: "ref not found" };
               }
               ${scrollRefIntoViewScript(refInput.ref)}
-              element.click();
+              if (element instanceof HTMLFormElement) {
+                element.requestSubmit();
+              } else {
+                element.click();
+              }
               return {
                 clicked: true,
                 ref,
                 tag: element.tagName.toLowerCase(),
+                submitted: element instanceof HTMLFormElement,
                 text: (element.innerText || element.textContent || "").slice(0, 240)
               };
             })()
