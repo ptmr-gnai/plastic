@@ -53,6 +53,8 @@ export const createCodexAdapter = (input: {
   const runtimeRpcUrls = input.runtimeRpcUrls ?? [runtimeRpcUrl];
   const workspaceDir = input.workspaceDir ?? process.cwd();
   const plasticMcpServerPath = join(workspaceDir, "scripts", "plastic-mcp-server.mjs");
+  const fallbackCodexModel = process.env.PLASTIC_CODEX_MODEL ?? "gpt-5.4-mini";
+  let currentCodexDefaults = { model: fallbackCodexModel };
 
   const appendCodexEvent = (type: string, payload: unknown) =>
     input.runPromise(
@@ -69,6 +71,22 @@ export const createCodexAdapter = (input: {
         })
       )
     );
+
+  const getCodexDefaults = async () => {
+    const events = await input.runPromise(input.eventStore.list());
+    let latest: (typeof events)[number] | undefined;
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      if (events[index]?.type === "codex.defaults.updated") {
+        latest = events[index];
+        break;
+      }
+    }
+    const payload = asRecord(latest?.payload);
+    currentCodexDefaults = {
+      model: asString(payload.model) ?? fallbackCodexModel
+    };
+    return currentCodexDefaults;
+  };
 
   const appendChatAgentEvent = (type: string, payload: Record<string, unknown>) => {
     const threadId = asString(payload.threadId);
@@ -286,10 +304,12 @@ export const createCodexAdapter = (input: {
     cwd?: string;
     reason: string;
   }) => {
+    const defaults = await getCodexDefaults();
     const threadResult = await request("thread/start", {
       cwd: payload.cwd ?? input.workspaceDir,
       approvalPolicy: "never",
       sandbox: "danger-full-access",
+      model: defaults.model,
       personality: "friendly",
       serviceName: "plastic",
       developerInstructions: developerInstructionsForChat(chatId)
@@ -578,6 +598,7 @@ export const createCodexAdapter = (input: {
     pid: processHandle?.pid ?? null,
     connectedAt,
     pendingRequests: pending.size,
+    defaults: currentCodexDefaults,
     plasticMcp: {
       configured: plasticMcpConfigured,
       lastError: plasticMcpLastError,
@@ -587,6 +608,8 @@ export const createCodexAdapter = (input: {
   });
 
   const registerMethods = async () => {
+    await getCodexDefaults();
+
     const registerCodexAlias = async (id: string, title: string, codexMethod: string) => {
       await input.runPromise(
         input.methods.register({
@@ -609,6 +632,38 @@ export const createCodexAdapter = (input: {
         title: "Codex status",
         owner: { kind: "runtime", id: "plastic.codex-adapter" },
         handler: () => Effect.sync(status)
+      })
+    );
+
+    await input.runPromise(
+      input.methods.register({
+        id: "codex/defaults",
+        title: "Get Codex defaults",
+        description: "Returns Plastic's durable Codex adapter defaults used for new chat threads and turns.",
+        owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        handler: () => Effect.promise(getCodexDefaults)
+      })
+    );
+
+    await input.runPromise(
+      input.methods.register({
+        id: "codex/setDefaults",
+        title: "Set Codex defaults",
+        description: "Durably updates Plastic's Codex adapter defaults.",
+        owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        handler: (methodInput) =>
+          Effect.promise(async () => {
+            const payload = methodInput as { model?: string };
+            const model = payload.model?.trim();
+            if (!model) {
+              throw new Error("codex/setDefaults requires model");
+            }
+            const event = await appendCodexEvent("codex.defaults.updated", { model });
+            return {
+              defaults: await getCodexDefaults(),
+              eventId: event.id
+            };
+          })
       })
     );
 
@@ -845,10 +900,12 @@ export const createCodexAdapter = (input: {
             await ensureInitialized();
             const payload = methodInput as { chatId?: string; cwd?: string; params?: Record<string, unknown> };
             const chatId = payload.chatId ?? "chat-main";
+            const defaults = await getCodexDefaults();
             const threadResult = await request("thread/start", {
               cwd: payload.cwd ?? input.workspaceDir,
               approvalPolicy: "never",
               sandbox: "danger-full-access",
+              model: defaults.model,
               personality: "friendly",
               serviceName: "plastic",
               developerInstructions: developerInstructionsForChat(chatId),
@@ -891,10 +948,12 @@ export const createCodexAdapter = (input: {
             const panelId = payload.id ?? `chat-${crypto.randomUUID().slice(0, 8)}`;
             const title = payload.title ?? `Chat ${chatCount + 1}`;
             const order = payload.order ?? Math.max(0, ...panels.map((panel) => panel.order)) + 1;
+            const defaults = await getCodexDefaults();
             const threadResult = await request("thread/start", {
               cwd: payload.cwd ?? input.workspaceDir,
               approvalPolicy: "never",
               sandbox: "danger-full-access",
+              model: defaults.model,
               personality: "friendly",
               serviceName: "plastic",
               developerInstructions: developerInstructionsForChat(panelId),
@@ -1096,11 +1155,12 @@ export const createCodexAdapter = (input: {
               threadId = started.threadId;
               threadResult = started.threadResult;
             }
+            const defaults = await getCodexDefaults();
 
             const turnInput = {
               threadId,
               input: [{ type: "text", text: content }],
-              ...(payload.model ? { model: payload.model } : {}),
+              model: payload.model ?? defaults.model,
               ...(payload.effort ? { effort: payload.effort } : {})
             };
 
