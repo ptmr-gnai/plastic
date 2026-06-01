@@ -4,6 +4,8 @@
 
 This document defines the first concrete contracts for Plastic: events, RPC, extension manifests, panel/window binding, live build control, and the deixis/meta-layer.
 
+For the current implementation status and next milestones of the "everything is an extension" migration, see `docs/EXTENSION_ARCHITECTURE_STATUS.md`.
+
 `PROJECT_PLAN.md` describes what Plastic wants to become. This document describes the v0 architecture we should start building.
 
 ## 2. Core Model
@@ -638,4 +640,3 @@ Permission boundaries can be added later without changing the RPC/event architec
 11. Add DOM metadata and `deixis/listVisibleRefs`.
 12. Add Codex adapter.
 13. Add build/HMR diagnostics.
-
