@@ -1,0 +1,22 @@
+{
+  "id": "plastic.tasks",
+  "title": "Tasks",
+  "renderers": [
+    {
+      "id": "plastic.tasks.tasks-panel",
+      "title": "Tasks panel",
+      "panelKinds": ["tasks"]
+    }
+  ],
+  "panels": [
+    {
+      "id": "tasks-main",
+      "title": "Tasks",
+      "kind": "tasks",
+      "rendererId": "plastic.tasks.tasks-panel",
+      "subtitle": "Tasks and recurring work",
+      "body": "Recurring tasks can learn from usage and propose new buttons or flows.",
+      "order": 3
+    }
+  ]
+}

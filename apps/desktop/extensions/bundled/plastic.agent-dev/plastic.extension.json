@@ -1,0 +1,22 @@
+{
+  "id": "plastic.agent-dev",
+  "title": "Agent Dev",
+  "renderers": [
+    {
+      "id": "plastic.agent-dev.panel",
+      "title": "Agent dev panel",
+      "panelKinds": ["agent-dev"]
+    }
+  ],
+  "panels": [
+    {
+      "id": "agent-dev",
+      "title": "Agent Dev",
+      "kind": "agent-dev",
+      "rendererId": "plastic.agent-dev.panel",
+      "subtitle": "Control plane cockpit",
+      "body": "Snapshot, self-test, visible refs, and build controls for agents building Plastic.",
+      "order": 5
+    }
+  ]
+}

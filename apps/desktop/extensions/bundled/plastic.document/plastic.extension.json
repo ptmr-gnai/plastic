@@ -1,0 +1,22 @@
+{
+  "id": "plastic.document",
+  "title": "Document",
+  "renderers": [
+    {
+      "id": "plastic.document.markdown-panel",
+      "title": "Markdown document panel",
+      "panelKinds": ["document"]
+    }
+  ],
+  "panels": [
+    {
+      "id": "doc-main",
+      "title": "Document",
+      "kind": "document",
+      "rendererId": "plastic.document.markdown-panel",
+      "subtitle": "Markdown editor and preview",
+      "body": "The document panel starts as a projection of durable document events.",
+      "order": 2
+    }
+  ]
+}

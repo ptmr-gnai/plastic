@@ -101,6 +101,55 @@ const discoverFolderExtension = async (workspaceDir: string, path: string): Prom
   return extensionFromManifest(input);
 };
 
+const discoverBundledFolderExtension = async (workspaceDir: string, path: string): Promise<PlasticExtension> => {
+  const files = await readdir(path);
+  const manifestName = manifestNames.find((name) => files.includes(name));
+  const manifestPath = manifestName ? join(path, manifestName) : undefined;
+  const errors: string[] = [];
+
+  if (!manifestPath) {
+    errors.push("Bundled extension has no plastic.extension.json manifest.");
+  }
+
+  const manifestResult = manifestPath ? await readJson(manifestPath) : { value: {} };
+  if (manifestResult.error) {
+    errors.push(manifestResult.error);
+  }
+
+  return extensionFromManifest({
+    path: relativePath(workspaceDir, path),
+    manifest: manifestResult.value,
+    fallbackId: `plastic.${normalizeId(basename(path))}`,
+    fallbackTitle: basename(path),
+    source: "bundled",
+    errors,
+    ...(manifestPath ? { manifestPath: relativePath(workspaceDir, manifestPath) } : {})
+  });
+};
+
+export const scanBundledExtensions = async (workspaceDir: string, bundledExtensionsDir: string): Promise<PlasticExtension[]> => {
+  if (!await pathExists(bundledExtensionsDir)) {
+    return [];
+  }
+
+  const entries = await readdir(bundledExtensionsDir);
+  const extensions: PlasticExtension[] = [];
+
+  for (const entry of entries.sort()) {
+    if (entry.startsWith(".")) {
+      continue;
+    }
+
+    const path = join(bundledExtensionsDir, entry);
+    const stats = await stat(path);
+    if (stats.isDirectory()) {
+      extensions.push(await discoverBundledFolderExtension(workspaceDir, path));
+    }
+  }
+
+  return extensions;
+};
+
 export const scanWorkspaceExtensions = async (workspaceDir: string): Promise<PlasticExtension[]> => {
   const extensionsDir = join(workspaceDir, ".plastic", "extensions");
   if (!await pathExists(extensionsDir)) {

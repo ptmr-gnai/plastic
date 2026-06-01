@@ -9,11 +9,12 @@ import { Effect } from "effect";
 import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticState, projectExtensions, projectPanels, projectWindows, type EventStore, type PlasticEvent } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
-import { registerExtensionMethods, scanWorkspaceExtensions } from "./extension-loader.js";
+import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
 const plasticDir = join(workspaceDir, ".plastic");
+const bundledExtensionsDir = join(workspaceDir, "apps", "desktop", "extensions", "bundled");
 const eventPath = join(plasticDir, "events", "events.jsonl");
 mkdirSync(join(plasticDir, "events"), { recursive: true });
 
@@ -590,147 +591,9 @@ const panelIdFromRef = (ref: string) => {
   return messageMatch?.[1];
 };
 
-const bundledExtensions = [
-  {
-    id: "plastic.chat",
-    title: "Chat",
-    renderers: [
-      {
-        id: "plastic.chat.chat-panel",
-        title: "Chat panel",
-        panelKinds: ["chat"]
-      }
-    ],
-    methods: [
-      {
-        id: "chats/messages",
-        title: "Chat messages",
-        description: "Project a bounded transcript for one chat panel."
-      },
-      {
-        id: "chats/addButton",
-        title: "Add chat button",
-        description: "Add a durable action button to chat panels."
-      },
-      {
-        id: "chats/injectUserMessage",
-        title: "Inject user message",
-        description: "Append a user-message event to a chat transcript."
-      }
-    ],
-    panels: [
-      {
-        id: "chat-main",
-        title: "Chat",
-        kind: "chat",
-        rendererId: "plastic.chat.chat-panel",
-        subtitle: "Markdown conversation surface",
-        body: "Agent messages and user messages land in Plastic's shared event stream.",
-        order: 0
-      },
-      {
-        id: "chat-peer",
-        title: "Peer Chat",
-        kind: "chat",
-        rendererId: "plastic.chat.chat-panel",
-        subtitle: "Second conversation surface",
-        body: "A second chat panel for cross-panel message passing.",
-        order: 1
-      }
-    ]
-  },
-  {
-    id: "plastic.document",
-    title: "Document",
-    renderers: [
-      {
-        id: "plastic.document.markdown-panel",
-        title: "Markdown document panel",
-        panelKinds: ["document"]
-      }
-    ],
-    panels: [
-      {
-        id: "doc-main",
-        title: "Document",
-        kind: "document",
-        rendererId: "plastic.document.markdown-panel",
-        subtitle: "Markdown editor and preview",
-        body: "The document panel starts as a projection of durable document events.",
-        order: 2
-      }
-    ]
-  },
-  {
-    id: "plastic.tasks",
-    title: "Tasks",
-    renderers: [
-      {
-        id: "plastic.tasks.tasks-panel",
-        title: "Tasks panel",
-        panelKinds: ["tasks"]
-      }
-    ],
-    panels: [
-      {
-        id: "tasks-main",
-        title: "Tasks",
-        kind: "tasks",
-        rendererId: "plastic.tasks.tasks-panel",
-        subtitle: "Tasks and recurring work",
-        body: "Recurring tasks can learn from usage and propose new buttons or flows.",
-        order: 3
-      }
-    ]
-  },
-  {
-    id: "plastic.codex",
-    title: "Codex",
-    renderers: [
-      {
-        id: "plastic.codex.runtime-panel",
-        title: "Codex runtime panel",
-        panelKinds: ["agent-runtime"]
-      }
-    ],
-    panels: [
-      {
-        id: "codex",
-        title: "Codex",
-        kind: "agent-runtime",
-        rendererId: "plastic.codex.runtime-panel",
-        subtitle: "Embodied agent runtime",
-        body: "Codex is available as an agent runtime that can observe and drive Plastic.",
-        order: 4
-      }
-    ]
-  },
-  {
-    id: "plastic.agent-dev",
-    title: "Agent Dev",
-    renderers: [
-      {
-        id: "plastic.agent-dev.panel",
-        title: "Agent dev panel",
-        panelKinds: ["agent-dev"]
-      }
-    ],
-    panels: [
-      {
-        id: "agent-dev",
-        title: "Agent Dev",
-        kind: "agent-dev",
-        rendererId: "plastic.agent-dev.panel",
-        subtitle: "Control plane cockpit",
-        body: "Snapshot, self-test, visible refs, and build controls for agents building Plastic.",
-        order: 5
-      }
-    ]
-  }
-];
-
 const ensureBundledExtensions = async (store: EventStore) => {
   const events = await runPromise(store.list());
+  const bundledExtensions = await scanBundledExtensions(workspaceDir, bundledExtensionsDir);
   for (const extension of bundledExtensions) {
     const latestManifest = events
       .filter((event) => event.type === "extension.discovered" && event.scope.extensionId === extension.id)
@@ -748,8 +611,10 @@ const ensureBundledExtensions = async (store: EventStore) => {
             id: extension.id,
             title: extension.title,
             source: "bundled",
+            path: extension.path,
+            manifestPath: extension.manifestPath,
             manifest: extension,
-            errors: []
+            errors: extension.errors
           },
           scope: { extensionId: extension.id },
           meta: {

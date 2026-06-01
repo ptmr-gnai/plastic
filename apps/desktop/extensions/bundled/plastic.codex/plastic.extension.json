@@ -1,0 +1,22 @@
+{
+  "id": "plastic.codex",
+  "title": "Codex",
+  "renderers": [
+    {
+      "id": "plastic.codex.runtime-panel",
+      "title": "Codex runtime panel",
+      "panelKinds": ["agent-runtime"]
+    }
+  ],
+  "panels": [
+    {
+      "id": "codex",
+      "title": "Codex",
+      "kind": "agent-runtime",
+      "rendererId": "plastic.codex.runtime-panel",
+      "subtitle": "Embodied agent runtime",
+      "body": "Codex is available as an agent runtime that can observe and drive Plastic.",
+      "order": 4
+    }
+  ]
+}
