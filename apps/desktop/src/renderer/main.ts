@@ -1,5 +1,5 @@
 import "./styles.css";
-import { createExtensionRenderer, knownExtensionRendererIds } from "./extension-renderer-registry.js";
+import { createExtensionRendererFromContribution } from "./extension-renderer-registry.js";
 import type {
   ChatBinding,
   ChatButton,
@@ -34,9 +34,11 @@ type PlasticEvent = {
 type PlasticExtension = {
   id: string;
   title: string;
+  path?: string;
   renderers: Array<{
     id: string;
     title?: string;
+    module?: string;
     panelKinds: string[];
   }>;
 };
@@ -259,26 +261,21 @@ const renderNow = async (force = false) => {
     ]
   ]);
 
-  for (const rendererId of knownExtensionRendererIds()) {
-    const renderer = createExtensionRenderer(rendererId, {
-      chat: () => ({
-        buttons: [],
-        messages: [],
-        binding: undefined,
-        peer: undefined,
-        escapeHtml
-      })
-    });
-    if (renderer) {
-      panelRenderers.set(rendererId, renderer);
-    }
-  }
-
   for (const extension of extensions) {
-    for (const renderer of extension.renderers) {
-      if (!panelRenderers.has(renderer.id)) {
-        panelRenderers.set(renderer.id, genericPanelRenderer(renderer.id, extension.id, renderer.panelKinds));
+    for (const contribution of extension.renderers) {
+      if (panelRenderers.has(contribution.id)) {
+        continue;
       }
+      const renderer = createExtensionRendererFromContribution(extension.path, contribution, {
+        chat: () => ({
+          buttons: [],
+          messages: [],
+          binding: undefined,
+          peer: undefined,
+          escapeHtml
+        })
+      }) ?? genericPanelRenderer(contribution.id, extension.id, contribution.panelKinds);
+      panelRenderers.set(contribution.id, renderer);
     }
   }
 
@@ -312,17 +309,21 @@ const renderNow = async (force = false) => {
       return [panel.id, messages] as const;
     }))
   );
-  const chatRenderer = createExtensionRenderer("plastic.chat.chat-panel", {
-    chat: (panel) => ({
-      buttons: buildChatButtons(panel.id),
-      messages: chatMessageLists.get(panel.id) ?? [],
-      binding: chatBindings.get(panel.id),
-      peer: chatPanels.find((candidate) => candidate.id !== panel.id),
-      escapeHtml
-    })
-  });
-  if (chatRenderer) {
-    panelRenderers.set("plastic.chat.chat-panel", chatRenderer);
+  for (const extension of extensions) {
+    for (const contribution of extension.renderers) {
+      const renderer = createExtensionRendererFromContribution(extension.path, contribution, {
+        chat: (panel) => ({
+          buttons: buildChatButtons(panel.id),
+          messages: chatMessageLists.get(panel.id) ?? [],
+          binding: chatBindings.get(panel.id),
+          peer: chatPanels.find((candidate) => candidate.id !== panel.id),
+          escapeHtml
+        })
+      });
+      if (renderer) {
+        panelRenderers.set(contribution.id, renderer);
+      }
+    }
   }
 
   const renderAddPanelControls = () => `

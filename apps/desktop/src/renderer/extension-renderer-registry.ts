@@ -23,9 +23,14 @@ export type ExtensionRendererHostContext = {
 
 export type ExtensionRendererFactory = (hostContext: ExtensionRendererHostContext) => PanelRenderer;
 
-const extensionRendererFactories = new Map<string, ExtensionRendererFactory>([
+export type ExtensionRendererContribution = {
+  id: string;
+  module?: string;
+};
+
+const bundledRendererFactoriesByModule = new Map<string, ExtensionRendererFactory>([
   [
-    "plastic.chat.chat-panel",
+    "apps/desktop/extensions/bundled/plastic.chat/renderer.ts",
     (hostContext) => ({
       ...bundledChatRenderer,
       render: ({ panel }) => {
@@ -43,9 +48,30 @@ const extensionRendererFactories = new Map<string, ExtensionRendererFactory>([
   ]
 ]);
 
-export const createExtensionRenderer = (
-  rendererId: string,
-  hostContext: ExtensionRendererHostContext
-): PanelRenderer | undefined => extensionRendererFactories.get(rendererId)?.(hostContext);
+const normalizeModulePath = (extensionPath: string | undefined, modulePath: string | undefined) => {
+  if (!extensionPath || !modulePath) {
+    return null;
+  }
+  return `${extensionPath.replace(/\/+$/, "")}/${modulePath.replace(/^\/+/, "")}`;
+};
 
-export const knownExtensionRendererIds = () => [...extensionRendererFactories.keys()];
+export const createExtensionRendererFromContribution = (
+  extensionPath: string | undefined,
+  contribution: ExtensionRendererContribution,
+  hostContext: ExtensionRendererHostContext
+): PanelRenderer | undefined => {
+  const modulePath = normalizeModulePath(extensionPath, contribution.module);
+  if (!modulePath) {
+    return undefined;
+  }
+  const renderer = bundledRendererFactoriesByModule.get(modulePath)?.(hostContext);
+  if (!renderer) {
+    return undefined;
+  }
+  return {
+    ...renderer,
+    id: contribution.id
+  };
+};
+
+export const knownBundledRendererModulePaths = () => [...bundledRendererFactoriesByModule.keys()];
