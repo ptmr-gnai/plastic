@@ -14,6 +14,7 @@ export interface PlasticExtensionRendererContribution {
   id: string;
   title?: string;
   panelKinds: string[];
+  module?: string;
 }
 
 export interface PlasticExtensionMethodContribution {
@@ -87,6 +88,7 @@ const asRendererContributions = (value: unknown): PlasticExtensionRendererContri
     .map((item) => ({
       id: asString(item.id, ""),
       ...(typeof item.title === "string" ? { title: item.title } : {}),
+      ...(typeof item.module === "string" ? { module: item.module } : {}),
       panelKinds: asStringArray(item.panelKinds)
     }))
     .filter((item) => item.id.length > 0);

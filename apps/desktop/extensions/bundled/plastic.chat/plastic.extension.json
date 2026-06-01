@@ -5,6 +5,7 @@
     {
       "id": "plastic.chat.chat-panel",
       "title": "Chat panel",
+      "module": "renderer.ts",
       "panelKinds": ["chat"]
     }
   ],
