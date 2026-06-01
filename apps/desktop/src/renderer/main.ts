@@ -1,4 +1,13 @@
 import "./styles.css";
+import { renderer as bundledChatRenderer } from "../../extensions/bundled/plastic.chat/renderer.js";
+import type {
+  ChatBinding,
+  ChatButton,
+  ChatMessage,
+  ChatPanelRendererContext,
+  PanelRenderer,
+  PlasticPanel
+} from "./panel-renderer-api.js";
 
 type PlasticState = {
   app: {
@@ -23,17 +32,6 @@ type PlasticEvent = {
   payload: unknown;
 };
 
-type PlasticPanel = {
-  id: string;
-  title: string;
-  kind: string;
-  extensionId: string;
-  rendererId?: string;
-  subtitle?: string;
-  body?: string;
-  order: number;
-};
-
 type PlasticExtension = {
   id: string;
   title: string;
@@ -44,48 +42,11 @@ type PlasticExtension = {
   }>;
 };
 
-type PanelRendererContext = {
-  panel: PlasticPanel;
-};
-
-type PanelRenderer = {
-  id: string;
-  extensionId: string;
-  panelKinds: string[];
-  closeMethod: string;
-  closeInputKey: string;
-  render: (context: PanelRendererContext) => string;
-};
-
-type ChatButton = {
-  id: string;
-  label: string;
-  action: {
-    method: string;
-    input?: unknown;
-  };
-};
-
-type ChatMessage = {
-  id: string;
-  content: string;
-  role: "user" | "agent" | "system" | "peer";
-  streaming?: boolean;
-};
-
 type CodexStatus = {
   connected: boolean;
   initialized: boolean;
   pid: number | null;
   pendingRequests: number;
-};
-
-type ChatBinding = {
-  chatId: string;
-  runtimeId: string;
-  threadId: string | null;
-  activeTurnId: string | null;
-  activeTurnStatus: string | null;
 };
 
 type PlasticSnapshot = {
@@ -138,19 +99,6 @@ let renderQueuedForce = false;
 
 const isNearBottom = (element: HTMLElement) =>
   element.scrollHeight - element.scrollTop - element.clientHeight < 48;
-
-const labelForRole = (role: ChatMessage["role"]) => {
-  if (role === "agent") {
-    return "Codex";
-  }
-  if (role === "peer") {
-    return "Peer";
-  }
-  if (role === "user") {
-    return "You";
-  }
-  return "System";
-};
 
 const genericPanelRenderer = (id: string, extensionId: string, panelKinds: string[] = ["generic"]): PanelRenderer => ({
   id,
@@ -239,51 +187,6 @@ const renderNow = async (force = false) => {
 
   document.documentElement.dataset.theme = state.app.theme;
 
-  const renderChatPanel = ({ panel }: PanelRendererContext) => {
-    const chatButtons = buildChatButtons(panel.id);
-    const chatMessages = chatMessageLists.get(panel.id) ?? [];
-    const binding = chatBindings.get(panel.id);
-    const turnRunning = binding?.activeTurnStatus === "inProgress";
-    const peer = chatPanels.find((candidate) => candidate.id !== panel.id);
-    return `
-    <section class="chat-shell" data-plastic-ref="chat-shell:${escapeHtml(panel.id)}">
-      <div class="chat-status" data-plastic-ref="chat-status:${escapeHtml(panel.id)}">
-        <span>${escapeHtml(binding?.runtimeId ?? "codex")}</span>
-        <span>${binding?.threadId ? `Thread ${escapeHtml(binding.threadId.slice(0, 8))}` : "No thread"}</span>
-        <span>${binding?.activeTurnStatus ? `Turn ${escapeHtml(binding.activeTurnStatus)}` : "Idle"}</span>
-        ${turnRunning ? `<button data-chat-interrupt="${escapeHtml(panel.id)}" data-plastic-command="chats/interrupt">Stop</button>` : ""}
-      </div>
-      <details class="chat-actions" data-plastic-ref="chat-buttons:${escapeHtml(panel.id)}">
-        <summary>Actions</summary>
-        <div class="flow-row">
-          ${chatButtons.map((button) => `
-            <button
-              data-chat-button="${escapeHtml(button.id)}"
-              data-plastic-ref="panel-button:${escapeHtml(button.id)}"
-              data-plastic-command="${escapeHtml(button.action.method)}"
-            >${escapeHtml(button.label)}</button>
-          `).join("")}
-        </div>
-      </details>
-      <div class="chat-log" data-chat-log="${escapeHtml(panel.id)}" data-plastic-ref="chat-log:${escapeHtml(panel.id)}">
-        ${chatMessages.length > 0 ? chatMessages.map((message) => `
-          <div class="chat-message-row chat-message-row-${message.role}" data-plastic-ref="${escapeHtml(message.id)}">
-            <div class="chat-message chat-message-${message.role}">
-              <span>${labelForRole(message.role)}</span>
-              <div class="chat-message-content">${escapeHtml(message.content.trim())}</div>
-              ${message.streaming ? `<em>Streaming...</em>` : ""}
-            </div>
-          </div>
-        `).join("") : `<p class="muted chat-empty">${peer ? `This chat can send panel messages to ${escapeHtml(peer.title)}.` : "Messages will appear here."}</p>`}
-      </div>
-      <form class="chat-compose" data-chat-compose="${escapeHtml(panel.id)}" data-plastic-ref="chat-compose:${escapeHtml(panel.id)}">
-        <textarea name="content" rows="1" placeholder="Message ${escapeHtml(panel.title)}"></textarea>
-        <button type="submit" data-plastic-command="chats/sendToCodex">Send</button>
-      </form>
-    </section>
-  `;
-  };
-
   const renderCodexPanel = () => `
     <p>Status: ${codexStatus.connected ? "connected" : "disconnected"}${codexStatus.initialized ? " and initialized" : ""}</p>
     <p>PID: ${codexStatus.pid ?? "none"} · Pending: ${codexStatus.pendingRequests}</p>
@@ -324,12 +227,15 @@ const renderNow = async (force = false) => {
     [
       "plastic.chat.chat-panel",
       {
-        id: "plastic.chat.chat-panel",
-        extensionId: "plastic.chat",
-        panelKinds: ["chat"],
-        closeMethod: "chats/close",
-        closeInputKey: "chatId",
-        render: renderChatPanel
+        ...bundledChatRenderer,
+        render: ({ panel }) => bundledChatRenderer.render({
+          panel,
+          buttons: buildChatButtons(panel.id),
+          messages: chatMessageLists.get(panel.id) ?? [],
+          binding: chatBindings.get(panel.id),
+          peer: chatPanels.find((candidate) => candidate.id !== panel.id),
+          escapeHtml
+        } as ChatPanelRendererContext)
       }
     ],
     [
