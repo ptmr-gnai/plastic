@@ -170,7 +170,7 @@ export const registerExtensionMethods = async (input: {
                         title: extension.title,
                         panels: extension.panels,
                         renderers: extension.renderers,
-                        methods: extension.methods.map((method) => method.id)
+                        methods: extension.methods
                       },
                       errors: extension.errors
                     },

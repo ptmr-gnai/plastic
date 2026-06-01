@@ -92,8 +92,31 @@ const asRendererContributions = (value: unknown): PlasticExtensionRendererContri
     .filter((item) => item.id.length > 0);
 };
 
-const asMethodContributions = (value: unknown): PlasticExtensionMethodContribution[] =>
-  asStringArray(value).map((id) => ({ id }));
+const asMethodContributions = (value: unknown): PlasticExtensionMethodContribution[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (typeof item === "string") {
+        return { id: item };
+      }
+      const record = asRecord(item);
+      if (typeof record.id !== "string") {
+        return null;
+      }
+      const method: PlasticExtensionMethodContribution = { id: record.id };
+      if (typeof record.title === "string") {
+        method.title = record.title;
+      }
+      if (typeof record.description === "string") {
+        method.description = record.description;
+      }
+      return method;
+    })
+    .filter((item): item is PlasticExtensionMethodContribution => item !== null);
+};
 
 export const extensionFromManifest = (input: {
   path?: string;

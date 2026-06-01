@@ -601,6 +601,23 @@ const bundledExtensions = [
         panelKinds: ["chat"]
       }
     ],
+    methods: [
+      {
+        id: "chats/messages",
+        title: "Chat messages",
+        description: "Project a bounded transcript for one chat panel."
+      },
+      {
+        id: "chats/addButton",
+        title: "Add chat button",
+        description: "Add a durable action button to chat panels."
+      },
+      {
+        id: "chats/injectUserMessage",
+        title: "Inject user message",
+        description: "Append a user-message event to a chat transcript."
+      }
+    ],
     panels: [
       {
         id: "chat-main",
@@ -714,9 +731,12 @@ const bundledExtensions = [
 
 const ensureBundledExtensions = async (store: EventStore) => {
   const events = await runPromise(store.list());
-  const existingExtensionIds = new Set(projectExtensions(events).map((extension) => extension.id));
   for (const extension of bundledExtensions) {
-    if (existingExtensionIds.has(extension.id)) {
+    const latestManifest = events
+      .filter((event) => event.type === "extension.discovered" && event.scope.extensionId === extension.id)
+      .map((event) => (event.payload as { manifest?: unknown }).manifest)
+      .at(-1);
+    if (JSON.stringify(latestManifest) === JSON.stringify(extension)) {
       continue;
     }
 
@@ -979,7 +999,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       id: "chats/messages",
       title: "Chat messages",
       description: "Returns the bounded chat transcript projection for one chat panel without exposing raw stream deltas to the renderer.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
+      owner: { kind: "extension", id: "plastic.chat" },
+      links: [
+        { rel: "extension", href: "extensions/get", method: "extensions/get", target: "plastic.chat" }
+      ],
       handler: (input) =>
         Effect.map(store.list(), (events) => buildChatMessagesForPanel(events, input as ChatMessagesInput | undefined))
     })
@@ -1574,7 +1597,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
     methods.register({
       id: "chats/addButton",
       title: "Add chat button",
-      owner: { kind: "runtime", id: "plastic.runtime" },
+      owner: { kind: "extension", id: "plastic.chat" },
+      links: [
+        { rel: "extension", href: "extensions/get", method: "extensions/get", target: "plastic.chat" }
+      ],
       handler: (input) => {
         const buttonInput = input as {
           chatId?: string;
@@ -1611,7 +1637,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
     methods.register({
       id: "chats/injectUserMessage",
       title: "Inject user message into chat",
-      owner: { kind: "runtime", id: "plastic.runtime" },
+      owner: { kind: "extension", id: "plastic.chat" },
+      links: [
+        { rel: "extension", href: "extensions/get", method: "extensions/get", target: "plastic.chat" }
+      ],
       handler: (input) => {
         const messageInput = input as { chatId?: string; content?: string };
         const chatId = messageInput.chatId ?? "chat-main";
