@@ -1,10 +1,9 @@
 import "./styles.css";
-import { renderer as bundledChatRenderer } from "../../extensions/bundled/plastic.chat/renderer.js";
+import { createExtensionRenderer, knownExtensionRendererIds } from "./extension-renderer-registry.js";
 import type {
   ChatBinding,
   ChatButton,
   ChatMessage,
-  ChatPanelRendererContext,
   PanelRenderer,
   PlasticPanel
 } from "./panel-renderer-api.js";
@@ -225,20 +224,6 @@ const renderNow = async (force = false) => {
 
   const panelRenderers = new Map<string, PanelRenderer>([
     [
-      "plastic.chat.chat-panel",
-      {
-        ...bundledChatRenderer,
-        render: ({ panel }) => bundledChatRenderer.render({
-          panel,
-          buttons: buildChatButtons(panel.id),
-          messages: chatMessageLists.get(panel.id) ?? [],
-          binding: chatBindings.get(panel.id),
-          peer: chatPanels.find((candidate) => candidate.id !== panel.id),
-          escapeHtml
-        } as ChatPanelRendererContext)
-      }
-    ],
-    [
       "plastic.codex.runtime-panel",
       {
         id: "plastic.codex.runtime-panel",
@@ -273,6 +258,21 @@ const renderNow = async (force = false) => {
       genericPanelRenderer("plastic.generic.panel", "plastic.runtime")
     ]
   ]);
+
+  for (const rendererId of knownExtensionRendererIds()) {
+    const renderer = createExtensionRenderer(rendererId, {
+      chat: () => ({
+        buttons: [],
+        messages: [],
+        binding: undefined,
+        peer: undefined,
+        escapeHtml
+      })
+    });
+    if (renderer) {
+      panelRenderers.set(rendererId, renderer);
+    }
+  }
 
   for (const extension of extensions) {
     for (const renderer of extension.renderers) {
@@ -312,6 +312,18 @@ const renderNow = async (force = false) => {
       return [panel.id, messages] as const;
     }))
   );
+  const chatRenderer = createExtensionRenderer("plastic.chat.chat-panel", {
+    chat: (panel) => ({
+      buttons: buildChatButtons(panel.id),
+      messages: chatMessageLists.get(panel.id) ?? [],
+      binding: chatBindings.get(panel.id),
+      peer: chatPanels.find((candidate) => candidate.id !== panel.id),
+      escapeHtml
+    })
+  });
+  if (chatRenderer) {
+    panelRenderers.set("plastic.chat.chat-panel", chatRenderer);
+  }
 
   const renderAddPanelControls = () => `
     <h2>Add panel</h2>
