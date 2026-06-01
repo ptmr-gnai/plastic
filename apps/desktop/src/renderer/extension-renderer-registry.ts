@@ -47,7 +47,7 @@ const toWorkspacePath = (modulePath: string) =>
     .replace(/^\.\.\/\.\.\//, "apps/desktop/");
 
 const wrapRenderer = (renderer: PanelRenderer, hostContext: ExtensionRendererHostContext): PanelRenderer => {
-  if (renderer.id !== "plastic.chat.chat-panel") {
+  if (!renderer.panelKinds.includes("chat")) {
     return renderer;
   }
 

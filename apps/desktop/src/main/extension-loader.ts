@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, extname, join, relative } from "node:path";
 import { Effect } from "effect";
 import {
@@ -44,6 +44,74 @@ const pathExists = async (path: string): Promise<boolean> => {
     return false;
   }
 };
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? value as Record<string, unknown> : {};
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === "string" && value.length > 0 ? value : undefined;
+
+const forkExtensionManifest = (manifest: unknown, input: {
+  sourceExtensionId: string;
+  targetExtensionId: string;
+  targetSlug: string;
+}) => {
+  const source = asRecord(manifest);
+  const rendererIdMap = new Map<string, string>();
+  const targetTitle = `${asString(source.title) ?? input.targetSlug} Fork`;
+
+  const renderers = Array.isArray(source.renderers)
+    ? source.renderers.map((rendererValue) => {
+      const renderer = asRecord(rendererValue);
+      const oldId = asString(renderer.id) ?? `${input.sourceExtensionId}.renderer`;
+      const suffix = oldId.startsWith(`${input.sourceExtensionId}.`)
+        ? oldId.slice(input.sourceExtensionId.length + 1)
+        : normalizeId(oldId);
+      const newId = `${input.targetExtensionId}.${suffix}`;
+      rendererIdMap.set(oldId, newId);
+      return {
+        ...renderer,
+        id: newId
+      };
+    })
+    : [];
+
+  const panels = Array.isArray(source.panels)
+    ? source.panels.map((panelValue, index) => {
+      const panel = asRecord(panelValue);
+      const oldPanelId = asString(panel.id) ?? `${input.sourceExtensionId}.panel-${index}`;
+      const suffix = oldPanelId.includes("-")
+        ? oldPanelId.split("-").slice(1).join("-")
+        : `panel-${index + 1}`;
+      const oldRendererId = asString(panel.rendererId);
+      return {
+        ...panel,
+        id: `${input.targetSlug}-${suffix || index + 1}`,
+        title: `${asString(panel.title) ?? `Panel ${index + 1}`} Fork`,
+        rendererId: oldRendererId ? rendererIdMap.get(oldRendererId) ?? oldRendererId : undefined
+      };
+    })
+    : [];
+
+  return {
+    ...source,
+    id: input.targetExtensionId,
+    title: targetTitle,
+    forkOf: {
+      extensionId: input.sourceExtensionId
+    },
+    renderers,
+    panels
+  };
+};
+
+const rewriteForkedRendererSource = (source: string, input: {
+  sourceExtensionId: string;
+  targetExtensionId: string;
+}) =>
+  source
+    .replaceAll("../../../src/renderer/panel-renderer-api.js", "../../../apps/desktop/src/renderer/panel-renderer-api.js")
+    .replaceAll(input.sourceExtensionId, input.targetExtensionId);
 
 const discoverFileExtension = async (workspaceDir: string, path: string): Promise<PlasticExtension> => {
   const id = `workspace.${normalizeId(basename(path))}`;
@@ -283,6 +351,142 @@ export const registerExtensionMethods = async (input: {
             throw new Error(`Extension not found: ${id}`);
           }
           return extension;
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "extensions/forkBundled",
+      title: "Fork bundled extension",
+      description: "Copies a bundled extension into .plastic/extensions with workspace ids so it can be edited and loaded as a user extension.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (inputValue) =>
+        Effect.promise(async () => {
+          const payload = inputValue as {
+            extensionId?: string;
+            targetId?: string;
+            targetSlug?: string;
+            overwrite?: boolean;
+          };
+          if (!payload.extensionId) {
+            throw new Error("extensions/forkBundled requires extensionId");
+          }
+
+          const events = await runPromise(eventStore.list());
+          const sourceExtension = projectExtensions(events).find(
+            (candidate) => candidate.id === payload.extensionId && candidate.source === "bundled"
+          );
+          if (!sourceExtension?.path || !sourceExtension.manifestPath) {
+            throw new Error(`Bundled extension not found: ${payload.extensionId}`);
+          }
+
+          const sourcePath = join(workspaceDir, sourceExtension.path);
+          const sourceManifestPath = join(workspaceDir, sourceExtension.manifestPath);
+          const sourceManifest = (await readJson(sourceManifestPath)).value;
+          const targetSlug = normalizeId(
+            payload.targetSlug
+              ?? payload.targetId?.replace(/^workspace\./, "")
+              ?? `${sourceExtension.id.replace(/^plastic\./, "")}-fork`
+          );
+          const targetExtensionId = payload.targetId ?? `workspace.${targetSlug}`;
+          if (!targetExtensionId.startsWith("workspace.")) {
+            throw new Error("extensions/forkBundled targetId must start with workspace.");
+          }
+
+          const extensionsDir = join(workspaceDir, ".plastic", "extensions");
+          const targetPath = join(extensionsDir, targetSlug);
+          if (await pathExists(targetPath) && !payload.overwrite) {
+            throw new Error(`Fork target already exists: .plastic/extensions/${targetSlug}`);
+          }
+
+          await mkdir(extensionsDir, { recursive: true });
+          await cp(sourcePath, targetPath, {
+            recursive: true,
+            force: Boolean(payload.overwrite),
+            errorOnExist: !payload.overwrite
+          });
+
+          const forkedManifest = forkExtensionManifest(sourceManifest, {
+            sourceExtensionId: sourceExtension.id,
+            targetExtensionId,
+            targetSlug
+          });
+          const targetManifestPath = join(targetPath, "plastic.extension.json");
+          await writeFile(targetManifestPath, `${JSON.stringify(forkedManifest, null, 2)}\n`, "utf8");
+
+          const targetRendererPath = join(targetPath, "renderer.ts");
+          if (await pathExists(targetRendererPath)) {
+            const rendererSource = await readFile(targetRendererPath, "utf8");
+            await writeFile(
+              targetRendererPath,
+              rewriteForkedRendererSource(rendererSource, {
+                sourceExtensionId: sourceExtension.id,
+                targetExtensionId
+              }),
+              "utf8"
+            );
+          }
+
+          const discovered = await discoverFolderExtension(workspaceDir, targetPath);
+          const discoveredEvent = await runPromise(
+            eventStore.append(
+              createEvent({
+                type: "extension.discovered",
+                payload: {
+                  id: discovered.id,
+                  title: discovered.title,
+                  source: discovered.source,
+                  path: discovered.path,
+                  entry: discovered.entry,
+                  manifestPath: discovered.manifestPath,
+                  manifest: {
+                    id: discovered.id,
+                    title: discovered.title,
+                    panels: discovered.panels,
+                    renderers: discovered.renderers,
+                    methods: discovered.methods
+                  },
+                  errors: discovered.errors
+                },
+                scope: { extensionId: discovered.id },
+                meta: {
+                  links: [
+                    { rel: "self", href: "extensions/get", method: "extensions/get", target: discovered.id },
+                    { rel: "source", href: sourceExtension.path, target: sourceExtension.id }
+                  ]
+                }
+              })
+            )
+          );
+          const forkedEvent = await runPromise(
+            eventStore.append(
+              createEvent({
+                type: "extension.forked",
+                payload: {
+                  sourceExtensionId: sourceExtension.id,
+                  targetExtensionId: discovered.id,
+                  sourcePath: sourceExtension.path,
+                  targetPath: discovered.path,
+                  manifestPath: discovered.manifestPath
+                },
+                scope: { extensionId: discovered.id },
+                meta: {
+                  links: [
+                    { rel: "source", href: "extensions/get", method: "extensions/get", target: sourceExtension.id },
+                    { rel: "target", href: "extensions/get", method: "extensions/get", target: discovered.id }
+                  ]
+                }
+              })
+            )
+          );
+
+          return {
+            source: sourceExtension,
+            fork: discovered,
+            targetPath: discovered.path,
+            events: [discoveredEvent, forkedEvent]
+          };
         })
     })
   );

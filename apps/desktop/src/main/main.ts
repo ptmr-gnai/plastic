@@ -1,10 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { spawn as spawnProcess } from "node:child_process";
 import { networkInterfaces } from "node:os";
 import { join } from "node:path";
-import { app, BrowserWindow, ipcMain, type Rectangle } from "electron";
+import type { BrowserWindow as ElectronBrowserWindow, Rectangle } from "electron";
 import { Effect } from "effect";
 import { createEvent, createJsonlEventStore, createMethodRegistry, buildPlasticState, projectExtensions, projectPanels, projectWindows, type EventStore, type PlasticEvent } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
@@ -12,11 +13,18 @@ import { createCodexAdapter } from "./codex-adapter.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
 
+const require = createRequire(import.meta.url);
+const electron = require("electron") as typeof import("electron");
+const { app, BrowserWindow, ipcMain } = electron;
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
 const plasticDir = join(workspaceDir, ".plastic");
 const bundledExtensionsDir = join(workspaceDir, "apps", "desktop", "extensions", "bundled");
 const eventPath = join(plasticDir, "events", "events.jsonl");
 mkdirSync(join(plasticDir, "events"), { recursive: true });
+
+const logStartup = (stage: string) => {
+  console.log(`[plastic:startup] ${stage}`);
+};
 
 const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(effect);
 
@@ -40,9 +48,11 @@ const runLocalCommand = async (command: string, args: string[]) =>
     });
   });
 
+logStartup("create event store");
 const eventStore = await createJsonlEventStore(eventPath);
+logStartup("event store ready");
 const methods = createMethodRegistry();
-const windows = new Set<BrowserWindow>();
+const windows = new Set<ElectronBrowserWindow>();
 const eventStreamClients = new Set<ServerResponse>();
 const processStartedAt = new Date().toISOString();
 const runtimeHost = process.env.PLASTIC_RUNTIME_HOST ?? "0.0.0.0";
@@ -2120,13 +2130,21 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
   }
 });
 
+logStartup("ensure bundled extensions");
 await ensureBundledExtensions(eventStore);
+logStartup("ensure bundled panels");
 await ensureBundledPanels(eventStore);
+logStartup("ensure panel renderer bindings");
 await ensurePanelRendererBindings(eventStore);
+logStartup("register runtime methods");
 await registerRuntimeMethods(eventStore);
+logStartup("register extension methods");
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
+logStartup("register panel mailbox methods");
 await registerPanelMailboxMethods({ eventStore, methods, runPromise });
+logStartup("register codex methods");
 await codexAdapter.registerMethods();
+logStartup("scan workspace extensions");
 const discoveredExtensions = await scanWorkspaceExtensions(workspaceDir);
 for (const extension of discoveredExtensions) {
   await runPromise(
@@ -2144,7 +2162,8 @@ for (const extension of discoveredExtensions) {
             id: extension.id,
             title: extension.title,
             panels: extension.panels,
-            methods: extension.methods.map((method) => method.id)
+            renderers: extension.renderers,
+            methods: extension.methods
           },
           errors: extension.errors
         },
@@ -2164,8 +2183,10 @@ await runPromise(
   )
 );
 
+logStartup("start sockets");
 const runtimeSocket = startRuntimeSocket();
 const buildSocket = startBuildSocket();
+logStartup(`runtime listening on ${runtimePort}, build listening on ${buildPort}`);
 
 app.on("ready", () => {
   void createWindow();

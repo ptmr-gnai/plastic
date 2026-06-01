@@ -294,7 +294,7 @@ const renderNow = async (force = false) => {
     return panelRenderers.get("plastic.generic.panel")!;
   };
 
-  const chatPanels = panels.filter((panel) => resolvePanelRenderer(panel).id === "plastic.chat.chat-panel");
+  const chatPanels = panels.filter((panel) => resolvePanelRenderer(panel).panelKinds.includes("chat"));
   const agentDevPanelVisible = panels.some((panel) => resolvePanelRenderer(panel).id === "plastic.agent-dev.panel");
   const snapshot = agentDevPanelVisible ? await callPlastic("plastic/snapshot") as PlasticSnapshot : null;
   const chatBindings = new Map<string, ChatBinding>(

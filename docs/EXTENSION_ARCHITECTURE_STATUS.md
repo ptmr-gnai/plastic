@@ -61,6 +61,10 @@ Workspace extension renderer code has a first working path.
 
 `.plastic/extensions/hello-panel` declares `renderer.ts`, scans through RPC, registers a panel with `rendererId`, and renders custom HTML in the browser. This proves the renderer module path works for a checked-in workspace extension fixture. The lifecycle is still manual: scan/register/reload/verify are not yet packaged as one robust extension workflow.
 
+Bundled extension forking has a first working path.
+
+`extensions/forkBundled` can copy a bundled extension into `.plastic/extensions`, rewrite its extension/renderer/panel ids so it coexists with the source, record durable `extension.discovered` and `extension.forked` events, and then register a forked panel through the normal extension panel path. The current proof fork is `.plastic/extensions/chat-fork`, forked from `plastic.chat`.
+
 Extension method declarations are metadata only unless runtime code separately registers handlers.
 
 Extensions can declare methods in manifests, and some chat methods are owned by `plastic.chat`, but extension-provided handler modules are not loaded from extension code yet.
@@ -90,7 +94,6 @@ There is no extension lifecycle yet:
 - reload;
 - unload;
 - verify;
-- fork bundled extension into `.plastic/extensions`;
 - recover from broken extension.
 
 Deixis is still shallow.
@@ -187,6 +190,20 @@ Success criteria:
 - create a panel using the fork;
 - modify fork renderer and verify the UI changes without editing protected code.
 
+Status: first vertical slice complete with `.plastic/extensions/chat-fork`.
+
+Validation:
+
+- headless runtime harness called `extensions/forkBundled` for `plastic.chat`;
+- generated `.plastic/extensions/chat-fork/plastic.extension.json`;
+- rewrote forked renderer id to `workspace.chat-fork.chat-panel`;
+- registered `chat-fork-main` through `extensions/registerPanel`;
+- modified only the forked renderer to display a `Forked` status marker;
+- `pnpm typecheck` passed;
+- `pnpm --filter @plastic/desktop build` passed and the Vite output contains the forked renderer marker.
+
+Open issue: the local Electron host is currently hanging before app main execution, even for a tiny throwaway Electron app. The fork path is validated through compiled Plastic services and Vite build, but full desktop/browser runtime validation needs the Electron host issue fixed first.
+
 ### 4. Extension Method Handler Modules
 
 Define and load extension-provided RPC handlers.
@@ -222,15 +239,14 @@ Success criteria:
 
 ## Practical Next Slice
 
-The next thin slice should be bundled extension forking.
+The next thin slice should be extension lifecycle control for workspace/forked extensions.
 
 Proposed implementation:
 
-1. Add `extensions/forkBundled`.
-2. Copy a bundled extension folder into `.plastic/extensions`.
-3. Rewrite ids or record fork lineage so the fork can coexist with the bundled extension.
-4. Scan/register the fork through RPC.
-5. Create a panel using the forked renderer.
-6. Modify the forked renderer and verify the UI changes without editing protected code.
+1. Fix local Electron host startup or add a committed headless runtime mode for RPC-only validation.
+2. Add `extensions/reload` for a specific extension id.
+3. Add `extensions/verify` that scans, resolves renderer/module metadata, registers a disposable panel if needed, and checks observable state.
+4. Add recovery behavior for broken renderer modules.
+5. Expose lifecycle actions through `plastic/state`/`plastic/methods` so agents can discover and drive them.
 
-This moves us from "workspace renderer modules can work" to "a bundled surface can be forked, modified, and verified from user space."
+This moves us from "a bundled surface can be forked" to "agents can repeatedly edit, reload, verify, and recover extensions without hand orchestration."
