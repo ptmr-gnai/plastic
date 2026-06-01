@@ -55,11 +55,11 @@ Chat panels still render through `plastic.chat.chat-panel`, but the renderer HTM
 
 Renderer loading is only partially dynamic.
 
-Bundled renderer modules are discovered through Vite's module graph, and selection is manifest-driven. Workspace extension renderer code is not loaded yet.
+Bundled renderer modules are discovered through Vite's module graph, and selection is manifest-driven. Workspace renderer modules now have a first working Vite-glob path, but the extension lifecycle around them is still manual.
 
-Workspace extension renderer code is not loaded yet.
+Workspace extension renderer code has a first working path.
 
-`.plastic/extensions` can be scanned and represented as extension manifests, but a user extension cannot yet contribute a real renderer module that is imported, mounted, and hot-reloaded through the same path as bundled chat.
+`.plastic/extensions/hello-panel` declares `renderer.ts`, scans through RPC, registers a panel with `rendererId`, and renders custom HTML in the browser. This proves the renderer module path works for a checked-in workspace extension fixture. The lifecycle is still manual: scan/register/reload/verify are not yet packaged as one robust extension workflow.
 
 Extension method declarations are metadata only unless runtime code separately registers handlers.
 
@@ -173,6 +173,8 @@ Success criteria:
 - editing the renderer can be reloaded or hot-updated;
 - failure falls back to generic/recovery rendering.
 
+Status: first vertical slice complete with `.plastic/extensions/hello-panel`.
+
 ### 3. Bundled Extension Forking
 
 Add `extensions/forkBundled`.
@@ -220,15 +222,15 @@ Success criteria:
 
 ## Practical Next Slice
 
-The next thin slice should be workspace renderer modules.
+The next thin slice should be bundled extension forking.
 
 Proposed implementation:
 
-1. Create a minimal fixture extension under `.plastic/extensions` with `plastic.extension.json` and `renderer.ts`.
-2. Add Vite-safe renderer discovery for workspace extension modules, or document the build step needed if direct globbing outside `src` is not viable.
-3. Scan/register the extension through Plastic RPC.
-4. Create or register a panel for it.
-5. Verify custom renderer HTML appears in the browser.
-6. Verify failure falls back to generic/recovery rendering.
+1. Add `extensions/forkBundled`.
+2. Copy a bundled extension folder into `.plastic/extensions`.
+3. Rewrite ids or record fork lineage so the fork can coexist with the bundled extension.
+4. Scan/register the fork through RPC.
+5. Create a panel using the forked renderer.
+6. Modify the forked renderer and verify the UI changes without editing protected code.
 
-This moves us from "bundled extensions can own renderer modules" to "user/workspace extensions can own renderer modules."
+This moves us from "workspace renderer modules can work" to "a bundled surface can be forked, modified, and verified from user space."

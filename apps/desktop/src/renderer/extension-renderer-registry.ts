@@ -36,8 +36,15 @@ const bundledRendererModules = import.meta.glob<ExtensionRendererModule>(
   { eager: true }
 );
 
+const workspaceRendererModules = import.meta.glob<ExtensionRendererModule>(
+  "../../../../.plastic/extensions/**/renderer.ts",
+  { eager: true }
+);
+
 const toWorkspacePath = (modulePath: string) =>
-  modulePath.replace(/^\.\.\/\.\.\//, "apps/desktop/");
+  modulePath
+    .replace(/^\.\.\/\.\.\/\.\.\/\.\.\//, "")
+    .replace(/^\.\.\/\.\.\//, "apps/desktop/");
 
 const wrapRenderer = (renderer: PanelRenderer, hostContext: ExtensionRendererHostContext): PanelRenderer => {
   if (renderer.id !== "plastic.chat.chat-panel") {
@@ -61,7 +68,10 @@ const wrapRenderer = (renderer: PanelRenderer, hostContext: ExtensionRendererHos
 };
 
 const bundledRendererFactoriesByModule = new Map<string, ExtensionRendererFactory>(
-  Object.entries(bundledRendererModules)
+  Object.entries({
+    ...bundledRendererModules,
+    ...workspaceRendererModules
+  })
     .filter((entry): entry is [string, ExtensionRendererModule] => Boolean(entry[1]?.renderer))
     .map(([modulePath, module]) => [
       toWorkspacePath(modulePath),
