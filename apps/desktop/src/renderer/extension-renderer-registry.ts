@@ -1,4 +1,3 @@
-import { renderer as bundledChatRenderer } from "../../extensions/bundled/plastic.chat/renderer.js";
 import type {
   ChatBinding,
   ChatButton,
@@ -28,25 +27,47 @@ export type ExtensionRendererContribution = {
   module?: string;
 };
 
-const bundledRendererFactoriesByModule = new Map<string, ExtensionRendererFactory>([
-  [
-    "apps/desktop/extensions/bundled/plastic.chat/renderer.ts",
-    (hostContext) => ({
-      ...bundledChatRenderer,
-      render: ({ panel }) => {
-        const chatContext = hostContext.chat?.(panel);
-        return bundledChatRenderer.render({
-          panel,
-          buttons: chatContext?.buttons ?? [],
-          messages: chatContext?.messages ?? [],
-          binding: chatContext?.binding,
-          peer: chatContext?.peer,
-          escapeHtml: chatContext?.escapeHtml ?? ((value) => value)
-        } as ChatPanelRendererContext);
-      }
-    })
-  ]
-]);
+type ExtensionRendererModule = {
+  renderer: PanelRenderer;
+};
+
+const bundledRendererModules = import.meta.glob<ExtensionRendererModule>(
+  "../../extensions/bundled/**/renderer.ts",
+  { eager: true }
+);
+
+const toWorkspacePath = (modulePath: string) =>
+  modulePath.replace(/^\.\.\/\.\.\//, "apps/desktop/");
+
+const wrapRenderer = (renderer: PanelRenderer, hostContext: ExtensionRendererHostContext): PanelRenderer => {
+  if (renderer.id !== "plastic.chat.chat-panel") {
+    return renderer;
+  }
+
+  return {
+    ...renderer,
+    render: ({ panel }) => {
+      const chatContext = hostContext.chat?.(panel);
+      return renderer.render({
+        panel,
+        buttons: chatContext?.buttons ?? [],
+        messages: chatContext?.messages ?? [],
+        binding: chatContext?.binding,
+        peer: chatContext?.peer,
+        escapeHtml: chatContext?.escapeHtml ?? ((value) => value)
+      } as ChatPanelRendererContext);
+    }
+  };
+};
+
+const bundledRendererFactoriesByModule = new Map<string, ExtensionRendererFactory>(
+  Object.entries(bundledRendererModules)
+    .filter((entry): entry is [string, ExtensionRendererModule] => Boolean(entry[1]?.renderer))
+    .map(([modulePath, module]) => [
+      toWorkspacePath(modulePath),
+      (hostContext: ExtensionRendererHostContext) => wrapRenderer(module.renderer, hostContext)
+    ])
+);
 
 const normalizeModulePath = (extensionPath: string | undefined, modulePath: string | undefined) => {
   if (!extensionPath || !modulePath) {

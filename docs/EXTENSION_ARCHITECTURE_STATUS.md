@@ -46,15 +46,16 @@ Renderer selection is now manifest-driven for bundled renderer modules:
 - extension manifest declares `renderers[].module`;
 - core projection preserves `module`;
 - renderer shell passes extension renderer contributions into the registry;
+- the registry discovers bundled `renderer.ts` modules with Vite `import.meta.glob`;
 - the registry resolves the bundled module path and returns a `PanelRenderer`.
 
 Chat panels still render through `plastic.chat.chat-panel`, but the renderer HTML is no longer defined inside `apps/desktop/src/renderer/main.ts`.
 
 ## What Is Still Not Complete
 
-Renderer loading is not fully dynamic yet.
+Renderer loading is only partially dynamic.
 
-The registry still statically imports known bundled modules so Vite can bundle them. Selection is manifest-driven, but availability is not. Adding a new renderer module still requires changing registry source unless it is covered by a future dynamic discovery mechanism.
+Bundled renderer modules are discovered through Vite's module graph, and selection is manifest-driven. Workspace extension renderer code is not loaded yet.
 
 Workspace extension renderer code is not loaded yet.
 
@@ -157,6 +158,8 @@ Success criteria:
 - adding another bundled renderer module only requires manifest/module file changes;
 - `pnpm typecheck`, `plastic/selfTest`, and browser DOM checks pass.
 
+Status: complete for bundled extension renderer modules.
+
 ### 2. Workspace Renderer Modules
 
 Support renderer modules under `.plastic/extensions`.
@@ -217,13 +220,15 @@ Success criteria:
 
 ## Practical Next Slice
 
-The next thin slice should be dynamic renderer discovery for bundled modules using Vite-safe module discovery.
+The next thin slice should be workspace renderer modules.
 
 Proposed implementation:
 
-1. Replace the manual `bundledRendererFactoriesByModule` import map with a registry built from `import.meta.glob`.
-2. Preserve the current `createExtensionRendererFromContribution` API.
-3. Keep chat-specific host context adaptation for now.
-4. Validate that `plastic.chat` still resolves from `extension.path + renderer.module`.
+1. Create a minimal fixture extension under `.plastic/extensions` with `plastic.extension.json` and `renderer.ts`.
+2. Add Vite-safe renderer discovery for workspace extension modules, or document the build step needed if direct globbing outside `src` is not viable.
+3. Scan/register the extension through Plastic RPC.
+4. Create or register a panel for it.
+5. Verify custom renderer HTML appears in the browser.
+6. Verify failure falls back to generic/recovery rendering.
 
-This moves us from "manifest-selected but manually available" to "manifest-selected and discovered by module graph."
+This moves us from "bundled extensions can own renderer modules" to "user/workspace extensions can own renderer modules."
