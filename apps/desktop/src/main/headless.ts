@@ -4,12 +4,14 @@ import { join } from "node:path";
 import { Effect } from "effect";
 import {
   buildPlasticState,
+  buildChatMessagesForPanel,
   createEvent,
   createJsonlEventStore,
   createMethodRegistry,
   projectExtensions,
   projectPanels,
   projectWindows,
+  type ChatMessagesInput,
   type EventStore,
   type PlasticEvent
 } from "@plastic/core";
@@ -19,20 +21,6 @@ import { registerPanelMailboxMethods } from "./panel-methods.js";
 type EventListInput = {
   limit?: number | "all";
   types?: string[];
-};
-
-type ChatMessagesInput = {
-  chatId?: string;
-  limit?: number;
-};
-
-type ChatMessageProjection = {
-  id: string;
-  eventId: string;
-  timestamp: string;
-  content: string;
-  role: "user" | "agent" | "system" | "peer";
-  streaming: boolean;
 };
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
@@ -90,50 +78,6 @@ const selectEvents = (events: PlasticEvent[], input: EventListInput = {}) => {
     return selected;
   }
   return selected.slice(-Math.max(1, Math.min(input.limit ?? 500, 5_000)));
-};
-
-const buildChatMessagesForPanel = (events: PlasticEvent[], input: ChatMessagesInput = {}) => {
-  const chatId = input.chatId ?? "chat-main";
-  const limit = Math.max(1, Math.min(input.limit ?? 80, 500));
-  const messages: ChatMessageProjection[] = [];
-
-  events.forEach((event) => {
-    const payload = asRecord(event.payload);
-    if ((event.type === "chat.user_message.injected" || event.type === "chat.user_message.submitted") && asString(payload.chatId) === chatId) {
-      messages.push({
-        id: `message:${chatId}:${event.id}`,
-        eventId: event.id,
-        timestamp: event.timestamp,
-        role: "user",
-        content: asString(payload.content) ?? "",
-        streaming: false
-      });
-    }
-
-    if (event.type === "panel.message.sent" && asString(payload.toPanelId) === chatId) {
-      messages.push({
-        id: `message:${chatId}:${event.id}`,
-        eventId: event.id,
-        timestamp: event.timestamp,
-        role: "peer",
-        content: `${asString(payload.fromPanelId) ?? "panel"}: ${asString(payload.content) ?? ""}`,
-        streaming: false
-      });
-    }
-
-    if (event.type === "chat.agent_message.completed" && asString(payload.chatId) === chatId) {
-      messages.push({
-        id: `message:${chatId}:${event.id}`,
-        eventId: event.id,
-        timestamp: event.timestamp,
-        role: "agent",
-        content: asString(payload.content) ?? "",
-        streaming: false
-      });
-    }
-  });
-
-  return messages.slice(-limit);
 };
 
 const appendAndBroadcast = async (event: PlasticEvent) => {
