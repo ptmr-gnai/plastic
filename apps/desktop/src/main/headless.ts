@@ -1,13 +1,17 @@
 import { createServer, type ServerResponse } from "node:http";
+import { execFile } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { Effect } from "effect";
 import {
   buildPlasticState,
   buildChatMessagesForPanel,
+  buildTimeline,
   createEvent,
   createJsonlEventStore,
   createMethodRegistry,
+  groupMethodsByOwner,
   projectExtensions,
   projectPanels,
   projectWindows,
@@ -32,6 +36,7 @@ const startedAt = new Date().toISOString();
 mkdirSync(join(plasticDir, "events"), { recursive: true });
 
 const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(effect);
+const execFileAsync = promisify(execFile);
 const eventStore = await createJsonlEventStore(eventPath);
 const methods = createMethodRegistry();
 const eventStreamClients = new Set<ServerResponse>();
@@ -41,6 +46,32 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 
 const asString = (value: unknown): string | undefined =>
   typeof value === "string" && value.length > 0 ? value : undefined;
+
+const readGitStatus = async () => {
+  try {
+    const { stdout, stderr } = await execFileAsync("git", ["status", "--short"], { cwd: workspaceDir });
+    return {
+      ok: true,
+      exitCode: 0,
+      files: stdout
+        .split(/\r?\n/)
+        .filter((line) => line.length > 0)
+        .map((line) => ({
+          status: line.slice(0, 2),
+          path: line.slice(3)
+        })),
+      stderr
+    };
+  } catch (error) {
+    const failure = error as { code?: number; stderr?: string };
+    return {
+      ok: false,
+      exitCode: failure.code ?? 1,
+      files: [],
+      stderr: failure.stderr ?? String(error)
+    };
+  }
+};
 
 const sendJson = (response: ServerResponse, statusCode: number, value: unknown) => {
   response.writeHead(statusCode, {
@@ -156,6 +187,69 @@ const registerHeadlessMethods = async () => {
         extensions: projectExtensions(events),
         visibleRefs: [],
         events: { count: events.length, latest: events.at(-1) ?? null, recent: events.slice(-30) }
+      };
+    })
+  }));
+
+  await runPromise(methods.register({
+    id: "agent/workbench",
+    title: "Agent workbench",
+    description: "Returns a high-signal workbench packet for agents in headless mode.",
+    owner: { kind: "runtime", id: "plastic.runtime" },
+    handler: (input) => Effect.promise(async () => {
+      const workbenchInput = input as { panelId?: string; eventCursor?: string; limit?: number } | undefined;
+      const events = await runPromise(eventStore.list());
+      const methodList = await runPromise(methods.list());
+      const panels = projectPanels(events);
+      const extensions = projectExtensions(events);
+      const panel = workbenchInput?.panelId ? panels.find((candidate) => candidate.id === workbenchInput.panelId) : undefined;
+      const extension = panel?.extensionId ? extensions.find((candidate) => candidate.id === panel.extensionId) : undefined;
+      const timeline = buildTimeline(events, {
+        limit: workbenchInput?.limit ?? 25,
+        ...(workbenchInput?.eventCursor ? { after: workbenchInput.eventCursor } : {}),
+        ...(panel?.id ? { scope: { panelId: panel.id } } : {})
+      });
+
+      return {
+        app: {
+          mode: "headless",
+          workspaceDir,
+          eventPath,
+          runtime: buildStatus(),
+          codex: { connected: false, initialized: false, pid: null, pendingRequests: 0 }
+        },
+        focus: {
+          ref: null,
+          panelId: panel?.id ?? null,
+          panel: panel ?? null,
+          extension: extension ?? null,
+          window: projectWindows(events, panels)[0] ?? null
+        },
+        observability: {
+          visibleRefs: [],
+          sourceHints: [],
+          timeline,
+          latestEventId: events.at(-1)?.id ?? null
+        },
+        control: {
+          methodCount: methodList.length,
+          methodGroups: groupMethodsByOwner(methodList),
+          recommendedActions: [
+            { id: "refresh-workbench", title: "Refresh workbench", method: "agent/workbench", input: { panelId: panel?.id, eventCursor: events.at(-1)?.id } },
+            { id: "read-state", title: "Read state", method: "plastic/state" },
+            { id: "read-methods", title: "Read methods", method: "plastic/methods" },
+            { id: "read-timeline", title: "Read timeline", method: "events/list", input: { limit: 25 } }
+          ]
+        },
+        workspace: {
+          git: await readGitStatus()
+        },
+        obligations: {
+          orientBeforeMutation: true,
+          preferRuntimeEvidence: true,
+          verifyAfterMutation: true,
+          keepChangesScoped: true
+        }
       };
     })
   }));

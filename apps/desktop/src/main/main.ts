@@ -15,6 +15,7 @@ import {
   createMethodRegistry,
   buildPlasticState,
   eventSummary,
+  groupMethodsByOwner,
   isNoisyEvent,
   projectExtensions,
   projectPanels,
@@ -143,6 +144,13 @@ type AgentOrientInput = {
   panelId?: string;
   windowId?: number | string;
   eventCursor?: string;
+};
+
+type AgentWorkbenchInput = {
+  panelId?: string;
+  ref?: string;
+  eventCursor?: string;
+  limit?: number;
 };
 
 const buildStatus = () => ({
@@ -294,6 +302,22 @@ const sourceHintsFor = (input: { ref?: string; panelId?: string; extensionId?: s
     hints.add("apps/desktop/src/main/main.ts");
   }
   return [...hints];
+};
+
+const readGitStatus = async () => {
+  const status = await runLocalCommand("git", ["status", "--short"]);
+  return {
+    ok: status.exitCode === 0,
+    exitCode: status.exitCode,
+    files: status.stdout
+      .split(/\r?\n/)
+      .filter((line) => line.length > 0)
+      .map((line) => ({
+        status: line.slice(0, 2),
+        path: line.slice(3)
+      })),
+    stderr: status.stderr
+  };
 };
 
 const buildSnapshot = async () => {
@@ -786,6 +810,108 @@ const registerRuntimeMethods = async (store: EventStore) => {
               verifyAfterMutation: true,
               durableEventsRequired: true,
               callPlasticStateBeforeGuessingIds: true
+            }
+          };
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
+      id: "agent/workbench",
+      title: "Agent workbench",
+      description: "Returns a high-signal workbench packet for agents: state, refs, events, methods, git dirt, and recommended actions.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (input) =>
+        Effect.promise(async () => {
+          const workbenchInput = input as AgentWorkbenchInput | undefined;
+          const events = await runPromise(store.list());
+          const methodList = await runPromise(methods.list());
+          const panels = projectPanels(events);
+          const extensions = projectExtensions(events);
+          const windowsModel = projectWindows(events, panels);
+          const focusedWindow = findWindow();
+          const visibleRefWindows = await listVisibleRefs().catch(() => []);
+          const visibleRefs = visibleRefWindows.flatMap((windowRefs) =>
+            windowRefs.refs.map((ref) => ({ windowId: windowRefs.windowId, ...ref }))
+          );
+          const panelId = workbenchInput?.panelId ?? (workbenchInput?.ref ? panelIdFromRef(workbenchInput.ref) : undefined);
+          const panel = panelId ? panels.find((candidate) => candidate.id === panelId) : undefined;
+          const extension = panel?.extensionId ? extensions.find((candidate) => candidate.id === panel.extensionId) : undefined;
+          const panelRefs = panelId
+            ? visibleRefs.filter((ref) => ref.panel === panelId || ref.ref?.includes(panelId))
+            : visibleRefs;
+          const timelineInput: TimelineInput = {
+            limit: workbenchInput?.limit ?? 25,
+            ...(workbenchInput?.eventCursor ? { after: workbenchInput.eventCursor } : {}),
+            ...(panelId ? { scope: { panelId } } : {})
+          };
+          const scopedTimeline = buildTimeline(events, timelineInput);
+          const timeline = scopedTimeline.items.length > 0
+            ? scopedTimeline
+            : buildTimeline(events, {
+              limit: workbenchInput?.limit ?? 25,
+              ...(workbenchInput?.eventCursor ? { after: workbenchInput.eventCursor } : {})
+            });
+          const sourceHintInput: { ref?: string; panelId?: string; extensionId?: string; command?: string } = {};
+          if (workbenchInput?.ref) {
+            sourceHintInput.ref = workbenchInput.ref;
+            const visibleRef = visibleRefs.find((ref) => ref.ref === workbenchInput.ref);
+            if (visibleRef?.command) {
+              sourceHintInput.command = visibleRef.command;
+            }
+          }
+          if (panelId) {
+            sourceHintInput.panelId = panelId;
+          }
+          if (extension?.id) {
+            sourceHintInput.extensionId = extension.id;
+          }
+
+          return {
+            app: {
+              mode: "electron",
+              workspaceDir,
+              eventPath,
+              runtime: buildStatus(),
+              codex: codexAdapter.status()
+            },
+            focus: {
+              ref: workbenchInput?.ref ?? null,
+              panelId: panelId ?? null,
+              panel: panel ?? null,
+              extension: extension ?? null,
+              window: windowsModel.find((window) => window.electronWindowId === focusedWindow?.id)
+                ?? windowsModel.find((window) => panelId ? window.panelIds.includes(panelId) : false)
+                ?? windowsModel[0]
+                ?? null
+            },
+            observability: {
+              visibleRefs: panelRefs.slice(0, 60),
+              sourceHints: sourceHintsFor(sourceHintInput),
+              timeline,
+              latestEventId: events.at(-1)?.id ?? null
+            },
+            control: {
+              methodCount: methodList.length,
+              methodGroups: groupMethodsByOwner(methodList),
+              recommendedActions: [
+                { id: "refresh-workbench", title: "Refresh workbench", method: "agent/workbench", input: { panelId, eventCursor: events.at(-1)?.id } },
+                { id: "read-state", title: "Read state", method: "plastic/state" },
+                { id: "read-methods", title: "Read methods", method: "plastic/methods" },
+                { id: "read-timeline", title: "Read timeline", method: "events/timeline", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } },
+                { id: "list-refs", title: "List visible refs", method: "deixis/listVisibleRefs" },
+                { id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: workbenchInput?.ref ? { ref: workbenchInput.ref } : {} }
+              ]
+            },
+            workspace: {
+              git: await readGitStatus()
+            },
+            obligations: {
+              orientBeforeMutation: true,
+              preferRuntimeEvidence: true,
+              verifyAfterMutation: true,
+              keepChangesScoped: true
             }
           };
         })

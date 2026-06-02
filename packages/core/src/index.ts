@@ -6,3 +6,4 @@ export * from "./methods.js";
 export * from "./panels.js";
 export * from "./state.js";
 export * from "./timeline.js";
+export * from "./workbench.js";
