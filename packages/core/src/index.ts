@@ -5,3 +5,4 @@ export * from "./extensions.js";
 export * from "./methods.js";
 export * from "./panels.js";
 export * from "./state.js";
+export * from "./timeline.js";

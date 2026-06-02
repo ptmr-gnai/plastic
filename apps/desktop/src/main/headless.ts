@@ -11,17 +11,14 @@ import {
   projectExtensions,
   projectPanels,
   projectWindows,
+  selectEvents,
   type ChatMessagesInput,
+  type EventListInput,
   type EventStore,
   type PlasticEvent
 } from "@plastic/core";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
-
-type EventListInput = {
-  limit?: number | "all";
-  types?: string[];
-};
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
 const plasticDir = join(workspaceDir, ".plastic");
@@ -70,15 +67,6 @@ const readJsonBody = async (request: NodeJS.ReadableStream) =>
     });
     request.on("error", reject);
   });
-
-const selectEvents = (events: PlasticEvent[], input: EventListInput = {}) => {
-  const typeSet = input.types ? new Set(input.types) : null;
-  const selected = events.filter((event) => !typeSet || typeSet.has(event.type));
-  if (input.limit === "all") {
-    return selected;
-  }
-  return selected.slice(-Math.max(1, Math.min(input.limit ?? 500, 5_000)));
-};
 
 const appendAndBroadcast = async (event: PlasticEvent) => {
   for (const client of eventStreamClients) {
