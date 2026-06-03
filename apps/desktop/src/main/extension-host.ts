@@ -103,9 +103,11 @@ export const activateExtensions = async (input: {
   eventStore: EventStore;
   methods: MethodRegistry;
   runPromise: RunPromise;
+  extensionId?: string;
 }) => {
   const events = await input.runPromise(input.eventStore.list());
-  const extensions = projectExtensions(events);
+  const extensions = projectExtensions(events)
+    .filter((extension) => !input.extensionId || extension.id === input.extensionId);
   const activated = [];
   const skipped = [];
   const failed = [];
