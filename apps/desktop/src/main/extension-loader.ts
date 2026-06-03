@@ -184,9 +184,12 @@ const discoverBundledFolderExtension = async (workspaceDir: string, path: string
   if (manifestResult.error) {
     errors.push(manifestResult.error);
   }
+  const entryName = entryNames.find((name) => files.includes(name));
+  const entry = entryName ? join(path, entryName) : undefined;
 
   return extensionFromManifest({
     path: relativePath(workspaceDir, path),
+    ...(entry ? { entry: relativePath(workspaceDir, entry) } : {}),
     manifest: manifestResult.value,
     fallbackId: `plastic.${normalizeId(basename(path))}`,
     fallbackTitle: basename(path),

@@ -13,7 +13,8 @@
     {
       "id": "chats/messages",
       "title": "Chat messages",
-      "description": "Project a bounded transcript for one chat panel."
+      "description": "Project a bounded transcript for one chat panel.",
+      "handler": "main.activate"
     },
     {
       "id": "chats/addButton",

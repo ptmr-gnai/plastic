@@ -8,7 +8,6 @@ import { join } from "node:path";
 import type { BrowserWindow as ElectronBrowserWindow, Rectangle } from "electron";
 import { Effect } from "effect";
 import {
-  buildChatMessagesForPanel,
   buildTimeline,
   createEvent,
   createJsonlEventStore,
@@ -21,7 +20,6 @@ import {
   projectPanels,
   projectWindows,
   selectEvents,
-  type ChatMessagesInput,
   type EventListInput,
   type EventScopeInput,
   type EventStore,
@@ -30,6 +28,7 @@ import {
 } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
+import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
 
@@ -417,6 +416,7 @@ const ensureBundledExtensions = async (store: EventStore) => {
             title: extension.title,
             source: "bundled",
             path: extension.path,
+            entry: extension.entry,
             manifestPath: extension.manifestPath,
             manifest: extension,
             errors: extension.errors
@@ -661,20 +661,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: (input) =>
         Effect.map(store.list(), (events) => buildTimeline(events, input as TimelineInput | undefined))
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "chats/messages",
-      title: "Chat messages",
-      description: "Returns the bounded chat transcript projection for one chat panel without exposing raw stream deltas to the renderer.",
-      owner: { kind: "extension", id: "plastic.chat" },
-      links: [
-        { rel: "extension", href: "extensions/get", method: "extensions/get", target: "plastic.chat" }
-      ],
-      handler: (input) =>
-        Effect.map(store.list(), (events) => buildChatMessagesForPanel(events, input as ChatMessagesInput | undefined))
     })
   );
 
@@ -2037,10 +2023,6 @@ logStartup("register runtime methods");
 await registerRuntimeMethods(eventStore);
 logStartup("register extension methods");
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
-logStartup("register panel mailbox methods");
-await registerPanelMailboxMethods({ eventStore, methods, runPromise });
-logStartup("register codex methods");
-await codexAdapter.registerMethods();
 logStartup("scan workspace extensions");
 const discoveredExtensions = await scanWorkspaceExtensions(workspaceDir);
 for (const extension of discoveredExtensions) {
@@ -2069,6 +2051,12 @@ for (const extension of discoveredExtensions) {
     )
   );
 }
+logStartup("activate extensions");
+await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
+logStartup("register panel mailbox methods");
+await registerPanelMailboxMethods({ eventStore, methods, runPromise });
+logStartup("register codex methods");
+await codexAdapter.registerMethods();
 await runPromise(
   eventStore.append(
     createEvent({

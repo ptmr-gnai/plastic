@@ -6,7 +6,6 @@ import { promisify } from "node:util";
 import { Effect } from "effect";
 import {
   buildPlasticState,
-  buildChatMessagesForPanel,
   buildTimeline,
   createEvent,
   createJsonlEventStore,
@@ -16,11 +15,11 @@ import {
   projectPanels,
   projectWindows,
   selectEvents,
-  type ChatMessagesInput,
   type EventListInput,
   type EventStore,
   type PlasticEvent
 } from "@plastic/core";
+import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
 
@@ -360,13 +359,6 @@ const registerHeadlessMethods = async () => {
   }));
 
   await runPromise(methods.register({
-    id: "chats/messages",
-    title: "Chat messages",
-    owner: { kind: "extension", id: "plastic.chat" },
-    handler: (input) => Effect.map(eventStore.list(), (events) => buildChatMessagesForPanel(events, input as ChatMessagesInput | undefined))
-  }));
-
-  await runPromise(methods.register({
     id: "chats/sendToCodex",
     title: "Send message to headless chat",
     owner: { kind: "runtime", id: "plastic.runtime" },
@@ -446,6 +438,7 @@ const discoverExtensionsAtStartup = async () => {
         title: extension.title,
         source: extension.source,
         path: extension.path,
+        entry: extension.entry,
         manifestPath: extension.manifestPath,
         manifest: extension,
         errors: extension.errors
@@ -481,6 +474,7 @@ const discoverExtensionsAtStartup = async () => {
 await discoverExtensionsAtStartup();
 await registerHeadlessMethods();
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
+await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
 await registerPanelMailboxMethods({ eventStore, methods, runPromise });
 await appendEvent(eventStore, {
   type: "runtime.started",
