@@ -19,12 +19,14 @@
     {
       "id": "chats/addButton",
       "title": "Add chat button",
-      "description": "Add a durable action button to chat panels."
+      "description": "Add a durable action button to chat panels.",
+      "handler": "main.activate"
     },
     {
       "id": "chats/injectUserMessage",
       "title": "Inject user message",
-      "description": "Append a user-message event to a chat transcript."
+      "description": "Append a user-message event to a chat transcript.",
+      "handler": "main.activate"
     }
   ],
   "panels": [
