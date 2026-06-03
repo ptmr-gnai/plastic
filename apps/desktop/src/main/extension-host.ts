@@ -7,6 +7,7 @@ import ts from "typescript";
 import {
   buildChatMessagesForPanel,
   createEvent,
+  projectPanels,
   projectExtensions,
   type EventStore,
   type MethodRegistry,
@@ -26,6 +27,7 @@ export interface ExtensionActivationContext {
   core: {
     buildChatMessagesForPanel: typeof buildChatMessagesForPanel;
     createEvent: typeof createEvent;
+    projectPanels: typeof projectPanels;
   };
   registerMethod: (method: PlasticMethod) => Promise<PlasticMethod>;
   appendEvent: (event: Parameters<typeof createEvent>[0]) => Promise<PlasticEvent>;
@@ -90,7 +92,8 @@ const createActivationContext = (input: {
   Effect,
   core: {
     buildChatMessagesForPanel,
-    createEvent
+    createEvent,
+    projectPanels
   },
   registerMethod: (method) => input.runPromise(input.methods.register(method)),
   appendEvent: (event) => input.runPromise(input.eventStore.append(createEvent(event))),

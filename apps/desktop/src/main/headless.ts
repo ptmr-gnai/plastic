@@ -387,46 +387,6 @@ const registerHeadlessMethods = async () => {
     })
   }));
 
-  await runPromise(methods.register({
-    id: "chats/createCodexChat",
-    title: "Create headless chat",
-    owner: { kind: "extension", id: "plastic.chat" },
-    handler: () => Effect.promise(async () => {
-      const id = `chat-${crypto.randomUUID().slice(0, 8)}`;
-      const panels = projectPanels(await runPromise(eventStore.list()));
-      await appendEvent(eventStore, {
-        type: "panel.created",
-        payload: {
-          id,
-          title: `Chat ${panels.filter((panel) => panel.kind === "chat").length + 1}`,
-          kind: "chat",
-          extensionId: "plastic.chat",
-          rendererId: "plastic.chat.chat-panel",
-          subtitle: "Headless conversation surface",
-          order: panels.length + 1
-        },
-        scope: { panelId: id, extensionId: "plastic.chat" }
-      });
-      return { panelId: id, chatId: id };
-    })
-  }));
-
-  await runPromise(methods.register({
-    id: "chats/close",
-    title: "Close chat",
-    owner: { kind: "extension", id: "plastic.chat" },
-    handler: (input) => Effect.promise(async () => {
-      const id = (input as { chatId?: string }).chatId;
-      if (!id) {
-        throw new Error("chats/close requires chatId");
-      }
-      return appendEvent(eventStore, {
-        type: "panel.removed",
-        payload: { id },
-        scope: { panelId: id }
-      });
-    })
-  }));
 };
 
 const discoverExtensionsAtStartup = async () => {
