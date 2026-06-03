@@ -9,6 +9,7 @@ const workspaceDir = new URL("../../..", import.meta.url).pathname;
 const headlessMain = new URL("../dist-electron/main/headless.js", import.meta.url).pathname;
 const tscBin = new URL("../node_modules/typescript/bin/tsc", import.meta.url).pathname;
 const distDir = new URL("../dist", import.meta.url).pathname;
+const staticPort = Number(process.env.PLASTIC_STATIC_PORT ?? 5173);
 let staticServer;
 
 const children = new Set();
@@ -60,7 +61,7 @@ const mimeTypes = new Map([
 
 if (existsSync(new URL("../dist/index.html", import.meta.url))) {
   staticServer = createServer((request, response) => {
-    const url = new URL(request.url ?? "/", "http://127.0.0.1:5173");
+    const url = new URL(request.url ?? "/", `http://127.0.0.1:${staticPort}`);
     const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
     const filePath = normalize(join(distDir, requestedPath));
     const relativePath = relative(distDir, filePath);
@@ -77,8 +78,8 @@ if (existsSync(new URL("../dist/index.html", import.meta.url))) {
     response.writeHead(403);
     response.end("Forbidden");
   });
-  staticServer.listen(5173, "127.0.0.1", () => {
-    console.log("  ➜  Static: http://127.0.0.1:5173/");
+  staticServer.listen(staticPort, "127.0.0.1", () => {
+    console.log(`  ➜  Static: http://127.0.0.1:${staticPort}/`);
   });
 } else {
   console.log("[plastic:headless] No renderer dist found. Run `pnpm --filter @plastic/desktop build` to refresh the browser UI.");
