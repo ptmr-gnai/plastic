@@ -11,33 +11,11 @@ import {
   projectExtensions,
   type EventStore,
   type MethodRegistry,
-  type PlasticEvent,
-  type PlasticExtension,
-  type PlasticMethod
+  type PlasticExtension
 } from "@plastic/core";
+import type { ExtensionActivationContext, PlasticExtensionModule } from "./extension-api.js";
 
 type RunPromise = <A>(effect: Effect.Effect<A, unknown>) => Promise<A>;
-
-export interface ExtensionActivationContext {
-  extension: PlasticExtension;
-  workspaceDir: string;
-  eventStore: EventStore;
-  methods: MethodRegistry;
-  Effect: typeof Effect;
-  core: {
-    buildChatMessagesForPanel: typeof buildChatMessagesForPanel;
-    createEvent: typeof createEvent;
-    projectPanels: typeof projectPanels;
-  };
-  registerMethod: (method: PlasticMethod) => Promise<PlasticMethod>;
-  appendEvent: (event: Parameters<typeof createEvent>[0]) => Promise<PlasticEvent>;
-  listEvents: () => Promise<PlasticEvent[]>;
-  mapEvents: <A>(project: (events: PlasticEvent[]) => A) => Effect.Effect<A, unknown>;
-}
-
-export type PlasticExtensionModule = {
-  activate?: (context: ExtensionActivationContext) => unknown | Promise<unknown>;
-};
 
 const extensionBuildDir = (workspaceDir: string, extension: PlasticExtension) =>
   join(workspaceDir, ".plastic", "build", "extensions", extension.id.replace(/[^a-zA-Z0-9._-]+/g, "-"));
@@ -96,6 +74,7 @@ const createActivationContext = (input: {
     projectPanels
   },
   registerMethod: (method) => input.runPromise(input.methods.register(method)),
+  listMethods: () => input.runPromise(input.methods.list()),
   appendEvent: (event) => input.runPromise(input.eventStore.append(createEvent(event))),
   listEvents: () => input.runPromise(input.eventStore.list()),
   mapEvents: (project) => Effect.map(input.eventStore.list(), project)

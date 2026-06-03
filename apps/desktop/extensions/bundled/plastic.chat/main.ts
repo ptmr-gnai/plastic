@@ -1,11 +1,13 @@
-const extensionLink = (context) => ({
+import type { ExtensionActivationContext } from "../../../src/main/extension-api.js";
+
+const extensionLink = (context: ExtensionActivationContext) => ({
   rel: "extension",
   href: "extensions/get",
   method: "extensions/get",
   target: context.extension.id
 });
 
-const registerMessages = (context) =>
+const registerMessages = (context: ExtensionActivationContext) =>
   context.registerMethod({
     id: "chats/messages",
     title: "Chat messages",
@@ -16,7 +18,7 @@ const registerMessages = (context) =>
       context.mapEvents((events) => context.core.buildChatMessagesForPanel(events, input))
   });
 
-const registerAddButton = (context) =>
+const registerAddButton = (context: ExtensionActivationContext) =>
   context.registerMethod({
     id: "chats/addButton",
     title: "Add chat button",
@@ -40,7 +42,7 @@ const registerAddButton = (context) =>
     }
   });
 
-const registerInjectUserMessage = (context) =>
+const registerInjectUserMessage = (context: ExtensionActivationContext) =>
   context.registerMethod({
     id: "chats/injectUserMessage",
     title: "Inject user message",
@@ -63,8 +65,16 @@ const registerInjectUserMessage = (context) =>
     }
   });
 
-const registerCreateChat = (context) =>
-  context.registerMethod({
+const hasHostOverride = async (context: ExtensionActivationContext, methodId: string) =>
+  (await context.listMethods()).some((method) =>
+    method.id === methodId && !(method.owner.kind === "extension" && method.owner.id === context.extension.id)
+  );
+
+const registerCreateChat = async (context: ExtensionActivationContext) => {
+  if (await hasHostOverride(context, "chats/createCodexChat")) {
+    return;
+  }
+  await context.registerMethod({
     id: "chats/createCodexChat",
     title: "Create chat",
     description: "Create a new chat panel. Host-specific Codex adapters may override this with thread binding.",
@@ -90,9 +100,13 @@ const registerCreateChat = (context) =>
         return { panelId: id, chatId: id };
       })
   });
+};
 
-const registerCloseChat = (context) =>
-  context.registerMethod({
+const registerCloseChat = async (context: ExtensionActivationContext) => {
+  if (await hasHostOverride(context, "chats/close")) {
+    return;
+  }
+  await context.registerMethod({
     id: "chats/close",
     title: "Close chat",
     description: "Close a chat panel by removing it from the projected panel set.",
@@ -112,8 +126,9 @@ const registerCloseChat = (context) =>
       );
     }
   });
+};
 
-export const activate = async (context) => {
+export const activate = async (context: ExtensionActivationContext) => {
   await registerMessages(context);
   await registerAddButton(context);
   await registerInjectUserMessage(context);
