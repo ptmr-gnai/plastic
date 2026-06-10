@@ -4,7 +4,7 @@ import {
   type EventStore,
   type MethodRegistry
 } from "@plastic/core";
-import type { AppendEvent, RuntimeMethodContext, RunPromise } from "./runtime-method-context.js";
+import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
 type PanelCreateInput = {
   id?: string;
@@ -28,6 +28,11 @@ export const registerPanelControlMethods = async (input: RuntimeMethodContext) =
   await registerPanelMove({ methods, runPromise, appendEvent });
   await registerPanelRemove({ methods, runPromise, appendEvent });
   await registerPanelClose({ methods, runPromise, appendEvent });
+};
+
+export const panelControlModule: RuntimeModule = {
+  id: "panel-control",
+  register: registerPanelControlMethods
 };
 
 const registerPanelList = async (input: {

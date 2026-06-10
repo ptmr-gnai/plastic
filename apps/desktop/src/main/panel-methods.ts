@@ -3,7 +3,7 @@ import {
   projectPanelMessages,
   projectPanels
 } from "@plastic/core";
-import type { RuntimeMethodContext } from "./runtime-method-context.js";
+import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
 type PanelMailboxContext = Pick<RuntimeMethodContext, "eventStore" | "methods" | "runPromise" | "appendEvent">;
 
@@ -111,4 +111,9 @@ export const registerPanelMailboxMethods = async (input: PanelMailboxContext) =>
         })
     })
   );
+};
+
+export const panelMailboxModule: RuntimeModule = {
+  id: "panel-mailbox",
+  register: registerPanelMailboxMethods
 };

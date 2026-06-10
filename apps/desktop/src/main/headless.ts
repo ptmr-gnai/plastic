@@ -19,10 +19,10 @@ import {
 } from "@plastic/core";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
-import { registerPanelControlMethods } from "./panel-control-methods.js";
-import { registerPanelMailboxMethods } from "./panel-methods.js";
-import { createRuntimeMethodContext } from "./runtime-method-context.js";
-import { registerRuntimeControlMethods } from "./runtime-control-methods.js";
+import { panelControlModule } from "./panel-control-methods.js";
+import { panelMailboxModule } from "./panel-methods.js";
+import { createRuntimeMethodContext, registerRuntimeModules } from "./runtime-method-context.js";
+import { runtimeControlModule } from "./runtime-control-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
@@ -358,11 +358,10 @@ const runtimeMethodContext = createRuntimeMethodContext({
   runPromise,
   appendEvent: (eventInput) => appendEvent(eventStore, eventInput)
 });
-await registerRuntimeControlMethods(runtimeMethodContext);
-await registerPanelControlMethods(runtimeMethodContext);
+await registerRuntimeModules(runtimeMethodContext, [runtimeControlModule, panelControlModule]);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
-await registerPanelMailboxMethods(runtimeMethodContext);
+await registerRuntimeModules(runtimeMethodContext, [panelMailboxModule]);
 await appendEvent(eventStore, {
   type: "runtime.started",
   payload: { mode: "headless" }

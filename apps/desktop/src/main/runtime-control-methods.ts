@@ -7,13 +7,18 @@ import {
   type MethodRegistry,
   type TimelineInput
 } from "@plastic/core";
-import type { AppendEvent, RuntimeMethodContext, RunPromise } from "./runtime-method-context.js";
+import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
 export const registerRuntimeControlMethods = async (input: RuntimeMethodContext) => {
   await registerMethodDiscovery(input);
   await registerRpcCall(input);
   await registerEventReaders(input);
   await registerThemeControl(input);
+};
+
+export const runtimeControlModule: RuntimeModule = {
+  id: "runtime-control",
+  register: registerRuntimeControlMethods
 };
 
 const registerMethodDiscovery = async (input: {

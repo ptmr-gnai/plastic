@@ -28,10 +28,10 @@ import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js
 import { createCodexAdapter } from "./codex-adapter.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
-import { registerPanelControlMethods } from "./panel-control-methods.js";
-import { registerPanelMailboxMethods } from "./panel-methods.js";
-import { createRuntimeMethodContext } from "./runtime-method-context.js";
-import { registerRuntimeControlMethods } from "./runtime-control-methods.js";
+import { panelControlModule } from "./panel-control-methods.js";
+import { panelMailboxModule } from "./panel-methods.js";
+import { createRuntimeMethodContext, registerRuntimeModules } from "./runtime-method-context.js";
+import { runtimeControlModule } from "./runtime-control-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const require = createRequire(import.meta.url);
@@ -1711,10 +1711,11 @@ await ensurePanelRendererBindings(eventStore);
 logStartup("register runtime methods");
 await registerRuntimeMethods(eventStore);
 const runtimeMethodContext = createRuntimeMethodContext({ eventStore, methods, runPromise });
-logStartup("register runtime control methods");
-await registerRuntimeControlMethods(runtimeMethodContext);
-logStartup("register panel control methods");
-await registerPanelControlMethods(runtimeMethodContext);
+await registerRuntimeModules(
+  runtimeMethodContext,
+  [runtimeControlModule, panelControlModule],
+  (module) => logStartup(`register ${module.id} module`)
+);
 logStartup("register extension methods");
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 logStartup("scan workspace extensions");
@@ -1748,7 +1749,11 @@ for (const extension of discoveredExtensions) {
 logStartup("activate extensions");
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
 logStartup("register panel mailbox methods");
-await registerPanelMailboxMethods(runtimeMethodContext);
+await registerRuntimeModules(
+  runtimeMethodContext,
+  [panelMailboxModule],
+  (module) => logStartup(`register ${module.id} module`)
+);
 logStartup("register codex methods");
 await codexAdapter.registerMethods();
 await runPromise(

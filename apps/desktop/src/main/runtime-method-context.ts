@@ -17,6 +17,11 @@ export type RuntimeMethodContext = {
   appendEvent: AppendEvent;
 };
 
+export type RuntimeModule = {
+  id: string;
+  register: (context: RuntimeMethodContext) => Promise<void>;
+};
+
 export const createDirectAppendEvent = (eventStore: EventStore, runPromise: RunPromise): AppendEvent =>
   (eventInput) => runPromise(eventStore.append(createEvent(eventInput)));
 
@@ -31,3 +36,14 @@ export const createRuntimeMethodContext = (input: {
   runPromise: input.runPromise,
   appendEvent: input.appendEvent ?? createDirectAppendEvent(input.eventStore, input.runPromise)
 });
+
+export const registerRuntimeModules = async (
+  context: RuntimeMethodContext,
+  modules: RuntimeModule[],
+  onRegister?: (module: RuntimeModule) => void
+) => {
+  for (const module of modules) {
+    onRegister?.(module);
+    await module.register(context);
+  }
+};
