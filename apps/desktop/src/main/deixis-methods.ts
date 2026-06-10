@@ -7,6 +7,7 @@ import {
   isNoisyEvent,
   projectExtensions,
   projectPanels,
+  type EventScopeInput,
   type PlasticEvent,
   type TimelineInput
 } from "@plastic/core";
@@ -381,6 +382,7 @@ const registerClickRef = async (
           if (!target) {
             throw new Error("No window available");
           }
+          const scope = await resolveRefScope(host, refInput.ref);
           const result = await target.webContents.executeJavaScript(`
             (() => {
               const ref = ${JSON.stringify(refInput.ref)};
@@ -419,7 +421,8 @@ const registerClickRef = async (
                   ref: refInput.ref,
                   windowId: target.id,
                   result
-                }
+                },
+                ...(scope ? { scope } : {})
               })
             )
           );
@@ -457,6 +460,7 @@ const registerFillRef = async (
           if (!target) {
             throw new Error("No window available");
           }
+          const scope = await resolveRefScope(host, refInput.ref);
           const result = await target.webContents.executeJavaScript(`
             (() => {
               const ref = ${JSON.stringify(refInput.ref)};
@@ -495,7 +499,8 @@ const registerFillRef = async (
                   valueLength: refInput.value.length,
                   value: refInput.value,
                   result
-                }
+                },
+                ...(scope ? { scope } : {})
               })
             )
           );
@@ -513,3 +518,19 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 
 const asString = (value: unknown): string | undefined =>
   typeof value === "string" && value.length > 0 ? value : undefined;
+
+const resolveRefScope = async (
+  host: DeixisMethodHost,
+  ref: string
+): Promise<EventScopeInput | undefined> => {
+  const visible = await host.resolveVisibleRef(ref).catch(() => null);
+  const panelId = visible?.ref.panel ?? host.panelIdFromRef(ref);
+  const extensionId = visible?.ref.extension;
+  if (!panelId && !extensionId) {
+    return undefined;
+  }
+  return {
+    ...(panelId ? { panelId } : {}),
+    ...(extensionId ? { extensionId } : {})
+  };
+};
