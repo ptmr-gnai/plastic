@@ -24,7 +24,12 @@ import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
 import { createRuntimeHostSupportModules } from "./runtime-host-modules.js";
-import { createRuntimeBuildStatus, createRuntimeDiagnostics } from "./runtime-host-status.js";
+import {
+  createRuntimeBuildStatus,
+  createRuntimeDiagnostics,
+  createSnapshotAppDetails,
+  decorateRuntimeState
+} from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
@@ -183,49 +188,36 @@ const windowCapabilityModule = createWindowCapabilityModule({
 });
 const deixisMethodModule = createDeixisMethodModule(electronDeixisHost);
 const runtimeStateModule = createRuntimeStateModule({
-  decorateState: (state) => ({
-    ...state,
-    app: { ...state.app, mode: "electron" },
+  decorateState: (state) => decorateRuntimeState({
+    state,
+    mode: "electron",
     bus: {
       runtimeRpcUrl: preferredRuntimeRpcUrl,
       runtimeRpcUrls,
       runtimeHost,
       runtimePort
     },
-    resources: [
-      ...state.resources,
-      {
-        id: "rpc-bus",
-        kind: "service",
-        title: "Plastic RPC Bus",
-        state: {
-          runtimeRpcUrl: preferredRuntimeRpcUrl,
-          runtimeRpcUrls,
-          runtimeHost,
-          runtimePort
-        },
-        links: [
-          { rel: "rpc", href: preferredRuntimeRpcUrl, method: "http/post" },
-          { rel: "state", href: "plastic/state", method: "plastic/state" },
-          { rel: "methods", href: "plastic/methods", method: "plastic/methods" }
-        ],
-        actions: [
-          { id: "call", title: "Call RPC method", method: "rpc/call" }
-        ]
-      }
-    ]
+    resource: {
+      id: "rpc-bus",
+      title: "Plastic RPC Bus",
+      state: {
+        runtimeRpcUrl: preferredRuntimeRpcUrl,
+        runtimeRpcUrls,
+        runtimeHost,
+        runtimePort
+      },
+      rpcUrl: preferredRuntimeRpcUrl
+    }
   })
 });
 const runtimeSnapshotModule = createRuntimeSnapshotModule({
   getHostDetails: async () => ({
-    app: {
-      name: "Plastic",
+    app: createSnapshotAppDetails({
+      config: hostConfig,
       mode: "electron",
       version: app.getVersion(),
-      ready: app.isReady(),
-      workspaceDir,
-      eventPath
-    },
+      ready: app.isReady()
+    }),
     build: buildStatus(),
     runtime: {
       windowCount: BrowserWindow.getAllWindows().length,

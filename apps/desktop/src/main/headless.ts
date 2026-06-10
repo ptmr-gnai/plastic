@@ -13,7 +13,12 @@ import type { RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
 import { createRuntimeHostSupportModules } from "./runtime-host-modules.js";
-import { createRuntimeBuildStatus, createRuntimeDiagnostics } from "./runtime-host-status.js";
+import {
+  createRuntimeBuildStatus,
+  createRuntimeDiagnostics,
+  createSnapshotAppDetails,
+  decorateRuntimeState
+} from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeModulePlan } from "./runtime-module-plan.js";
@@ -98,30 +103,21 @@ const buildStatus = () => createRuntimeBuildStatus({
 
 await prepareBundledExtensionStateAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
 const runtimeStateModule = createRuntimeStateModule({
-  decorateState: (state) => ({
-    ...state,
-    app: { ...state.app, mode: "headless" },
+  decorateState: (state) => decorateRuntimeState({
+    state,
+    mode: "headless",
     bus: { runtimeRpcUrl, runtimePort },
-    resources: [
-      ...state.resources,
-      {
-        id: "headless-runtime",
-        kind: "service",
-        title: "Plastic Headless Runtime",
-        state: buildStatus(),
-        links: [
-          { rel: "rpc", href: runtimeRpcUrl, method: "http/post" },
-          { rel: "state", href: "plastic/state", method: "plastic/state" },
-          { rel: "methods", href: "plastic/methods", method: "plastic/methods" }
-        ],
-        actions: [{ id: "call", title: "Call RPC method", method: "rpc/call" }]
-      }
-    ]
+    resource: {
+      id: "headless-runtime",
+      title: "Plastic Headless Runtime",
+      state: buildStatus(),
+      rpcUrl: runtimeRpcUrl
+    }
   })
 });
 const runtimeSnapshotModule = createRuntimeSnapshotModule({
   getHostDetails: () => ({
-    app: { name: "Plastic", mode: "headless", workspaceDir, eventPath },
+    app: createSnapshotAppDetails({ config: hostConfig, mode: "headless" }),
     build: buildStatus(),
     runtime: { windowCount: 0 },
     codex: { connected: false, initialized: false, pid: null, pendingRequests: 0 },
