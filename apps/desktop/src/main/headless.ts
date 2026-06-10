@@ -7,13 +7,12 @@ import {
   prepareBundledExtensionStateAtStartup,
   registerAndActivateExtensionsAtStartup
 } from "./extension-startup.js";
-import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
-import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
+import type { RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
-import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
+import { createRuntimeHostSupportModules } from "./runtime-host-modules.js";
 import { createRuntimeBuildStatus, createRuntimeDiagnostics } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
@@ -138,11 +137,10 @@ const agentWorkbenchModule = createAgentWorkbenchModule({
   readGitStatus
 });
 const agentOrientModule = createAgentOrientModule({ workspaceDir });
-const runtimeBuildModule = createRuntimeBuildModule({
-  getStatus: buildStatus,
-  runCommand: runLocalCommand
-});
-const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
+const supportModules = createRuntimeHostSupportModules({
+  plasticDir,
+  getBuildStatus: buildStatus,
+  runCommand: runLocalCommand,
   getDiagnostics: () => createRuntimeDiagnostics({
     config: hostConfig,
     appReady: false,
@@ -153,7 +151,6 @@ const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
     runtimePort
   })
 });
-const extensionAuthoringModule = createExtensionAuthoringModule({ plasticDir });
 const rendererControlModule = createRendererControlModule({});
 const windowCapabilityModule = createWindowCapabilityModule();
 const deixisMethodModule = createDeixisMethodModule();
@@ -163,9 +160,9 @@ await runtime.registerModules([
     snapshot: runtimeSnapshotModule,
     agentWorkbench: agentWorkbenchModule,
     agentOrient: agentOrientModule,
-    build: runtimeBuildModule,
-    diagnostics: runtimeDiagnosticsModule,
-    extensionAuthoring: extensionAuthoringModule,
+    build: supportModules.build,
+    diagnostics: supportModules.diagnostics,
+    extensionAuthoring: supportModules.extensionAuthoring,
     rendererControl: rendererControlModule,
     windowCapability: windowCapabilityModule,
     deixis: deixisMethodModule

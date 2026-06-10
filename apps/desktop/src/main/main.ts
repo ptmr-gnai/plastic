@@ -19,13 +19,11 @@ import {
   prepareBundledExtensionStateAtStartup,
   registerAndActivateExtensionsAtStartup
 } from "./extension-startup.js";
-import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
-import { createRuntimeBuildModule } from "./runtime-build-methods.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
-import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
+import { createRuntimeHostSupportModules } from "./runtime-host-modules.js";
 import { createRuntimeBuildStatus, createRuntimeDiagnostics } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
@@ -260,11 +258,10 @@ const agentOrientModule = createAgentOrientModule({
   findFocusedWindowId: (windowId) => electronDeixisHost.findWindow(windowId)?.id,
   listVisibleRefs: electronDeixisHost.listVisibleRefs
 });
-const runtimeBuildModule = createRuntimeBuildModule({
-  getStatus: buildStatus,
-  runCommand: runLocalCommand
-});
-const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
+const supportModules = createRuntimeHostSupportModules({
+  plasticDir,
+  getBuildStatus: buildStatus,
+  runCommand: runLocalCommand,
   getDiagnostics: () => createRuntimeDiagnostics({
     config: hostConfig,
     appReady: app.isReady(),
@@ -273,7 +270,6 @@ const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
     viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
   })
 });
-const extensionAuthoringModule = createExtensionAuthoringModule({ plasticDir });
 const rendererControlModule = createRendererControlModule({
   reloadRenderers: () =>
     BrowserWindow.getAllWindows().map((window) => {
@@ -287,9 +283,9 @@ await runtime.registerModules(
     snapshot: runtimeSnapshotModule,
     agentWorkbench: agentWorkbenchModule,
     agentOrient: agentOrientModule,
-    build: runtimeBuildModule,
-    diagnostics: runtimeDiagnosticsModule,
-    extensionAuthoring: extensionAuthoringModule,
+    build: supportModules.build,
+    diagnostics: supportModules.diagnostics,
+    extensionAuthoring: supportModules.extensionAuthoring,
     rendererControl: rendererControlModule,
     agentBackend: null,
     windowCapability: windowCapabilityModule,
