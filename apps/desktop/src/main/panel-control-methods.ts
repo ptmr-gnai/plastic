@@ -18,6 +18,11 @@ type PanelCreateInput = {
   order?: number;
 };
 
+const panelControlAvailability = {
+  status: "available" as const,
+  notes: "Panel control is a host-agnostic runtime primitive available in headed and headless modes."
+};
+
 export const registerPanelControlMethods = async (input: RuntimeMethodContext) => {
   const { eventStore, methods, runPromise, appendEvent } = input;
 
@@ -48,6 +53,7 @@ const registerPanelList = async (input: {
       title: "List panels",
       description: "Returns the panel read model rebuilt from durable events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelControlAvailability,
       handler: () => Effect.map(eventStore.list(), projectPanels)
     })
   );
@@ -66,6 +72,7 @@ const registerPanelGet = async (input: {
       title: "Get panel",
       description: "Returns one panel from the event-projected panel read model.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelControlAvailability,
       inputSchema: {
         type: "object",
         required: ["id"],
@@ -112,6 +119,7 @@ const registerPanelCreate = async (input: {
       title: "Create panel",
       description: "Appends a durable panel.created event. Renderer windows project it immediately.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelControlAvailability,
       inputSchema: {
         type: "object",
         properties: {
@@ -187,6 +195,7 @@ const registerPanelRename = async (input: {
       title: "Rename panel",
       description: "Durably changes a panel title and optional subtitle.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelControlAvailability,
       inputSchema: {
         type: "object",
         required: ["id", "title"],
@@ -247,6 +256,7 @@ const registerPanelMove = async (input: {
       title: "Move panel",
       description: "Durably updates a panel's order and optionally assigns it to a window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelControlAvailability,
       inputSchema: {
         type: "object",
         required: ["id"],
@@ -307,6 +317,7 @@ const registerPanelRemove = async (input: {
       title: "Remove panel",
       description: "Durably removes a panel from the projected workspace.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelControlAvailability,
       inputSchema: {
         type: "object",
         required: ["id"],
@@ -364,6 +375,7 @@ const registerPanelClose = async (input: {
       title: "Close panel",
       description: "Closes a panel from the current workspace projection by appending panel.removed.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelControlAvailability,
       inputSchema: {
         type: "object",
         required: ["id"],
