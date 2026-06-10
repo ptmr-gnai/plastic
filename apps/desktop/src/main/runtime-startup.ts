@@ -18,6 +18,15 @@ type CoreRuntimeStartupInput = RuntimeModulePlanInput & {
   onPhase?: (phase: string) => void;
 };
 
+export const appendRuntimeStartedEvent = (
+  runtime: Pick<PlasticRuntime, "appendEvent">,
+  payload: Record<string, unknown>
+) =>
+  runtime.appendEvent({
+    type: "runtime.started",
+    payload
+  });
+
 export const registerCoreRuntimeModulesAtStartup = async (input: CoreRuntimeStartupInput) => {
   const {
     workspaceDir,

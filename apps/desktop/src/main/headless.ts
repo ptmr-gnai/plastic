@@ -19,7 +19,7 @@ import {
 } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
+import { appendRuntimeStartedEvent, registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 
@@ -164,10 +164,7 @@ await registerCoreRuntimeModulesAtStartup({
   windowCapability: capabilityModules.windowCapability,
   deixis: capabilityModules.deixis
 });
-await runtime.appendEvent({
-  type: "runtime.started",
-  payload: { mode: "headless" }
-});
+await appendRuntimeStartedEvent(runtime, { mode: "headless" });
 
 const transports = await startRuntimeHostTransports({
   eventStore,

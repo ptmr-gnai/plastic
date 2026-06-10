@@ -31,7 +31,7 @@ import {
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
+import { appendRuntimeStartedEvent, registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 
@@ -306,16 +306,10 @@ await runtime.registerModules(
   [runtimeHealthModule],
   (module) => logStartup(`register ${module.id} module`)
 );
-await runPromise(
-  eventStore.append(
-    createEvent({
-      type: "runtime.started",
-      payload: {
-        version: app.getVersion()
-      }
-    })
-  )
-);
+await appendRuntimeStartedEvent(runtime, {
+  mode: "electron",
+  version: app.getVersion()
+});
 
 logStartup("start sockets");
 const transports = await startRuntimeHostTransports({
