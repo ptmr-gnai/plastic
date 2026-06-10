@@ -15,7 +15,7 @@ import {
   scanBundledExtensions
 } from "./extension-discovery.js";
 import { forkExtensionManifest, rewriteForkedRendererSource } from "./extension-forking.js";
-import { activateExtensions } from "./extension-host.js";
+import { registerExtensionActivationMethods } from "./extension-activation-methods.js";
 import { registerExtensionQueryMethods } from "./extension-query-methods.js";
 import { registerExtensionVerificationMethods } from "./extension-verification-methods.js";
 
@@ -33,35 +33,7 @@ export const registerExtensionMethods = async (input: {
 
   await registerExtensionQueryMethods(input);
   await registerExtensionVerificationMethods(input);
-
-  await runPromise(
-    methods.register({
-      id: "extensions/activate",
-      title: "Activate extensions",
-      description: "Loads or reloads extension main modules and lets them register runtime methods.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: (inputValue) =>
-        Effect.promise(async () => {
-          const payload = inputValue as { extensionId?: string };
-          if (payload.extensionId) {
-            const extension = projectExtensions(await runPromise(eventStore.list())).find(
-              (candidate) => candidate.id === payload.extensionId
-            );
-            if (!extension) {
-              throw new Error(`Extension not found: ${payload.extensionId}`);
-            }
-          }
-
-          return activateExtensions({
-            workspaceDir,
-            eventStore,
-            methods,
-            runPromise,
-            ...(payload.extensionId ? { extensionId: payload.extensionId } : {})
-          });
-        })
-    })
-  );
+  await registerExtensionActivationMethods(input);
 
   await runPromise(
     methods.register({
