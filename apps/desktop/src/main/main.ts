@@ -19,8 +19,6 @@ import {
   projectExtensions,
   projectPanels,
   projectWindows,
-  selectEvents,
-  type EventListInput,
   type EventScopeInput,
   type EventStore,
   type PlasticEvent,
@@ -32,6 +30,7 @@ import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { createDirectAppendEvent, registerPanelControlMethods } from "./panel-control-methods.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
+import { registerRuntimeControlMethods } from "./runtime-control-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const require = createRequire(import.meta.url);
@@ -570,69 +569,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
-      id: "plastic/methods",
-      title: "Plastic methods",
-      description: "Lists all registered RPC methods.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: () => methods.list()
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "methods/describe",
-      title: "Describe method",
-      description: "Returns one RPC method with schemas, examples, effects, links, and ownership metadata.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      inputSchema: {
-        type: "object",
-        required: ["id"],
-        properties: {
-          id: { type: "string", description: "RPC method id to describe." }
-        }
-      },
-      examples: [
-        {
-          title: "Describe panel movement",
-          input: { id: "panels/move" }
-        }
-      ],
-      handler: (input) =>
-        Effect.promise(async () => {
-          const id = (input as { id?: string }).id;
-          if (!id) {
-            throw new Error("methods/describe requires id");
-          }
-          const method = await runPromise(methods.get(id));
-          if (!method) {
-            throw new Error(`Method not found: ${id}`);
-          }
-          return method;
-        })
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "rpc/call",
-      title: "Call RPC method",
-      description: "Calls any registered Plastic RPC method through the shared method registry.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: (input) => Effect.promise(async () => {
-        const rpcInput = input as { method?: string; input?: unknown };
-        if (!rpcInput.method) {
-          throw new Error("rpc/call requires method");
-        }
-        if (rpcInput.method === "rpc/call") {
-          throw new Error("rpc/call cannot call itself");
-        }
-        return runPromise(methods.call(rpcInput.method, rpcInput.input));
-      })
-    })
-  );
-
-  await runPromise(
-    methods.register({
       id: "plastic/snapshot",
       title: "Plastic snapshot",
       description: "Returns a high-signal observable snapshot for agents: app, build, methods, panels, windows, extensions, visible refs, Codex, and recent events.",
@@ -677,28 +613,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
           );
           return { ok, checks, eventId: event.id };
         })
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "events/list",
-      title: "List events",
-      description: "Lists bounded raw events with optional type, scope, cursor, and delta filters.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: (input) =>
-        Effect.map(store.list(), (events) => selectEvents(events, input as EventListInput | undefined))
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "events/timeline",
-      title: "Event timeline",
-      description: "Returns deterministic, agent-readable summaries of recent events with cursors and links.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: (input) =>
-        Effect.map(store.list(), (events) => buildTimeline(events, input as TimelineInput | undefined))
     })
   );
 
@@ -1188,47 +1102,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
             type: eventInput.type ?? "event.appended",
             payload: eventInput.payload ?? {},
             ...(eventInput.scope ? { scope: eventInput.scope } : {})
-          })
-        );
-      }
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "app/setTheme",
-      title: "Set theme",
-      description: "Durably changes the app theme projected by renderer windows.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      inputSchema: {
-        type: "object",
-        properties: {
-          theme: { enum: ["light", "dark"], description: "Theme to project in the app UI." }
-        }
-      },
-      examples: [
-        {
-          title: "Switch to dark mode",
-          input: { theme: "dark" },
-          expectedEvents: ["theme.changed"],
-          verifyWith: { method: "plastic/state", input: {} }
-        }
-      ],
-      effects: {
-        durableEvents: ["theme.changed"],
-        mutatesProjection: ["app.theme"]
-      },
-      reversibility: {
-        reversible: true,
-        method: "app/setTheme",
-        notes: "Call again with the previous theme."
-      },
-      handler: (input) => {
-        const theme = (input as { theme?: "light" | "dark" }).theme === "dark" ? "dark" : "light";
-        return store.append(
-          createEvent({
-            type: "theme.changed",
-            payload: { theme }
           })
         );
       }
@@ -1836,6 +1709,13 @@ logStartup("ensure panel renderer bindings");
 await ensurePanelRendererBindings(eventStore);
 logStartup("register runtime methods");
 await registerRuntimeMethods(eventStore);
+logStartup("register runtime control methods");
+await registerRuntimeControlMethods({
+  eventStore,
+  methods,
+  runPromise,
+  appendEvent: createDirectAppendEvent(eventStore, runPromise)
+});
 logStartup("register panel control methods");
 await registerPanelControlMethods({
   eventStore,

@@ -14,8 +14,6 @@ import {
   projectExtensions,
   projectPanels,
   projectWindows,
-  selectEvents,
-  type EventListInput,
   type EventStore,
   type PlasticEvent
 } from "@plastic/core";
@@ -23,6 +21,7 @@ import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { registerPanelControlMethods } from "./panel-control-methods.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
+import { registerRuntimeControlMethods } from "./runtime-control-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
@@ -152,57 +151,6 @@ const registerHeadlessMethods = async () => {
   }));
 
   await runPromise(methods.register({
-    id: "plastic/methods",
-    title: "Plastic methods",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: () => methods.list()
-  }));
-
-  await runPromise(methods.register({
-    id: "methods/describe",
-    title: "Describe method",
-    description: "Returns one RPC method with schemas, examples, effects, links, and ownership metadata.",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    inputSchema: {
-      type: "object",
-      required: ["id"],
-      properties: {
-        id: { type: "string", description: "RPC method id to describe." }
-      }
-    },
-    examples: [
-      {
-        title: "Describe panel movement",
-        input: { id: "panels/move" }
-      }
-    ],
-    handler: (input) => Effect.promise(async () => {
-      const id = (input as { id?: string }).id;
-      if (!id) {
-        throw new Error("methods/describe requires id");
-      }
-      const method = await runPromise(methods.get(id));
-      if (!method) {
-        throw new Error(`Method not found: ${id}`);
-      }
-      return method;
-    })
-  }));
-
-  await runPromise(methods.register({
-    id: "rpc/call",
-    title: "Call RPC method",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: (input) => Effect.promise(async () => {
-      const rpcInput = input as { method?: string; input?: unknown };
-      if (!rpcInput.method || rpcInput.method === "rpc/call") {
-        throw new Error("rpc/call requires a non-recursive method");
-      }
-      return runPromise(methods.call(rpcInput.method, rpcInput.input));
-    })
-  }));
-
-  await runPromise(methods.register({
     id: "plastic/snapshot",
     title: "Plastic snapshot",
     owner: { kind: "runtime", id: "plastic.runtime" },
@@ -309,47 +257,6 @@ const registerHeadlessMethods = async () => {
   }));
 
   await runPromise(methods.register({
-    id: "events/list",
-    title: "List events",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: (input) => Effect.map(eventStore.list(), (events) => selectEvents(events, input as EventListInput | undefined))
-  }));
-
-  await runPromise(methods.register({
-    id: "app/setTheme",
-    title: "Set theme",
-    description: "Durably changes the app theme projected by renderer windows.",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    inputSchema: {
-      type: "object",
-      properties: {
-        theme: { enum: ["light", "dark"], description: "Theme to project in the app UI." }
-      }
-    },
-    examples: [
-      {
-        title: "Switch to dark mode",
-        input: { theme: "dark" },
-        expectedEvents: ["theme.changed"],
-        verifyWith: { method: "plastic/state", input: {} }
-      }
-    ],
-    effects: {
-      durableEvents: ["theme.changed"],
-      mutatesProjection: ["app.theme"]
-    },
-    reversibility: {
-      reversible: true,
-      method: "app/setTheme",
-      notes: "Call again with the previous theme."
-    },
-    handler: (input) => Effect.promise(async () => appendEvent(eventStore, {
-      type: "theme.changed",
-      payload: { theme: (input as { theme?: string }).theme === "dark" ? "dark" : "light" }
-    }))
-  }));
-
-  await runPromise(methods.register({
     id: "codex/status",
     title: "Codex status",
     owner: { kind: "runtime", id: "plastic.runtime" },
@@ -444,6 +351,12 @@ const discoverExtensionsAtStartup = async () => {
 
 await discoverExtensionsAtStartup();
 await registerHeadlessMethods();
+await registerRuntimeControlMethods({
+  eventStore,
+  methods,
+  runPromise,
+  appendEvent: (eventInput) => appendEvent(eventStore, eventInput)
+});
 await registerPanelControlMethods({
   eventStore,
   methods,
