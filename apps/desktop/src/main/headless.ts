@@ -2,7 +2,6 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
-import { startBuildHttpTransport } from "./build-http-transport.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import {
   prepareBundledExtensionStateAtStartup,
@@ -13,9 +12,9 @@ import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
-import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
+import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeModulePlan } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
@@ -186,35 +185,25 @@ await runtime.appendEvent({
   payload: { mode: "headless" }
 });
 
-const runtimeTransport = await startRuntimeHttpTransport({
+const transports = await startRuntimeHostTransports({
   eventStore,
   methods,
   runPromise,
-  host: runtimeHost,
-  port: runtimePort,
-  onListening: () => {
-    console.log(`[plastic:headless] RPC listening at ${runtimeRpcUrl}`);
-  }
-});
-const buildTransport = startBuildHttpTransport({
-  methods,
-  runPromise,
-  host: buildHost,
-  port: buildPort,
-  getStatus: buildStatus,
-  onListening: () => {
-    console.log(`[plastic:headless] Build RPC listening at http://${buildHost}:${buildPort}/rpc`);
-  }
+  runtimeHost,
+  runtimePort,
+  buildHost,
+  buildPort,
+  getBuildStatus: buildStatus,
+  onRuntimeListening: () => console.log(`[plastic:headless] RPC listening at ${runtimeRpcUrl}`),
+  onBuildListening: () => console.log(`[plastic:headless] Build RPC listening at http://${buildHost}:${buildPort}/rpc`)
 });
 
 process.on("SIGINT", () => {
-  runtimeTransport.close();
-  buildTransport.close();
+  transports.close();
   process.exit(130);
 });
 
 process.on("SIGTERM", () => {
-  runtimeTransport.close();
-  buildTransport.close();
+  transports.close();
   process.exit(143);
 });

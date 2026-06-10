@@ -12,7 +12,6 @@ import {
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
-import { startBuildHttpTransport } from "./build-http-transport.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
@@ -23,11 +22,11 @@ import {
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
-import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeBuildModule } from "./runtime-build-methods.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
+import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeModulePlan } from "./runtime-module-plan.js";
@@ -340,20 +339,16 @@ await runPromise(
 );
 
 logStartup("start sockets");
-const runtimeTransport = await startRuntimeHttpTransport({
+const transports = await startRuntimeHostTransports({
   eventStore,
   methods,
   runPromise,
-  host: runtimeHost,
-  port: runtimePort,
-  corsOrigin: "http://127.0.0.1:5173"
-});
-const buildSocket = startBuildHttpTransport({
-  methods,
-  runPromise,
-  host: buildHost,
-  port: buildPort,
-  getStatus: buildStatus
+  runtimeHost,
+  runtimePort,
+  buildHost,
+  buildPort,
+  getBuildStatus: buildStatus,
+  runtimeCorsOrigin: "http://127.0.0.1:5173"
 });
 logStartup(`runtime listening on ${runtimePort}, build listening on ${buildPort}`);
 
@@ -374,6 +369,5 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
-  runtimeTransport.close();
-  buildSocket.close();
+  transports.close();
 });
