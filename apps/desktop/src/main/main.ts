@@ -270,6 +270,15 @@ const supportModules = createRuntimeHostSupportModules({
     viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
   })
 });
+const runtimeHealthModule = createRuntimeHealthModule({
+  description: "Runs a fast control-plane health check for event store, projections, methods, DOM refs, build status, and Codex status.",
+  hostChecks: [
+    { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await electronDeixisHost.listVisibleRefs()).length }) },
+    { id: "build:status", run: () => buildStatus() },
+    { id: "codex:status", run: () => codexAdapter.status() },
+    { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
+  ]
+});
 await registerCoreRuntimeModulesAtStartup({
   workspaceDir,
   eventStore,
@@ -287,25 +296,12 @@ await registerCoreRuntimeModulesAtStartup({
   agentBackend: null,
   windowCapability: capabilityModules.windowCapability,
   deixis: capabilityModules.deixis,
-  health: null,
+  health: runtimeHealthModule,
   onRegister: (module) => logStartup(`register ${module.id} module`),
   onPhase: logStartup
 });
 logStartup("register codex methods");
 await codexAdapter.registerMethods();
-const runtimeHealthModule = createRuntimeHealthModule({
-  description: "Runs a fast control-plane health check for event store, projections, methods, DOM refs, build status, and Codex status.",
-  hostChecks: [
-    { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await electronDeixisHost.listVisibleRefs()).length }) },
-    { id: "build:status", run: () => buildStatus() },
-    { id: "codex:status", run: () => codexAdapter.status() },
-    { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
-  ]
-});
-await runtime.registerModules(
-  [runtimeHealthModule],
-  (module) => logStartup(`register ${module.id} module`)
-);
 await appendRuntimeStartedEvent(runtime, {
   mode: "electron",
   version: app.getVersion()
