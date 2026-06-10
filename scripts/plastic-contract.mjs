@@ -1,4 +1,5 @@
 const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
+const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
@@ -16,6 +17,32 @@ const rpc = async (method, input) => {
   });
   if (!response.ok || !payload.ok) {
     throw new Error(`${method}: ${payload.error ?? response.statusText}`);
+  }
+  return payload.value;
+};
+
+const buildGet = async (path) => {
+  const response = await fetch(`${buildUrl}${path}`);
+  const payload = await response.json().catch(() => {
+    throw new Error(`build ${path}: response was not JSON`);
+  });
+  if (!response.ok || payload.ok === false) {
+    throw new Error(`build ${path}: ${payload.error ?? response.statusText}`);
+  }
+  return payload;
+};
+
+const buildRpc = async (method, input) => {
+  const response = await fetch(`${buildUrl}/rpc`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ method, input })
+  });
+  const payload = await response.json().catch(() => {
+    throw new Error(`build ${method}: response was not JSON`);
+  });
+  if (!response.ok || !payload.ok) {
+    throw new Error(`build ${method}: ${payload.error ?? response.statusText}`);
   }
   return payload.value;
 };
@@ -233,6 +260,23 @@ await check("build/status", async () => {
     service: build.service,
     runtimeRpcUrl: build.runtimeRpcUrl ?? null,
     runtimePort: build.runtimePort ?? null
+  };
+});
+
+await check("build HTTP transport", async () => {
+  const health = await buildGet("/healthz");
+  const status = await buildGet("/status");
+  const buildSnapshot = await buildGet("/snapshot");
+  const diagnostics = await buildRpc("app/diagnostics", {});
+  assert(health.service === "plastic.build", "build /healthz returned wrong service");
+  assert(status.value?.status === "running", "build /status did not report running");
+  assert(buildSnapshot.value?.app?.mode === state.app.mode, "build /snapshot mode mismatch");
+  assert(diagnostics?.workspaceDir, "build /rpc app/diagnostics missing workspaceDir");
+  return {
+    buildUrl,
+    service: status.value.service,
+    snapshotMode: buildSnapshot.value.app.mode,
+    diagnosticsWindowCount: diagnostics.windowCount
   };
 });
 
