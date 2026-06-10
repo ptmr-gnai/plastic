@@ -1046,7 +1046,35 @@ const registerRuntimeMethods = async (store: EventStore) => {
     methods.register({
       id: "panels/move",
       title: "Move panel",
+      description: "Durably updates a panel's order and optionally assigns it to a window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      inputSchema: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "Panel id to move." },
+          windowId: { type: "string", description: "Optional target window id." },
+          order: { type: "number", description: "Optional projected ordering value." }
+        }
+      },
+      examples: [
+        {
+          title: "Move a chat after the first panel",
+          input: { id: "chat-main", order: 2 },
+          expectedEvents: ["panel.moved"],
+          verifyWith: { method: "panels/list", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["panel.moved"],
+        mutatesProjection: ["panels", "windows"]
+      },
+      preconditions: ["The panel id must exist for the move to affect projected layout."],
+      reversibility: {
+        reversible: true,
+        method: "panels/move",
+        notes: "Call again with the previous order/windowId."
+      },
       handler: (input) => {
         const panelInput = input as { id?: string; windowId?: string; order?: number };
         if (!panelInput.id) {
