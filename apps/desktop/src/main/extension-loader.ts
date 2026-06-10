@@ -16,6 +16,7 @@ import {
 } from "./extension-discovery.js";
 import { forkExtensionManifest, rewriteForkedRendererSource } from "./extension-forking.js";
 import { registerExtensionActivationMethods } from "./extension-activation-methods.js";
+import { registerExtensionPanelMethods } from "./extension-panel-methods.js";
 import { registerExtensionQueryMethods } from "./extension-query-methods.js";
 import { registerExtensionVerificationMethods } from "./extension-verification-methods.js";
 
@@ -171,59 +172,5 @@ export const registerExtensionMethods = async (input: {
     })
   );
 
-  await runPromise(
-    methods.register({
-      id: "extensions/registerPanel",
-      title: "Register extension panel",
-      description: "Creates a panel from an extension's declared panel contribution.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: (inputValue) =>
-        Effect.promise(async () => {
-          const input = inputValue as { extensionId?: string; panelId?: string; order?: number };
-          if (!input.extensionId) {
-            throw new Error("extensions/registerPanel requires extensionId");
-          }
-          const extension = projectExtensions(await runPromise(eventStore.list())).find(
-            (candidate) => candidate.id === input.extensionId
-          );
-          if (!extension) {
-            throw new Error(`Extension not found: ${input.extensionId}`);
-          }
-          const contribution = input.panelId
-            ? extension.panels.find((panel) => panel.id === input.panelId)
-            : extension.panels[0];
-          if (!contribution) {
-            throw new Error(`Extension has no panel contribution: ${input.extensionId}`);
-          }
-
-          return runPromise(
-            eventStore.append(
-              createEvent({
-                type: "panel.created",
-                payload: {
-                  id: contribution.id,
-                  title: contribution.title,
-                  kind: contribution.kind ?? "extension",
-                  extensionId: extension.id,
-                  rendererId: contribution.rendererId,
-                  subtitle: contribution.subtitle ?? extension.title,
-                  body: contribution.body ?? `Panel contributed by ${extension.title}.`,
-                  order: input.order ?? contribution.order
-                },
-                scope: {
-                  panelId: contribution.id,
-                  extensionId: extension.id
-                },
-                meta: {
-                  links: [
-                    { rel: "extension", href: "extensions/get", method: "extensions/get", target: extension.id },
-                    { rel: "panel", href: "panels/get", method: "panels/get", target: contribution.id }
-                  ]
-                }
-              })
-            )
-          );
-        })
-    })
-  );
+  await registerExtensionPanelMethods(input);
 };
