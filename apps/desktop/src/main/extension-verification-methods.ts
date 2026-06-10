@@ -7,6 +7,11 @@ import {
 import type { RunPromise } from "./runtime-method-context.js";
 import { appendVerificationEvent, latestVerificationStatus, verifyExtension } from "./extension-verifier.js";
 
+const extensionVerificationAvailability = {
+  status: "available" as const,
+  notes: "Extension verification is a shared runtime primitive available in headed and headless modes."
+};
+
 export const registerExtensionVerificationMethods = async (input: {
   workspaceDir: string;
   eventStore: EventStore;
@@ -21,6 +26,7 @@ export const registerExtensionVerificationMethods = async (input: {
       title: "Verify extension",
       description: "Checks whether an extension's declared files, panels, renderers, and optional target panel are usable, then writes a durable verification event.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: extensionVerificationAvailability,
       handler: (inputValue) =>
         Effect.promise(async () => {
           const payload = inputValue as { extensionId?: string; panelId?: string };
@@ -58,6 +64,7 @@ export const registerExtensionVerificationMethods = async (input: {
       title: "Verify all extensions",
       description: "Checks every discovered extension and writes a durable verification event for each one.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: extensionVerificationAvailability,
       handler: () =>
         Effect.promise(async () => {
           const extensions = projectExtensions(await runPromise(eventStore.list()));
@@ -85,6 +92,7 @@ export const registerExtensionVerificationMethods = async (input: {
       title: "Extension verification status",
       description: "Returns the latest durable verification result for each extension.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: extensionVerificationAvailability,
       handler: () =>
         Effect.map(eventStore.list(), (events) => ({
           items: latestVerificationStatus(events),

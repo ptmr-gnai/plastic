@@ -12,6 +12,11 @@ type ScaffoldExtensionInput = {
   kind?: string;
 };
 
+const extensionAuthoringAvailability = {
+  status: "available" as const,
+  notes: "Extension authoring writes workspace files and durable events through the shared runtime."
+};
+
 export const createExtensionAuthoringModule = (input: {
   plasticDir: string;
 }): RuntimeModule => ({
@@ -23,6 +28,7 @@ export const createExtensionAuthoringModule = (input: {
         title: "Scaffold extension",
         description: "Creates a simple workspace extension under .plastic/extensions and records the scaffold event.",
         owner: { kind: "runtime", id: "plastic.runtime" },
+        availability: extensionAuthoringAvailability,
         handler: (methodInput) =>
           Effect.promise(async () => {
             const extensionInput = methodInput as ScaffoldExtensionInput;

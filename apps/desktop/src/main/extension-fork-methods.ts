@@ -197,6 +197,10 @@ export const registerExtensionForkMethods = async (input: {
   runPromise: RunPromise;
 }) => {
   const { workspaceDir, eventStore, methods, runPromise } = input;
+  const extensionForkAvailability = {
+    status: "available" as const,
+    notes: "Bundled extension forking writes workspace files and durable events through the shared runtime."
+  };
 
   await runPromise(
     methods.register({
@@ -204,6 +208,7 @@ export const registerExtensionForkMethods = async (input: {
       title: "Fork bundled extension",
       description: "Copies a bundled extension into .plastic/extensions with workspace ids so it can be edited and loaded as a user extension.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: extensionForkAvailability,
       handler: (inputValue) =>
         Effect.promise(async () => {
           const payload = inputValue as ForkBundledInput;

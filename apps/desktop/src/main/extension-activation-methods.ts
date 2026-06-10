@@ -7,6 +7,11 @@ import {
 import { activateExtensions } from "./extension-host.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
+const extensionActivationAvailability = {
+  status: "available" as const,
+  notes: "Extension activation is a shared runtime primitive available in headed and headless modes."
+};
+
 export const registerExtensionActivationMethods = async (input: {
   workspaceDir: string;
   eventStore: EventStore;
@@ -21,6 +26,7 @@ export const registerExtensionActivationMethods = async (input: {
       title: "Activate extensions",
       description: "Loads or reloads extension main modules and lets them register runtime methods.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: extensionActivationAvailability,
       handler: (inputValue) =>
         Effect.promise(async () => {
           const payload = inputValue as { extensionId?: string };

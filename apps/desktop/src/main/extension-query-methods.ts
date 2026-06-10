@@ -8,6 +8,11 @@ import {
 import { scanWorkspaceExtensions } from "./extension-discovery.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
+const extensionRuntimeAvailability = {
+  status: "available" as const,
+  notes: "Extension discovery is a shared runtime primitive available in headed and headless modes."
+};
+
 export const registerExtensionQueryMethods = async (input: {
   workspaceDir: string;
   eventStore: EventStore;
@@ -22,6 +27,7 @@ export const registerExtensionQueryMethods = async (input: {
       title: "Scan workspace extensions",
       description: "Discovers extensions under .plastic/extensions and writes durable extension.discovered events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: extensionRuntimeAvailability,
       handler: () =>
         Effect.promise(async () => {
           const discovered = await scanWorkspaceExtensions(workspaceDir);
@@ -95,6 +101,7 @@ export const registerExtensionQueryMethods = async (input: {
       id: "extensions/list",
       title: "List extensions",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: extensionRuntimeAvailability,
       handler: () => Effect.map(eventStore.list(), projectExtensions)
     })
   );
@@ -104,6 +111,7 @@ export const registerExtensionQueryMethods = async (input: {
       id: "extensions/get",
       title: "Get extension",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: extensionRuntimeAvailability,
       handler: (inputValue) =>
         Effect.map(eventStore.list(), (events) => {
           const id = (inputValue as { id?: string }).id;

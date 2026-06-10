@@ -7,6 +7,11 @@ import {
 } from "@plastic/core";
 import type { RunPromise } from "./runtime-method-context.js";
 
+const extensionPanelAvailability = {
+  status: "available" as const,
+  notes: "Extension panel registration appends durable panel events through the shared runtime."
+};
+
 export const registerExtensionPanelMethods = async (input: {
   eventStore: EventStore;
   methods: MethodRegistry;
@@ -20,6 +25,7 @@ export const registerExtensionPanelMethods = async (input: {
       title: "Register extension panel",
       description: "Creates a panel from an extension's declared panel contribution.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: extensionPanelAvailability,
       handler: (inputValue) =>
         Effect.promise(async () => {
           const input = inputValue as { extensionId?: string; panelId?: string; order?: number };
