@@ -14,6 +14,7 @@ import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-b
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
+import { createRuntimeBuildStatus } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeModulePlan } from "./runtime-module-plan.js";
@@ -21,10 +22,10 @@ import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { createWindowCapabilityModule } from "./window-capability-methods.js";
 
+const hostConfig = createRuntimeHostConfig();
 const {
   workspaceDir,
   plasticDir,
-  runtimePaths,
   eventPath,
   bundledExtensionsDir,
   runtimeHost,
@@ -32,7 +33,7 @@ const {
   runtimeRpcUrl,
   buildHost,
   buildPort
-} = createRuntimeHostConfig();
+} = hostConfig;
 const startedAt = new Date().toISOString();
 const runtimeCapabilities = createHeadlessRuntimeCapabilities();
 
@@ -88,18 +89,12 @@ const runLocalCommand = async (command: string, args: string[]): Promise<Runtime
   }
 };
 
-const buildStatus = () => ({
+const buildStatus = () => createRuntimeBuildStatus({
+  config: hostConfig,
   service: "plastic.headless",
-  status: "running",
-  workspaceDir,
-  plasticDir,
-  dataDir: runtimePaths.dataDir,
-  eventPath,
+  startedAt,
   runtimeRpcUrl,
-  runtimePort,
-  buildSocket: `http://${buildHost}:${buildPort}`,
-  pid: process.pid,
-  startedAt
+  runtimePort
 });
 
 await prepareBundledExtensionStateAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });

@@ -26,6 +26,7 @@ import { createRuntimeBuildModule } from "./runtime-build-methods.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
+import { createRuntimeBuildStatus } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
@@ -37,11 +38,11 @@ import { createWindowCapabilityModule } from "./window-capability-methods.js";
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
 const { app, BrowserWindow, ipcMain } = electron;
+const hostConfig = createRuntimeHostConfig();
 const {
   workspaceDir,
   plasticDir,
   bundledExtensionsDir,
-  runtimePaths,
   eventPath,
   runtimeHost,
   runtimePort,
@@ -49,7 +50,7 @@ const {
   buildPort,
   runtimeRpcUrls,
   preferredRuntimeRpcUrl
-} = createRuntimeHostConfig();
+} = hostConfig;
 
 const logStartup = (stage: string) => {
   console.log(`[plastic:startup] ${stage}`);
@@ -91,21 +92,15 @@ const codexAdapter = createCodexAdapter({
   runtimeRpcUrls
 });
 
-const buildStatus = () => ({
+const buildStatus = () => createRuntimeBuildStatus({
+  config: hostConfig,
   service: "plastic.build",
-  status: "running",
-  workspaceDir,
-  plasticDir,
-  dataDir: runtimePaths.dataDir,
+  startedAt: processStartedAt,
+  runtimeRpcUrl: preferredRuntimeRpcUrl,
   extensionsDir: join(plasticDir, "extensions"),
-  eventPath,
   viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,
   runtimeSocket: `http://${runtimeHost}:${runtimePort}`,
-  runtimeRpcUrl: preferredRuntimeRpcUrl,
-  runtimeRpcUrls,
-  buildSocket: `http://${buildHost}:${buildPort}`,
-  pid: process.pid,
-  startedAt: processStartedAt
+  runtimeRpcUrls
 });
 
 const readGitStatus = async () => {
