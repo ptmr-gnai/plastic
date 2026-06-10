@@ -98,6 +98,17 @@ await check("plastic/methods", async () => {
     "build/status",
     "app/diagnostics",
     "renderer/reload",
+    "windows/list",
+    "windows/create",
+    "windows/focusPanel",
+    "windows/scrollToRef",
+    "windows/screenshot",
+    "deixis/listVisibleRefs",
+    "deixis/resolveRef",
+    "deixis/evalDom",
+    "deixis/clickRef",
+    "deixis/fillRef",
+    "deixis/verifyRefAction",
     "events/append",
     "events/list",
     "events/timeline",
@@ -249,6 +260,65 @@ await check("renderer/reload metadata", async () => {
   return {
     availability: description.availability.status,
     requiredCapabilities: description.availability.requiredCapabilities ?? []
+  };
+});
+
+await check("capability-backed method metadata", async () => {
+  const expectedVisualAvailability = state.app.mode === "electron" ? "available" : "unavailable";
+  const expectedWindowListAvailability = state.app.mode === "electron" ? "available" : "degraded";
+  const descriptions = await Promise.all(
+    [
+      "windows/list",
+      "windows/create",
+      "windows/focusPanel",
+      "windows/scrollToRef",
+      "windows/screenshot",
+      "deixis/listVisibleRefs",
+      "deixis/resolveRef",
+      "deixis/evalDom",
+      "deixis/clickRef",
+      "deixis/fillRef",
+      "deixis/verifyRefAction"
+    ].map((id) => rpc("methods/describe", { id }))
+  );
+  const byId = Object.fromEntries(descriptions.map((description) => [description.id, description]));
+  assert(byId["windows/list"].availability?.status === expectedWindowListAvailability, "windows/list availability mismatch");
+  for (const id of [
+    "windows/create",
+    "windows/focusPanel",
+    "windows/scrollToRef",
+    "windows/screenshot",
+    "deixis/listVisibleRefs",
+    "deixis/resolveRef",
+    "deixis/evalDom",
+    "deixis/clickRef",
+    "deixis/fillRef",
+    "deixis/verifyRefAction"
+  ]) {
+    assert(byId[id].availability?.status === expectedVisualAvailability, `${id} availability mismatch`);
+    assert(Array.isArray(byId[id].availability.requiredCapabilities), `${id} missing required capabilities`);
+  }
+  const windows = await rpc("windows/list");
+  assertArray(windows, "windows/list is not an array");
+  if (state.app.mode === "headless") {
+    try {
+      await rpc("windows/screenshot", {});
+      throw new Error("windows/screenshot unexpectedly succeeded in headless mode");
+    } catch (error) {
+      assert(String(error.message ?? error).includes("unavailable"), "headless screenshot error was not explicit");
+    }
+  } else {
+    const refs = await rpc("deixis/listVisibleRefs", {});
+    assertArray(refs, "deixis/listVisibleRefs is not an array");
+    const screenshot = await rpc("windows/screenshot", {});
+    assert(screenshot?.dataUrl?.startsWith("data:image/png"), "windows/screenshot missing PNG data URL");
+  }
+  return {
+    mode: state.app.mode,
+    windowsList: byId["windows/list"].availability.status,
+    visualAvailability: expectedVisualAvailability,
+    methods: descriptions.length,
+    windows: windows.length
   };
 });
 
