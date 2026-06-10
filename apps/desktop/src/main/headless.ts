@@ -17,6 +17,7 @@ import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
+import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
@@ -181,26 +182,6 @@ const registerHeadlessMethods = async () => {
   }));
 
   await runPromise(methods.register({
-    id: "plastic/selfTest",
-    title: "Plastic self-test",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: () => Effect.promise(async () => {
-      const events = await runPromise(eventStore.list());
-      const checks = [
-        { id: "event-store:list", ok: true, details: { count: events.length } },
-        { id: "methods:list", ok: true, details: { count: (await runPromise(methods.list())).length } },
-        { id: "panels:project", ok: true, details: { count: projectPanels(events).length } },
-        { id: "extensions:project", ok: true, details: { count: projectExtensions(events).length } }
-      ];
-      const event = await appendEvent(eventStore, {
-        type: "plastic.self_test.completed",
-        payload: { ok: true, checks }
-      });
-      return { ok: true, checks, eventId: event.id };
-    })
-  }));
-
-  await runPromise(methods.register({
     id: "codex/status",
     title: "Codex status",
     owner: { kind: "runtime", id: "plastic.runtime" },
@@ -317,7 +298,8 @@ const runtimeStateModule = createRuntimeStateModule({
     ]
   })
 });
-await runtime.registerModules([runtimeStateModule, runtimeControlModule, panelControlModule, headlessCapabilityModule]);
+const runtimeHealthModule = createRuntimeHealthModule();
+await runtime.registerModules([runtimeStateModule, runtimeControlModule, panelControlModule, headlessCapabilityModule, runtimeHealthModule]);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
 await runtime.registerModules([panelMailboxModule]);

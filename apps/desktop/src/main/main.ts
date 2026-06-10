@@ -31,6 +31,7 @@ import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { readJsonBody, sendJson, startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
+import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
@@ -506,45 +507,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
       description: "Returns a high-signal observable snapshot for agents: app, build, methods, panels, windows, extensions, visible refs, Codex, and recent events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: () => Effect.promise(buildSnapshot)
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "plastic/selfTest",
-      title: "Plastic self-test",
-      description: "Runs a fast control-plane health check for event store, projections, methods, DOM refs, build status, and Codex status.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: () =>
-        Effect.promise(async () => {
-          const checks: Array<{ id: string; ok: boolean; details?: unknown }> = [];
-          const record = (id: string, fn: () => Promise<unknown> | unknown) =>
-            Promise.resolve()
-              .then(fn)
-              .then((details) => checks.push({ id, ok: true, details }))
-              .catch((error) => checks.push({ id, ok: false, details: error instanceof Error ? error.message : String(error) }));
-
-          await record("event-store:list", async () => ({ count: (await runPromise(store.list())).length }));
-          await record("methods:list", async () => ({ count: (await runPromise(methods.list())).length }));
-          await record("panels:project", async () => ({ count: projectPanels(await runPromise(store.list())).length }));
-          await record("windows:project", async () => ({ count: projectWindows(await runPromise(store.list())).length }));
-          await record("extensions:project", async () => ({ count: projectExtensions(await runPromise(store.list())).length }));
-          await record("deixis:listVisibleRefs", async () => ({ windows: (await listVisibleRefs()).length }));
-          await record("build:status", () => buildStatus());
-          await record("codex:status", () => codexAdapter.status());
-          await record("bridge:status", () => runPromise(methods.call("bridge/status", {})));
-
-          const ok = checks.every((check) => check.ok);
-          const event = await runPromise(
-            store.append(
-              createEvent({
-                type: "plastic.self_test.completed",
-                payload: { ok, checks }
-              })
-            )
-          );
-          return { ok, checks, eventId: event.id };
-        })
     })
   );
 
@@ -1168,6 +1130,19 @@ await runtime.registerModules(
 );
 logStartup("register codex methods");
 await codexAdapter.registerMethods();
+const runtimeHealthModule = createRuntimeHealthModule({
+  description: "Runs a fast control-plane health check for event store, projections, methods, DOM refs, build status, and Codex status.",
+  hostChecks: [
+    { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await listVisibleRefs()).length }) },
+    { id: "build:status", run: () => buildStatus() },
+    { id: "codex:status", run: () => codexAdapter.status() },
+    { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
+  ]
+});
+await runtime.registerModules(
+  [runtimeHealthModule],
+  (module) => logStartup(`register ${module.id} module`)
+);
 await runPromise(
   eventStore.append(
     createEvent({
