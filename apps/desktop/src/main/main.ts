@@ -10,8 +10,6 @@ import {
   type EventScopeInput
 } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
-import { createAgentOrientModule } from "./agent-orient-methods.js";
-import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
@@ -23,7 +21,7 @@ import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
-import { createRuntimeHostSupportModules } from "./runtime-host-modules.js";
+import { createRuntimeHostAgentModules, createRuntimeHostSupportModules } from "./runtime-host-modules.js";
 import {
   createRuntimeBuildStatus,
   createRuntimeDiagnostics,
@@ -228,27 +226,29 @@ const runtimeSnapshotModule = createRuntimeSnapshotModule({
     visibleRefs: await electronDeixisHost.listVisibleRefs()
   })
 });
-const agentWorkbenchModule = createAgentWorkbenchModule({
-  mode: "electron",
-  workspaceDir,
-  eventPath,
-  getRuntimeStatus: buildStatus,
-  getCodexStatus: () => codexAdapter.status(),
-  readGitStatus,
-  getFocusedElectronWindowId: () => electronDeixisHost.findWindow()?.id,
-  listVisibleRefs: electronDeixisHost.listVisibleRefs,
-  panelIdFromRef: electronDeixisHost.panelIdFromRef,
-  sourceHintsFor: electronDeixisHost.sourceHintsFor,
-  visualActions: ({ ref, panelId }) => [
-    { id: "list-refs", title: "List visible refs", method: "deixis/listVisibleRefs" },
-    { id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: ref ? { ref } : {} },
-    ...(panelId ? [{ id: "focus-panel", title: "Focus panel", method: "windows/focusPanel", input: { panelId } }] : [])
-  ]
-});
-const agentOrientModule = createAgentOrientModule({
-  workspaceDir,
-  findFocusedWindowId: (windowId) => electronDeixisHost.findWindow(windowId)?.id,
-  listVisibleRefs: electronDeixisHost.listVisibleRefs
+const agentModules = createRuntimeHostAgentModules({
+  workbench: {
+    mode: "electron",
+    workspaceDir,
+    eventPath,
+    getRuntimeStatus: buildStatus,
+    getCodexStatus: () => codexAdapter.status(),
+    readGitStatus,
+    getFocusedElectronWindowId: () => electronDeixisHost.findWindow()?.id,
+    listVisibleRefs: electronDeixisHost.listVisibleRefs,
+    panelIdFromRef: electronDeixisHost.panelIdFromRef,
+    sourceHintsFor: electronDeixisHost.sourceHintsFor,
+    visualActions: ({ ref, panelId }) => [
+      { id: "list-refs", title: "List visible refs", method: "deixis/listVisibleRefs" },
+      { id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: ref ? { ref } : {} },
+      ...(panelId ? [{ id: "focus-panel", title: "Focus panel", method: "windows/focusPanel", input: { panelId } }] : [])
+    ]
+  },
+  orient: {
+    workspaceDir,
+    findFocusedWindowId: (windowId) => electronDeixisHost.findWindow(windowId)?.id,
+    listVisibleRefs: electronDeixisHost.listVisibleRefs
+  }
 });
 const supportModules = createRuntimeHostSupportModules({
   plasticDir,
@@ -273,8 +273,8 @@ await runtime.registerModules(
   createRuntimeModulePlan({
     state: runtimeStateModule,
     snapshot: runtimeSnapshotModule,
-    agentWorkbench: agentWorkbenchModule,
-    agentOrient: agentOrientModule,
+    agentWorkbench: agentModules.agentWorkbench,
+    agentOrient: agentModules.agentOrient,
     build: supportModules.build,
     diagnostics: supportModules.diagnostics,
     extensionAuthoring: supportModules.extensionAuthoring,

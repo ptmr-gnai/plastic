@@ -1,7 +1,5 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { createAgentOrientModule } from "./agent-orient-methods.js";
-import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import {
   prepareBundledExtensionStateAtStartup,
@@ -12,7 +10,7 @@ import { createRendererControlModule } from "./renderer-control-methods.js";
 import type { RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
-import { createRuntimeHostSupportModules } from "./runtime-host-modules.js";
+import { createRuntimeHostAgentModules, createRuntimeHostSupportModules } from "./runtime-host-modules.js";
 import {
   createRuntimeBuildStatus,
   createRuntimeDiagnostics,
@@ -124,15 +122,17 @@ const runtimeSnapshotModule = createRuntimeSnapshotModule({
     visibleRefs: []
   })
 });
-const agentWorkbenchModule = createAgentWorkbenchModule({
-  mode: "headless",
-  workspaceDir,
-  eventPath,
-  getRuntimeStatus: buildStatus,
-  getCodexStatus: () => ({ connected: false, initialized: false, pid: null, pendingRequests: 0 }),
-  readGitStatus
+const agentModules = createRuntimeHostAgentModules({
+  workbench: {
+    mode: "headless",
+    workspaceDir,
+    eventPath,
+    getRuntimeStatus: buildStatus,
+    getCodexStatus: () => ({ connected: false, initialized: false, pid: null, pendingRequests: 0 }),
+    readGitStatus
+  },
+  orient: { workspaceDir }
 });
-const agentOrientModule = createAgentOrientModule({ workspaceDir });
 const supportModules = createRuntimeHostSupportModules({
   plasticDir,
   getBuildStatus: buildStatus,
@@ -154,8 +154,8 @@ await runtime.registerModules([
   ...createRuntimeModulePlan({
     state: runtimeStateModule,
     snapshot: runtimeSnapshotModule,
-    agentWorkbench: agentWorkbenchModule,
-    agentOrient: agentOrientModule,
+    agentWorkbench: agentModules.agentWorkbench,
+    agentOrient: agentModules.agentOrient,
     build: supportModules.build,
     diagnostics: supportModules.diagnostics,
     extensionAuthoring: supportModules.extensionAuthoring,
