@@ -4,6 +4,7 @@ import { createInterface } from "node:readline";
 import { Effect } from "effect";
 import { createEvent, type EventStore, type MethodRegistry } from "@plastic/core";
 import { registerCodexChatMethods } from "./codex-chat-method-registration.js";
+import { createCodexChatRuntime } from "./codex-chat-runtime.js";
 import { createCodexMessageHandler } from "./codex-message-handler.js";
 import {
   registerCodexAliasMethods,
@@ -48,7 +49,6 @@ export const createCodexAdapter = (input: {
   let bridgeMcpThreadId: string | null = null;
   let connectedAt: string | null = null;
   const pending = new Map<number, PendingRequest>();
-  const threadChatBindings = new Map<string, string>();
 
   const asRecord = (value: unknown): Record<string, unknown> =>
     value && typeof value === "object" ? value as Record<string, unknown> : {};
@@ -97,7 +97,7 @@ export const createCodexAdapter = (input: {
 
   const appendChatAgentEvent = (type: string, payload: Record<string, unknown>) => {
     const threadId = asString(payload.threadId);
-    const chatId = threadId ? threadChatBindings.get(threadId) : undefined;
+    const chatId = threadId ? chatRuntime.chatIdForThread(threadId) : undefined;
     if (!chatId) {
       return;
     }
@@ -169,6 +169,18 @@ export const createCodexAdapter = (input: {
 
   const requestAlias = (method: string, methodInput: unknown) => request(method, methodInput);
 
+  const chatRuntime = createCodexChatRuntime({
+    eventStore: input.eventStore,
+    runPromise: input.runPromise,
+    workspaceDir: input.workspaceDir,
+    runtimeRpcUrl,
+    runtimeRpcUrls,
+    getCodexDefaults,
+    request,
+    asRecord,
+    asString
+  });
+
   const configurePlasticMcp = async () => {
     const value = {
       command: "node",
@@ -210,132 +222,6 @@ export const createCodexAdapter = (input: {
       });
       throw error;
     }
-  };
-
-  const bindThreadToChat = async (chatId: string, threadId: string, reason: string) => {
-    for (const [existingThreadId, existingChatId] of threadChatBindings.entries()) {
-      if (existingChatId === chatId && existingThreadId !== threadId) {
-        threadChatBindings.delete(existingThreadId);
-      }
-    }
-    threadChatBindings.set(threadId, chatId);
-    await input.runPromise(
-      input.eventStore.append(
-        createEvent({
-          type: "chat.codex_thread.bound",
-          payload: {
-            chatId,
-            threadId,
-            reason
-          },
-          scope: {
-            panelId: chatId,
-            agentId: "codex"
-          }
-        })
-      )
-    );
-  };
-
-  const getBoundThreadId = async (chatId: string): Promise<string | undefined> => {
-    for (const [threadId, boundChatId] of threadChatBindings.entries()) {
-      if (boundChatId === chatId) {
-        return threadId;
-      }
-    }
-
-    const events = await input.runPromise(input.eventStore.list());
-    const binding = events
-      .filter((event) => event.type === "chat.codex_thread.bound")
-      .map((event) => asRecord(event.payload))
-      .filter((payload) => payload.chatId === chatId)
-      .at(-1);
-    const threadId = asString(binding?.threadId);
-    if (threadId) {
-      threadChatBindings.set(threadId, chatId);
-    }
-    return threadId;
-  };
-
-  const getChatBinding = async (chatId: string) => {
-    const threadId = await getBoundThreadId(chatId);
-    const events = await input.runPromise(input.eventStore.list());
-    let activeTurnId: string | null = null;
-    let activeTurnStatus: string | null = null;
-    for (const event of events) {
-      if (event.scope.panelId !== chatId) {
-        continue;
-      }
-      const payload = asRecord(event.payload);
-      if (event.type === "chat.codex_turn.started") {
-        const turn = asRecord(payload.turn);
-        activeTurnId = asString(turn.id) ?? activeTurnId;
-        activeTurnStatus = asString(turn.status) ?? "inProgress";
-      }
-      if (event.type === "chat.codex_turn.completed") {
-        activeTurnId = asString(payload.turnId) ?? activeTurnId;
-        activeTurnStatus = asString(payload.status) ?? "completed";
-      }
-      if (event.type === "chat.turn.interrupted") {
-        activeTurnId = asString(payload.turnId) ?? activeTurnId;
-        activeTurnStatus = "interrupted";
-      }
-    }
-    return {
-      chatId,
-      runtimeId: "codex",
-      threadId: threadId ?? null,
-      activeTurnId,
-      activeTurnStatus
-    };
-  };
-
-  const developerInstructionsForChat = (chatId: string) => [
-    "You are an agent embodied inside Plastic, an agent-native Electron workspace.",
-    `Your current chat panel id is ${chatId}.`,
-    `Plastic RPC is the control bus. Preferred endpoint: ${runtimeRpcUrl}.`,
-    `Fallback endpoints: ${runtimeRpcUrls.join(", ")}.`,
-    "You have an MCP tool named plastic_rpc. Prefer that tool for Plastic RPC calls because command sandboxes may not open local TCP sockets.",
-    "plastic_rpc input is { method: string, input?: object }. It returns the exact Plastic RPC result as JSON text.",
-    "Use the HTTP bus for app control only if plastic_rpc is unavailable. Do not assume 127.0.0.1 works; use PLASTIC_RPC_URL or the preferred endpoint first.",
-    `Before mutating the app or answering orientation questions, call plastic_rpc with method agent/orient and input {"panelId":${JSON.stringify(chatId)}}.`,
-    "Use the returned eventCursor on later agent/orient or events/timeline calls to learn what changed since you last looked.",
-    "After mutating Plastic, verify with the orientation packet's recommended actions, visible refs, screenshots, timeline, or build/typecheck methods.",
-    "Call plastic/state before guessing panel ids. It returns panels, methods, links, actions, windows, visible refs, and event counts.",
-    "RPC shape: POST the JSON object {\"method\":\"plastic/state\",\"input\":{}} to the bus URL with content-type application/json.",
-    "To create another chat, call method chats/createCodexChat. To send a mailbox message between panels, call panels/sendMessage. To make another chat agent react, call chats/sendToCodex for that target chat.",
-    "Everything meaningful should go through Plastic RPC and the durable event stream."
-  ].join("\n");
-
-  const startThreadForChat = async (chatId: string, payload: {
-    cwd?: string;
-    reason: string;
-  }) => {
-    const defaults = await getCodexDefaults();
-    const threadResult = await request("thread/start", {
-      cwd: payload.cwd ?? input.workspaceDir,
-      approvalPolicy: "never",
-      sandbox: "danger-full-access",
-      model: defaults.model,
-      personality: "friendly",
-      serviceName: "plastic",
-      developerInstructions: developerInstructionsForChat(chatId)
-    });
-    const thread = asRecord(asRecord(threadResult).thread);
-    const threadId = asString(thread.id);
-    if (!threadId) {
-      throw new Error("Codex thread/start did not return thread.id");
-    }
-    await bindThreadToChat(chatId, threadId, payload.reason);
-    return { threadId, threadResult };
-  };
-
-  const threadStartPayload = (reason: string, cwd?: string) => {
-    const payload: { reason: string; cwd?: string } = { reason };
-    if (cwd) {
-      payload.cwd = cwd;
-    }
-    return payload;
   };
 
   const isThreadNotFoundError = (error: unknown) =>
@@ -508,12 +394,12 @@ export const createCodexAdapter = (input: {
       runPromise: input.runPromise,
       workspaceDir,
       getCodexDefaults,
-      bindThreadToChat,
-      getBoundThreadId,
-      getChatBinding,
-      startThreadForChat,
-      threadStartPayload,
-      developerInstructionsForChat,
+      bindThreadToChat: chatRuntime.bindThreadToChat,
+      getBoundThreadId: chatRuntime.getBoundThreadId,
+      getChatBinding: chatRuntime.getChatBinding,
+      startThreadForChat: chatRuntime.startThreadForChat,
+      threadStartPayload: chatRuntime.threadStartPayload,
+      developerInstructionsForChat: chatRuntime.developerInstructionsForChat,
       ensureInitialized,
       request,
       isThreadNotFoundError,
