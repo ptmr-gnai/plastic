@@ -7,12 +7,18 @@ const extensionLink = (context: ExtensionActivationContext) => ({
   target: context.extension.id
 });
 
+const chatExtensionAvailability = {
+  status: "available" as const,
+  notes: "Bundled chat projection/control methods are extension runtime primitives available in headed and headless modes."
+};
+
 const registerMessages = (context: ExtensionActivationContext) =>
   context.registerMethod({
     id: "chats/messages",
     title: "Chat messages",
     description: "Returns the bounded chat transcript projection for one chat panel without exposing raw stream deltas to the renderer.",
     owner: { kind: "extension", id: context.extension.id },
+    availability: chatExtensionAvailability,
     links: [extensionLink(context)],
     handler: (input) =>
       context.mapEvents((events) => context.core.buildChatMessagesForPanel(events, input))
@@ -24,6 +30,7 @@ const registerAddButton = (context: ExtensionActivationContext) =>
     title: "Add chat button",
     description: "Add a durable action button to chat panels.",
     owner: { kind: "extension", id: context.extension.id },
+    availability: chatExtensionAvailability,
     links: [extensionLink(context)],
     handler: (input) => {
       const chatId = input?.chatId ?? "chat-main";
@@ -48,6 +55,7 @@ const registerInjectUserMessage = (context: ExtensionActivationContext) =>
     title: "Inject user message",
     description: "Append a user-message event to a chat transcript.",
     owner: { kind: "extension", id: context.extension.id },
+    availability: chatExtensionAvailability,
     links: [extensionLink(context)],
     handler: (input) => {
       const chatId = input?.chatId ?? "chat-main";
@@ -79,6 +87,7 @@ const registerCreateChat = async (context: ExtensionActivationContext) => {
     title: "Create chat",
     description: "Create a new chat panel. Host-specific Codex adapters may override this with thread binding.",
     owner: { kind: "extension", id: context.extension.id },
+    availability: chatExtensionAvailability,
     links: [extensionLink(context)],
     handler: () =>
       context.Effect.promise(async () => {
@@ -111,6 +120,7 @@ const registerCloseChat = async (context: ExtensionActivationContext) => {
     title: "Close chat",
     description: "Close a chat panel by removing it from the projected panel set.",
     owner: { kind: "extension", id: context.extension.id },
+    availability: chatExtensionAvailability,
     links: [extensionLink(context)],
     handler: (input) => {
       const id = input?.chatId;
