@@ -34,6 +34,16 @@ const runtimeHost = process.env.PLASTIC_RUNTIME_HOST ?? "0.0.0.0";
 const runtimePort = Number(process.env.PLASTIC_RUNTIME_PORT ?? 7331);
 const runtimeRpcUrl = process.env.PLASTIC_RPC_URL ?? `http://127.0.0.1:${runtimePort}/rpc`;
 const startedAt = new Date().toISOString();
+const runtimeCapabilities = [
+  { id: "runtime.capabilities", title: "Runtime capability registry", status: "available" as const },
+  { id: "window.projection", title: "Window projection", status: "available" as const },
+  { id: "event.projection", title: "Event projection", status: "available" as const },
+  { id: "electron.window", title: "Electron windows", status: "unavailable" as const, notes: "Headless mode has no Electron BrowserWindow host." },
+  { id: "dom.refs", title: "DOM visible refs", status: "unavailable" as const, notes: "Headless mode has no rendered DOM projection." },
+  { id: "dom.eval", title: "DOM evaluation", status: "unavailable" as const, notes: "Headless mode has no renderer DOM." },
+  { id: "dom.input", title: "DOM input control", status: "unavailable" as const, notes: "Headless mode has no rendered input elements." },
+  { id: "screenshot", title: "Window screenshot capture", status: "unavailable" as const, notes: "Headless mode has no screenshot provider." }
+];
 
 mkdirSync(dirname(eventPath), { recursive: true });
 
@@ -321,7 +331,8 @@ const runtimeMethodContext = createRuntimeMethodContext({
   eventStore,
   methods,
   runPromise,
-  appendEvent: (eventInput) => appendEvent(eventStore, eventInput)
+  appendEvent: (eventInput) => appendEvent(eventStore, eventInput),
+  capabilities: runtimeCapabilities
 });
 await registerRuntimeModules(runtimeMethodContext, [runtimeControlModule, panelControlModule, headlessCapabilityModule]);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });

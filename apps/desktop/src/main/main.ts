@@ -97,6 +97,16 @@ const getHostRpcUrls = () => {
 
 const runtimeRpcUrls = getHostRpcUrls();
 const preferredRuntimeRpcUrl = process.env.PLASTIC_RPC_URL ?? runtimeRpcUrls[1] ?? runtimeRpcUrls[0] ?? `http://127.0.0.1:${runtimePort}/rpc`;
+const runtimeCapabilities = [
+  { id: "runtime.capabilities", title: "Runtime capability registry", status: "available" as const },
+  { id: "window.projection", title: "Window projection", status: "available" as const },
+  { id: "electron.window", title: "Electron windows", status: "available" as const },
+  { id: "dom.refs", title: "DOM visible refs", status: "available" as const },
+  { id: "dom.eval", title: "DOM evaluation", status: "available" as const },
+  { id: "dom.input", title: "DOM input control", status: "available" as const },
+  { id: "screenshot", title: "Window screenshot capture", status: "available" as const },
+  { id: "event.projection", title: "Event projection", status: "available" as const }
+];
 const codexAdapter = createCodexAdapter({
   eventStore,
   methods,
@@ -1652,7 +1662,12 @@ logStartup("ensure panel renderer bindings");
 await ensurePanelRendererBindings(eventStore);
 logStartup("register runtime methods");
 await registerRuntimeMethods(eventStore);
-const runtimeMethodContext = createRuntimeMethodContext({ eventStore, methods, runPromise });
+const runtimeMethodContext = createRuntimeMethodContext({
+  eventStore,
+  methods,
+  runPromise,
+  capabilities: runtimeCapabilities
+});
 await registerRuntimeModules(
   runtimeMethodContext,
   [runtimeControlModule, panelControlModule],

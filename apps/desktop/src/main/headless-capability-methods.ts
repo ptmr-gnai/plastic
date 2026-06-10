@@ -4,22 +4,19 @@ import {
   projectWindows,
   type PlasticMethod
 } from "@plastic/core";
-import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
+import { availabilityFromCapabilities, type RuntimeMethodContext, type RuntimeModule } from "./runtime-method-context.js";
 
-const unavailable = (method: Omit<PlasticMethod, "owner" | "handler" | "availability"> & {
+type UnavailableMethodSpec = Omit<PlasticMethod, "owner" | "handler" | "availability"> & {
   requiredCapabilities: string[];
   notes: string;
-}): PlasticMethod => {
+};
+
+const unavailable = (context: RuntimeMethodContext, method: UnavailableMethodSpec): PlasticMethod => {
   const plasticMethod: PlasticMethod = {
     id: method.id,
     title: method.title,
     owner: { kind: "runtime", id: "plastic.runtime" },
-    availability: {
-      status: "unavailable",
-      requiredCapabilities: method.requiredCapabilities,
-      missingCapabilities: method.requiredCapabilities,
-      notes: method.notes
-    },
+    availability: availabilityFromCapabilities(context.capabilities, method.requiredCapabilities, method.notes),
     handler: () => Effect.promise(async () => {
       throw new Error(`${method.id} is unavailable in headless mode: ${method.notes}`);
     })
@@ -54,77 +51,77 @@ const unavailable = (method: Omit<PlasticMethod, "owner" | "handler" | "availabi
   return plasticMethod;
 };
 
-const headlessUnavailableMethods: PlasticMethod[] = [
-  unavailable({
+const headlessUnavailableMethodSpecs: UnavailableMethodSpec[] = [
+  {
     id: "windows/create",
     title: "Create window",
     description: "Creates an Electron window.",
     requiredCapabilities: ["electron.window"],
     notes: "Headless mode has no Electron BrowserWindow host."
-  }),
-  unavailable({
+  },
+  {
     id: "windows/focusPanel",
     title: "Focus panel",
     description: "Focuses a panel in an Electron window.",
     requiredCapabilities: ["electron.window", "dom.refs"],
     notes: "Headless mode has no focused window or DOM."
-  }),
-  unavailable({
+  },
+  {
     id: "windows/scrollToRef",
     title: "Scroll to visible UI reference",
     description: "Scrolls an Electron window to a visible data-plastic-ref.",
     requiredCapabilities: ["electron.window", "dom.refs"],
     notes: "Headless mode has no rendered DOM to scroll."
-  }),
-  unavailable({
+  },
+  {
     id: "windows/screenshot",
     title: "Capture window screenshot",
     description: "Captures a screenshot of an Electron window or visible ref.",
     requiredCapabilities: ["electron.window", "screenshot"],
     notes: "Headless mode has no screenshot provider."
-  }),
-  unavailable({
+  },
+  {
     id: "deixis/listVisibleRefs",
     title: "List visible UI references",
     description: "Lists visible data-plastic-ref elements in Electron windows.",
     requiredCapabilities: ["dom.refs"],
     notes: "Headless mode can inspect state/events but has no DOM projection."
-  }),
-  unavailable({
+  },
+  {
     id: "deixis/resolveRef",
     title: "Resolve visible UI reference",
     description: "Resolves a visible data-plastic-ref to panel, source, lineage, and actions.",
     requiredCapabilities: ["dom.refs"],
     notes: "Headless mode has no visible refs to resolve."
-  }),
-  unavailable({
+  },
+  {
     id: "deixis/evalDom",
     title: "Evaluate DOM script",
     description: "Evaluates JavaScript in the focused Electron renderer DOM.",
     requiredCapabilities: ["dom.eval"],
     notes: "Headless mode has no renderer DOM."
-  }),
-  unavailable({
+  },
+  {
     id: "deixis/clickRef",
     title: "Click visible UI reference",
     description: "Clicks a visible data-plastic-ref in Electron.",
     requiredCapabilities: ["dom.refs", "dom.input"],
     notes: "Headless mode has no rendered element to click."
-  }),
-  unavailable({
+  },
+  {
     id: "deixis/fillRef",
     title: "Fill visible UI reference",
     description: "Fills an input or textarea under a visible data-plastic-ref.",
     requiredCapabilities: ["dom.refs", "dom.input"],
     notes: "Headless mode has no rendered input to fill."
-  }),
-  unavailable({
+  },
+  {
     id: "deixis/verifyRefAction",
     title: "Verify ref action",
     description: "Verifies a recent ref-driven action through events and visible refs.",
     requiredCapabilities: ["dom.refs"],
     notes: "Headless mode can verify events directly, but cannot verify visible refs."
-  })
+  }
 ];
 
 export const headlessCapabilityModule: RuntimeModule = {
@@ -141,7 +138,7 @@ export const headlessCapabilityModule: RuntimeModule = {
         availability: {
           status: "degraded",
           requiredCapabilities: ["window.projection"],
-          missingCapabilities: ["electron.window"],
+          missingCapabilities: context.capabilities.missing(["electron.window"]),
           notes: "Headless can project durable windows but cannot inspect live Electron windows."
         },
         handler: () =>
@@ -149,8 +146,8 @@ export const headlessCapabilityModule: RuntimeModule = {
       })
     );
 
-    for (const method of headlessUnavailableMethods) {
-      await runPromise(methods.register(method));
+    for (const method of headlessUnavailableMethodSpecs) {
+      await runPromise(methods.register(unavailable(context, method)));
     }
   }
 };

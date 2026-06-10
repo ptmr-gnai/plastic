@@ -12,6 +12,7 @@ import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } fro
 export const registerRuntimeControlMethods = async (input: RuntimeMethodContext) => {
   await registerMethodDiscovery(input);
   await registerRpcCall(input);
+  await registerCapabilityDiscovery(input);
   await registerEventReaders(input);
   await registerThemeControl(input);
 };
@@ -95,6 +96,27 @@ const registerRpcCall = async (input: {
           }
           return runPromise(methods.call(rpcInput.method, rpcInput.input));
         })
+    })
+  );
+};
+
+const registerCapabilityDiscovery = async (input: RuntimeMethodContext) => {
+  const { capabilities, methods, runPromise } = input;
+
+  await runPromise(
+    methods.register({
+      id: "runtime/capabilities",
+      title: "Runtime capabilities",
+      description: "Lists host capabilities used to derive method availability.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["runtime.capabilities"]
+      },
+      handler: () => Effect.succeed({
+        count: capabilities.list().length,
+        items: capabilities.list()
+      })
     })
   );
 };
