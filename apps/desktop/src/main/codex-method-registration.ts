@@ -89,6 +89,7 @@ const registerCodexDefaults = async (input: CodexCoreRegistrationInput) => {
       title: "Get Codex defaults",
       description: "Returns Plastic's durable Codex adapter defaults used for new chat threads and turns.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
       handler: () => Effect.promise(input.getCodexDefaults)
     })
   );
@@ -101,6 +102,7 @@ const registerCodexSetDefaults = async (input: CodexCoreRegistrationInput) => {
       title: "Set Codex defaults",
       description: "Durably updates Plastic's Codex adapter defaults.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
           const payload = methodInput as { model?: string };
@@ -124,6 +126,7 @@ const registerCodexConnect = async (input: CodexCoreRegistrationInput) => {
       id: "codex/connect",
       title: "Connect Codex app-server",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
           const codexPath = (methodInput as { codexPath?: string } | undefined)?.codexPath;
@@ -139,6 +142,7 @@ const registerCodexInitialize = async (input: CodexCoreRegistrationInput) => {
       id: "codex/initialize",
       title: "Initialize Codex app-server",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
       handler: () => Effect.promise(input.initialize)
     })
   );
@@ -151,6 +155,7 @@ const registerCodexRequest = async (input: CodexCoreRegistrationInput) => {
       title: "Raw Codex request",
       description: "Passthrough to any Codex app-server method. Params and result are preserved as-is.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
           await input.ensureInitialized();
@@ -178,6 +183,7 @@ const registerConfigurePlasticMcp = async (input: CodexBridgeRegistrationInput) 
       title: "Configure Plastic MCP bridge",
       description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
       handler: () =>
         Effect.promise(async () => {
           await input.ensureInitialized();
@@ -194,6 +200,7 @@ const registerBridgeStatus = async (input: CodexBridgeRegistrationInput) => {
       title: "Plastic bridge status",
       description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
       handler: () =>
         Effect.promise(async () => {
           await input.ensureInitialized();
@@ -228,6 +235,7 @@ const registerBridgeTest = async (input: CodexBridgeRegistrationInput) => {
       title: "Test Plastic MCP bridge",
       description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
       handler: () =>
         Effect.promise(async () => {
           await input.ensureInitialized();
@@ -254,6 +262,7 @@ const registerCallPlasticRpcTool = async (input: CodexBridgeRegistrationInput) =
       title: "Call Plastic RPC through MCP",
       description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
           await input.ensureInitialized();
