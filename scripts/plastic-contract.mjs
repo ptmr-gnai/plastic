@@ -1,6 +1,7 @@
 const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
+const extensionId = `${runId}-extension`;
 
 const results = [];
 
@@ -88,6 +89,7 @@ await check("plastic/methods", async () => {
     "methods/describe",
     "panels/create",
     "extensions/list",
+    "extensions/scaffold",
     "build/status",
     "app/diagnostics",
     "events/append",
@@ -201,6 +203,26 @@ await check("panel lifecycle", async () => {
     panelId,
     createEventId: createdPanelEvent.id,
     remainingPanels: panelsAfterClose.length
+  };
+});
+
+await check("extensions/scaffold", async () => {
+  const scaffold = await rpc("extensions/scaffold", {
+    id: extensionId,
+    title: "Contract Extension",
+    panelTitle: "Contract Extension Panel",
+    body: "Created by scripts/plastic-contract.mjs"
+  });
+  assert(scaffold?.extensionId === `workspace.${extensionId}`, "scaffold returned wrong extension id");
+  assert(scaffold.manifestPath, "scaffold missing manifestPath");
+  assert(scaffold.eventId, "scaffold missing eventId");
+  const scan = await rpc("extensions/scan");
+  const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
+  assert(discovered.some((extension) => extension.id === scaffold.extensionId), "scaffolded extension not discovered");
+  return {
+    extensionId: scaffold.extensionId,
+    panelId: scaffold.panelId,
+    eventId: scaffold.eventId
   };
 });
 

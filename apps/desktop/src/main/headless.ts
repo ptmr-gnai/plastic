@@ -9,6 +9,7 @@ import {
   type EventStore
 } from "@plastic/core";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
+import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { headlessCapabilityModule } from "./headless-capability-methods.js";
@@ -271,12 +272,14 @@ const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
     runtimePort
   })
 });
+const extensionAuthoringModule = createExtensionAuthoringModule({ plasticDir });
 await runtime.registerModules([
   runtimeStateModule,
   runtimeSnapshotModule,
   agentWorkbenchModule,
   runtimeBuildModule,
   runtimeDiagnosticsModule,
+  extensionAuthoringModule,
   runtimeControlModule,
   panelControlModule,
   headlessCapabilityModule,
