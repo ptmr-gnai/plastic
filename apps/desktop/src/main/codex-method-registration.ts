@@ -13,6 +13,18 @@ type CodexAliasDefinition = {
   codexMethod: string;
 };
 
+type CodexCoreRegistrationInput = {
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+  status: () => unknown;
+  getCodexDefaults: () => Promise<unknown>;
+  appendCodexEvent: (type: string, payload: unknown) => Promise<{ id: string }>;
+  connect: (codexPath?: string) => Promise<unknown>;
+  initialize: () => Promise<unknown>;
+  ensureInitialized: () => Promise<void>;
+  request: (method: string, params?: unknown) => Promise<unknown>;
+};
+
 const codexAliasDefinitions: CodexAliasDefinition[] = [
   { id: "codex/threadStart", title: "Start Codex thread", codexMethod: "thread/start" },
   { id: "codex/threadResume", title: "Resume Codex thread", codexMethod: "thread/resume" },
@@ -27,6 +39,110 @@ const codexAliasDefinitions: CodexAliasDefinition[] = [
   { id: "codex/modelList", title: "List Codex models", codexMethod: "model/list" },
   { id: "codex/configRead", title: "Read Codex config", codexMethod: "config/read" }
 ];
+
+export const registerCodexCoreMethods = async (input: CodexCoreRegistrationInput) => {
+  await input.getCodexDefaults();
+  await registerCodexStatus(input);
+  await registerCodexDefaults(input);
+  await registerCodexSetDefaults(input);
+  await registerCodexConnect(input);
+  await registerCodexInitialize(input);
+  await registerCodexRequest(input);
+};
+
+const registerCodexStatus = async (input: CodexCoreRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "codex/status",
+      title: "Codex status",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      availability: codexBackendAvailability,
+      handler: () => Effect.sync(input.status)
+    })
+  );
+};
+
+const registerCodexDefaults = async (input: CodexCoreRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "codex/defaults",
+      title: "Get Codex defaults",
+      description: "Returns Plastic's durable Codex adapter defaults used for new chat threads and turns.",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      handler: () => Effect.promise(input.getCodexDefaults)
+    })
+  );
+};
+
+const registerCodexSetDefaults = async (input: CodexCoreRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "codex/setDefaults",
+      title: "Set Codex defaults",
+      description: "Durably updates Plastic's Codex adapter defaults.",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      handler: (methodInput) =>
+        Effect.promise(async () => {
+          const payload = methodInput as { model?: string };
+          const model = payload.model?.trim();
+          if (!model) {
+            throw new Error("codex/setDefaults requires model");
+          }
+          const event = await input.appendCodexEvent("codex.defaults.updated", { model });
+          return {
+            defaults: await input.getCodexDefaults(),
+            eventId: event.id
+          };
+        })
+    })
+  );
+};
+
+const registerCodexConnect = async (input: CodexCoreRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "codex/connect",
+      title: "Connect Codex app-server",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      handler: (methodInput) =>
+        Effect.promise(async () => {
+          const codexPath = (methodInput as { codexPath?: string } | undefined)?.codexPath;
+          return input.connect(codexPath);
+        })
+    })
+  );
+};
+
+const registerCodexInitialize = async (input: CodexCoreRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "codex/initialize",
+      title: "Initialize Codex app-server",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      handler: () => Effect.promise(input.initialize)
+    })
+  );
+};
+
+const registerCodexRequest = async (input: CodexCoreRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "codex/request",
+      title: "Raw Codex request",
+      description: "Passthrough to any Codex app-server method. Params and result are preserved as-is.",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      handler: (methodInput) =>
+        Effect.promise(async () => {
+          await input.ensureInitialized();
+          const payload = methodInput as { method?: string; params?: unknown };
+          if (!payload.method) {
+            throw new Error("codex/request requires method");
+          }
+          return input.request(payload.method, payload.params);
+        })
+    })
+  );
+};
 
 export const registerCodexAliasMethods = async (input: {
   methods: MethodRegistry;
