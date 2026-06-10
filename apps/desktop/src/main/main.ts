@@ -26,15 +26,14 @@ import {
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods } from "./extension-loader.js";
-import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeBuildModule } from "./runtime-build-methods.js";
-import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
+import { createRuntimeModulePlan } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
@@ -321,20 +320,20 @@ const rendererControlModule = createRendererControlModule({
     })
 });
 await runtime.registerModules(
-  [
-    runtimeStateModule,
-    runtimeSnapshotModule,
-    agentWorkbenchModule,
-    agentOrientModule,
-    runtimeBuildModule,
-    runtimeDiagnosticsModule,
-    extensionAuthoringModule,
-    rendererControlModule,
-    runtimeControlModule,
-    panelControlModule,
-    windowCapabilityModule,
-    deixisMethodModule
-  ],
+  createRuntimeModulePlan({
+    state: runtimeStateModule,
+    snapshot: runtimeSnapshotModule,
+    agentWorkbench: agentWorkbenchModule,
+    agentOrient: agentOrientModule,
+    build: runtimeBuildModule,
+    diagnostics: runtimeDiagnosticsModule,
+    extensionAuthoring: extensionAuthoringModule,
+    rendererControl: rendererControlModule,
+    agentBackend: null,
+    windowCapability: windowCapabilityModule,
+    deixis: deixisMethodModule,
+    health: null
+  }),
   (module) => logStartup(`register ${module.id} module`)
 );
 logStartup("register extension methods");

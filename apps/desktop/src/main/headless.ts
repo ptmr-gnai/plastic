@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { agentBackendFallbackModule } from "./agent-backend-fallback-methods.js";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { startBuildHttpTransport } from "./build-http-transport.js";
@@ -15,15 +14,13 @@ import {
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods } from "./extension-loader.js";
-import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
-import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
-import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
+import { createRuntimeModulePlan } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
@@ -144,7 +141,6 @@ const runtimeStateModule = createRuntimeStateModule({
     ]
   })
 });
-const runtimeHealthModule = createRuntimeHealthModule();
 const runtimeSnapshotModule = createRuntimeSnapshotModule({
   getHostDetails: () => ({
     app: { name: "Plastic", mode: "headless", workspaceDir, eventPath },
@@ -185,20 +181,18 @@ const rendererControlModule = createRendererControlModule({});
 const windowCapabilityModule = createWindowCapabilityModule();
 const deixisMethodModule = createDeixisMethodModule();
 await runtime.registerModules([
-  runtimeStateModule,
-  runtimeSnapshotModule,
-  agentWorkbenchModule,
-  agentOrientModule,
-  runtimeBuildModule,
-  runtimeDiagnosticsModule,
-  extensionAuthoringModule,
-  rendererControlModule,
-  agentBackendFallbackModule,
-  runtimeControlModule,
-  panelControlModule,
-  windowCapabilityModule,
-  deixisMethodModule,
-  runtimeHealthModule
+  ...createRuntimeModulePlan({
+    state: runtimeStateModule,
+    snapshot: runtimeSnapshotModule,
+    agentWorkbench: agentWorkbenchModule,
+    agentOrient: agentOrientModule,
+    build: runtimeBuildModule,
+    diagnostics: runtimeDiagnosticsModule,
+    extensionAuthoring: extensionAuthoringModule,
+    rendererControl: rendererControlModule,
+    windowCapability: windowCapabilityModule,
+    deixis: deixisMethodModule
+  })
 ]);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
