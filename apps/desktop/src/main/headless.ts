@@ -7,10 +7,10 @@ import {
 import { agentBackendFallbackModule } from "./agent-backend-fallback-methods.js";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
+import { createDeixisMethodModule } from "./deixis-methods.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
-import { headlessCapabilityModule } from "./headless-capability-methods.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
@@ -218,6 +218,7 @@ const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
 const extensionAuthoringModule = createExtensionAuthoringModule({ plasticDir });
 const rendererControlModule = createRendererControlModule({});
 const windowCapabilityModule = createWindowCapabilityModule();
+const deixisMethodModule = createDeixisMethodModule();
 await runtime.registerModules([
   runtimeStateModule,
   runtimeSnapshotModule,
@@ -231,7 +232,7 @@ await runtime.registerModules([
   runtimeControlModule,
   panelControlModule,
   windowCapabilityModule,
-  headlessCapabilityModule,
+  deixisMethodModule,
   runtimeHealthModule
 ]);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });

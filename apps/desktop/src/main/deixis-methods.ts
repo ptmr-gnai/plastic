@@ -12,7 +12,7 @@ import {
   type TimelineInput
 } from "@plastic/core";
 import type { RefInput, ScreenshotInput, VerifyRefActionInput } from "./deixis-types.js";
-import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
+import { availabilityFromCapabilities, type RuntimeMethodContext, type RuntimeModule } from "./runtime-method-context.js";
 
 type ResolvedVisibleRef = {
   windowId: number;
@@ -37,7 +37,7 @@ type DeixisMethodHost = {
   sourceHintsFor: (input: { ref?: string; panelId?: string; extensionId?: string; command?: string }) => string[];
 };
 
-export const createDeixisMethodModule = (host: DeixisMethodHost): RuntimeModule => ({
+export const createDeixisMethodModule = (host: Partial<DeixisMethodHost> = {}): RuntimeModule => ({
   id: "deixis",
   register: async (context) => {
     await registerListVisibleRefs(context, host);
@@ -52,7 +52,7 @@ export const createDeixisMethodModule = (host: DeixisMethodHost): RuntimeModule 
 
 const registerListVisibleRefs = async (
   context: RuntimeMethodContext,
-  host: DeixisMethodHost
+  host: Partial<DeixisMethodHost>
 ) => {
   const { methods, runPromise } = context;
   await runPromise(
@@ -60,18 +60,24 @@ const registerListVisibleRefs = async (
       id: "deixis/listVisibleRefs",
       title: "List visible UI references",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["dom.refs"]
-      },
-      handler: () => Effect.promise(host.listVisibleRefs)
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["dom.refs"],
+        "Requires a rendered DOM that exposes data-plastic-ref elements."
+      ),
+      handler: () => Effect.promise(async () => {
+        if (!host.listVisibleRefs) {
+          throw new Error("deixis/listVisibleRefs is unavailable: missing dom.refs capability");
+        }
+        return host.listVisibleRefs();
+      })
     })
   );
 };
 
 const registerScreenshot = async (
   context: RuntimeMethodContext,
-  host: DeixisMethodHost
+  host: Partial<DeixisMethodHost>
 ) => {
   const { methods, runPromise } = context;
   await runPromise(
@@ -80,18 +86,24 @@ const registerScreenshot = async (
       title: "Capture window screenshot",
       description: "Captures the focused window, a specific window id, or a visible data-plastic-ref region as a data URL.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["electron.window", "screenshot"]
-      },
-      handler: (input) => Effect.promise(() => host.captureWindow(input as ScreenshotInput | undefined))
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["electron.window", "screenshot"],
+        "Requires a host that can capture Electron BrowserWindow pixels."
+      ),
+      handler: (input) => Effect.promise(async () => {
+        if (!host.captureWindow) {
+          throw new Error("windows/screenshot is unavailable: missing electron.window or screenshot capability");
+        }
+        return host.captureWindow(input as ScreenshotInput | undefined);
+      })
     })
   );
 };
 
 const registerResolveRef = async (
   context: RuntimeMethodContext,
-  host: DeixisMethodHost
+  host: Partial<DeixisMethodHost>
 ) => {
   const { eventStore, methods, runPromise } = context;
   await runPromise(
@@ -100,12 +112,16 @@ const registerResolveRef = async (
       title: "Resolve visible UI reference",
       description: "Explains a data-plastic-ref with DOM, panel, extension, command, source hints, and recent event lineage.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["dom.refs"]
-      },
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["dom.refs"],
+        "Requires visible data-plastic-ref elements in a rendered DOM."
+      ),
       handler: (input) =>
         Effect.promise(async () => {
+          if (!host.resolveVisibleRef || !host.panelIdFromRef || !host.sourceHintsFor) {
+            throw new Error("deixis/resolveRef is unavailable: missing dom.refs capability");
+          }
           const ref = (input as { ref?: string }).ref;
           if (!ref) {
             throw new Error("deixis/resolveRef requires ref");
@@ -225,7 +241,7 @@ const registerResolveRef = async (
 
 const registerEvalDom = async (
   context: RuntimeMethodContext,
-  host: DeixisMethodHost
+  host: Partial<DeixisMethodHost>
 ) => {
   const { methods, runPromise } = context;
   await runPromise(
@@ -234,12 +250,16 @@ const registerEvalDom = async (
       title: "Evaluate DOM script",
       description: "Permissive v0 DOM evaluation in the focused window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["dom.eval"]
-      },
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["dom.eval"],
+        "Requires a renderer DOM execution host."
+      ),
       handler: (input) =>
         Effect.promise(async () => {
+          if (!host.findWindow) {
+            throw new Error("deixis/evalDom is unavailable: missing dom.eval capability");
+          }
           const code = (input as { code?: string }).code;
           if (!code) {
             throw new Error("Missing DOM eval code");
@@ -256,7 +276,7 @@ const registerEvalDom = async (
 
 const registerVerifyRefAction = async (
   context: RuntimeMethodContext,
-  host: DeixisMethodHost
+  host: Partial<DeixisMethodHost>
 ) => {
   const { eventStore, methods, runPromise } = context;
   await runPromise(
@@ -265,12 +285,16 @@ const registerVerifyRefAction = async (
       title: "Verify ref action",
       description: "Verifies that a recent ref-driven action produced the expected durable event.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["dom.refs", "event.projection"]
-      },
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["dom.refs", "event.projection"],
+        "Requires visible refs plus the durable event projection."
+      ),
       handler: (input) =>
         Effect.promise(async () => {
+          if (!host.panelIdFromRef) {
+            throw new Error("deixis/verifyRefAction is unavailable: missing dom.refs capability");
+          }
           const verifyInput = input as VerifyRefActionInput;
           if (!verifyInput.ref) {
             throw new Error("deixis/verifyRefAction requires ref");
@@ -351,7 +375,7 @@ const registerVerifyRefAction = async (
 
 const registerClickRef = async (
   context: RuntimeMethodContext,
-  host: DeixisMethodHost
+  host: Partial<DeixisMethodHost>
 ) => {
   const { eventStore, methods, runPromise } = context;
   await runPromise(
@@ -360,12 +384,22 @@ const registerClickRef = async (
       title: "Click visible UI reference",
       description: "Clicks a visible data-plastic-ref in the focused or selected window and records the action.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["dom.refs", "dom.input"]
-      },
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["dom.refs", "dom.input"],
+        "Requires a rendered DOM and input control."
+      ),
       handler: (input) =>
         Effect.promise(async () => {
+          if (!host.findWindow || !host.resolveVisibleRef || !host.panelIdFromRef || !host.scrollRefIntoViewScript) {
+            throw new Error("deixis/clickRef is unavailable: missing dom.refs or dom.input capability");
+          }
+          const domHost = {
+            findWindow: host.findWindow,
+            resolveVisibleRef: host.resolveVisibleRef,
+            panelIdFromRef: host.panelIdFromRef,
+            scrollRefIntoViewScript: host.scrollRefIntoViewScript
+          };
           const refInput = input as RefInput;
           if (!refInput.ref) {
             throw new Error("deixis/clickRef requires ref");
@@ -378,11 +412,11 @@ const registerClickRef = async (
               .at(-1);
             return typeof filled?.value === "string" ? filled.value : undefined;
           });
-          const target = host.findWindow(refInput.windowId);
+          const target = domHost.findWindow(refInput.windowId);
           if (!target) {
             throw new Error("No window available");
           }
-          const scope = await resolveRefScope(host, refInput.ref);
+          const scope = await resolveRefScope(domHost, refInput.ref);
           const result = await target.webContents.executeJavaScript(`
             (() => {
               const ref = ${JSON.stringify(refInput.ref)};
@@ -392,7 +426,7 @@ const registerClickRef = async (
               if (!element) {
                 return { clicked: false, reason: "ref not found" };
               }
-              ${host.scrollRefIntoViewScript(refInput.ref)}
+              ${domHost.scrollRefIntoViewScript(refInput.ref)}
               if (element instanceof HTMLFormElement) {
                 const field = element.querySelector("textarea, input");
                 if (field && latestFilledValue !== undefined && field.value.trim().length === 0) {
@@ -434,7 +468,7 @@ const registerClickRef = async (
 
 const registerFillRef = async (
   context: RuntimeMethodContext,
-  host: DeixisMethodHost
+  host: Partial<DeixisMethodHost>
 ) => {
   const { eventStore, methods, runPromise } = context;
   await runPromise(
@@ -443,12 +477,22 @@ const registerFillRef = async (
       title: "Fill visible UI reference",
       description: "Fills an input or textarea inside a visible data-plastic-ref and records the action.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["dom.refs", "dom.input"]
-      },
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["dom.refs", "dom.input"],
+        "Requires a rendered DOM and input control."
+      ),
       handler: (input) =>
         Effect.promise(async () => {
+          if (!host.findWindow || !host.resolveVisibleRef || !host.panelIdFromRef || !host.scrollRefIntoViewScript) {
+            throw new Error("deixis/fillRef is unavailable: missing dom.refs or dom.input capability");
+          }
+          const domHost = {
+            findWindow: host.findWindow,
+            resolveVisibleRef: host.resolveVisibleRef,
+            panelIdFromRef: host.panelIdFromRef,
+            scrollRefIntoViewScript: host.scrollRefIntoViewScript
+          };
           const refInput = input as RefInput;
           if (!refInput.ref) {
             throw new Error("deixis/fillRef requires ref");
@@ -456,11 +500,11 @@ const registerFillRef = async (
           if (refInput.value === undefined) {
             throw new Error("deixis/fillRef requires value");
           }
-          const target = host.findWindow(refInput.windowId);
+          const target = domHost.findWindow(refInput.windowId);
           if (!target) {
             throw new Error("No window available");
           }
-          const scope = await resolveRefScope(host, refInput.ref);
+          const scope = await resolveRefScope(domHost, refInput.ref);
           const result = await target.webContents.executeJavaScript(`
             (() => {
               const ref = ${JSON.stringify(refInput.ref)};
@@ -470,7 +514,7 @@ const registerFillRef = async (
               if (!root) {
                 return { filled: false, reason: "ref not found" };
               }
-              ${host.scrollRefIntoViewScript(refInput.ref)}
+              ${domHost.scrollRefIntoViewScript(refInput.ref)}
               const element = root.matches("input, textarea")
                 ? root
                 : root.querySelector("textarea, input");
@@ -520,7 +564,7 @@ const asString = (value: unknown): string | undefined =>
   typeof value === "string" && value.length > 0 ? value : undefined;
 
 const resolveRefScope = async (
-  host: DeixisMethodHost,
+  host: Pick<DeixisMethodHost, "resolveVisibleRef" | "panelIdFromRef">,
   ref: string
 ): Promise<EventScopeInput | undefined> => {
   const visible = await host.resolveVisibleRef(ref).catch(() => null);
