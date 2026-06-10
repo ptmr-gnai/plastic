@@ -6,8 +6,8 @@ This repo builds Plastic: an agent-native Electron workspace where the app embod
 
 Read these first:
 
-- `PROJECT_PLAN.md`
-- `ARCHITECTURE.md`
+- `docs/PROJECT_PLAN.md`
+- `docs/ARCHITECTURE.md`
 
 ## Working Rules
 
@@ -43,4 +43,3 @@ pnpm dev
 ```
 
 `pnpm dev` should start Vite and Electron for the desktop app once dependencies are installed.
-

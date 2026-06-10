@@ -29,6 +29,13 @@ PLASTIC_STATIC_PORT=5174 \
 pnpm --filter @plastic/desktop dev:headless
 ```
 
+## Docs
+
+- [Project plan](docs/PROJECT_PLAN.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Agent primitives and method legibility](docs/AGENT_PRIMITIVES_AND_METHOD_LEGIBILITY.md)
+- [Security](docs/SECURITY.md)
+
 ## Data
 
 Runtime event logs and user/workspace data are not source files. By default, Plastic writes durable runtime data under:

@@ -29,7 +29,8 @@ const functionWarnLines = 80;
 const functionFailLines = 140;
 
 const allowlistedLargeFiles = new Map([
-  ["apps/desktop/src/main/main.ts", "Known runtime god file; next plan extracts a shared runtime kernel."]
+  ["apps/desktop/src/main/main.ts", "Known runtime god file; next plan extracts a shared runtime kernel."],
+  ["docs/PROJECT_PLAN.md", "Historical planning document kept as reference material."]
 ]);
 
 const warnings = [];
