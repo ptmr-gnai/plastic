@@ -1,0 +1,179 @@
+const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
+const runId = `contract-${Date.now()}`;
+const panelId = `${runId}-panel`;
+
+const results = [];
+
+const rpc = async (method, input) => {
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ method, input })
+  });
+  const payload = await response.json().catch(() => {
+    throw new Error(`${method}: response was not JSON`);
+  });
+  if (!response.ok || !payload.ok) {
+    throw new Error(`${method}: ${payload.error ?? response.statusText}`);
+  }
+  return payload.value;
+};
+
+const check = async (name, fn) => {
+  const startedAt = Date.now();
+  try {
+    const details = await fn();
+    results.push({ name, ok: true, ms: Date.now() - startedAt, details });
+  } catch (error) {
+    results.push({
+      name,
+      ok: false,
+      ms: Date.now() - startedAt,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+};
+
+const assert = (condition, message) => {
+  if (!condition) {
+    throw new Error(message);
+  }
+};
+
+const assertArray = (value, message) => {
+  assert(Array.isArray(value), message);
+  return value;
+};
+
+const itemsFrom = (value, message) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (Array.isArray(value?.items)) {
+    return value.items;
+  }
+  throw new Error(message);
+};
+
+let state;
+let methods;
+let createdPanelEvent;
+let extensions;
+let events;
+
+await check("plastic/state", async () => {
+  state = await rpc("plastic/state");
+  assert(state && typeof state === "object", "plastic/state returned no object");
+  assert(state.app?.name === "Plastic", "state.app.name is not Plastic");
+  const panelResources = Array.isArray(state.panels)
+    ? state.panels
+    : assertArray(state.resources, "state.resources is not an array")
+      .filter((resource) => resource.id === "panels" || resource.kind === "panel");
+  assert(panelResources.length > 0, "state does not expose panels");
+  return {
+    mode: state.app.mode ?? state.runtime?.mode ?? "unknown",
+    panels: panelResources.length,
+    events: state.events?.count ?? null
+  };
+});
+
+await check("plastic/methods", async () => {
+  methods = await rpc("plastic/methods");
+  const items = assertArray(methods, "plastic/methods is not an array");
+  for (const id of [
+    "plastic/state",
+    "plastic/methods",
+    "methods/describe",
+    "panels/create",
+    "extensions/list",
+    "events/list",
+    "events/timeline",
+    "plastic/selfTest"
+  ]) {
+    assert(items.some((method) => method.id === id), `missing method ${id}`);
+  }
+  return { count: items.length };
+});
+
+await check("methods/describe", async () => {
+  const description = await rpc("methods/describe", { id: "panels/create" });
+  assert(description.id === "panels/create", "described wrong method");
+  assert(description.owner?.id, "method owner missing");
+  return {
+    id: description.id,
+    owner: description.owner,
+    availability: description.availability?.status ?? "unspecified"
+  };
+});
+
+await check("panel lifecycle", async () => {
+  createdPanelEvent = await rpc("panels/create", {
+    id: panelId,
+    title: "Contract Panel",
+    kind: "generic",
+    body: "Created by scripts/plastic-contract.mjs"
+  });
+  const panelsAfterCreate = await rpc("panels/list");
+  assert(panelsAfterCreate.some((panel) => panel.id === panelId), "created panel not projected");
+  const panel = await rpc("panels/get", { id: panelId });
+  assert(panel.title === "Contract Panel", "created panel title mismatch");
+  await rpc("panels/rename", { id: panelId, title: "Contract Panel Renamed" });
+  const renamed = await rpc("panels/get", { id: panelId });
+  assert(renamed.title === "Contract Panel Renamed", "renamed panel not projected");
+  await rpc("panels/close", { id: panelId });
+  const panelsAfterClose = await rpc("panels/list");
+  assert(!panelsAfterClose.some((candidate) => candidate.id === panelId), "closed panel still projected");
+  return {
+    panelId,
+    createEventId: createdPanelEvent.id,
+    remainingPanels: panelsAfterClose.length
+  };
+});
+
+await check("extensions scan/list", async () => {
+  const scan = await rpc("extensions/scan");
+  extensions = await rpc("extensions/list");
+  const items = assertArray(extensions, "extensions/list is not an array");
+  assert(items.some((extension) => extension.id === "plastic.chat"), "bundled chat extension missing");
+  return {
+    scanDiscovered: scan.discovered?.length ?? scan.count ?? null,
+    count: items.length
+  };
+});
+
+await check("events list/timeline", async () => {
+  events = await rpc("events/list", { limit: 20 });
+  const eventItems = assertArray(events, "events/list is not an array");
+  assert(eventItems.length > 0, "events/list returned no events");
+  assert(eventItems.some((event) => event.id === createdPanelEvent.id), "panel create event missing from recent events");
+  const timeline = await rpc("events/timeline", { scope: { panelId }, limit: 10 });
+  const timelineItems = itemsFrom(timeline, "events/timeline returned no items");
+  assert(timelineItems.some((item) => item.eventId === createdPanelEvent.id), "panel create event missing from timeline");
+  return {
+    events: eventItems.length,
+    timeline: timelineItems.length
+  };
+});
+
+await check("plastic/selfTest", async () => {
+  const selfTest = await rpc("plastic/selfTest");
+  assert(selfTest.ok === true, "plastic/selfTest failed");
+  return {
+    checks: selfTest.checks?.length ?? null
+  };
+});
+
+const failed = results.filter((result) => !result.ok);
+const summary = {
+  ok: failed.length === 0,
+  rpcUrl,
+  checks: results.length,
+  failed: failed.length,
+  results
+};
+
+console.log(JSON.stringify(summary, null, 2));
+
+if (failed.length > 0) {
+  process.exitCode = 1;
+}
