@@ -26,7 +26,7 @@ import { createRuntimeBuildModule } from "./runtime-build-methods.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
-import { createRuntimeBuildStatus } from "./runtime-host-status.js";
+import { createRuntimeBuildStatus, createRuntimeDiagnostics } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
@@ -265,10 +265,8 @@ const runtimeBuildModule = createRuntimeBuildModule({
   runCommand: runLocalCommand
 });
 const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
-  getDiagnostics: () => ({
-    cwd: process.cwd(),
-    workspaceDir,
-    eventPath,
+  getDiagnostics: () => createRuntimeDiagnostics({
+    config: hostConfig,
     appReady: app.isReady(),
     windowCount: BrowserWindow.getAllWindows().length,
     retainedWindowCount: windows.size,

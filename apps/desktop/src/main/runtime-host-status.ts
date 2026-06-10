@@ -25,3 +25,17 @@ export const createRuntimeBuildStatus = (
     ...extra
   };
 };
+
+export const createRuntimeDiagnostics = (
+  input: {
+    config: RuntimeHostConfig;
+  } & Record<string, unknown>
+) => {
+  const { config, ...extra } = input;
+  return {
+    cwd: process.cwd(),
+    workspaceDir: config.workspaceDir,
+    eventPath: config.eventPath,
+    ...extra
+  };
+};
