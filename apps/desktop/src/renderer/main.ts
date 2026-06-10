@@ -7,90 +7,16 @@ import type {
   PanelRenderer,
   PlasticPanel
 } from "./panel-renderer-api.js";
-
-type PlasticState = {
-  app: {
-    name: "Plastic";
-    theme: "light" | "dark";
-  };
-  events: {
-    count: number;
-    latest: string | null;
-  };
-  resources: Array<{
-    id: string;
-    kind: string;
-    title?: string;
-    state: unknown;
-    actions: Array<{ id: string; title: string; method: string }>;
-  }>;
-};
-
-type PlasticEvent = {
-  type: string;
-  payload: unknown;
-};
-
-type PlasticExtension = {
-  id: string;
-  title: string;
-  path?: string;
-  renderers: Array<{
-    id: string;
-    title?: string;
-    module?: string;
-    panelKinds: string[];
-  }>;
-};
-
-type CodexStatus = {
-  connected: boolean;
-  initialized: boolean;
-  pid: number | null;
-  pendingRequests: number;
-};
-
-type PlasticSnapshot = {
-  build: {
-    status: string;
-    viteUrl: string | null;
-  };
-  runtime: {
-    windowCount: number;
-    eventStreamClientCount: number;
-  };
-  codex: CodexStatus;
-  methods: {
-    count: number;
-  };
-  panels: PlasticPanel[];
-  extensions: Array<{ id: string; title: string; errors: string[] }>;
-  visibleRefs: Array<{ windowId: number; refs: Array<{ ref?: string; panel?: string; command?: string; text: string }> }>;
-  events: {
-    count: number;
-    latest: { type: string; timestamp: string } | null;
-  };
-};
-
-const escapeHtml = (value: string): string =>
-  value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-
-const callPlastic = async (method: string, input?: unknown): Promise<unknown> => {
-  if (window.plastic) {
-    return window.plastic.call(method, input);
-  }
-
-  const response = await fetch("http://127.0.0.1:7331/rpc", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ method, input })
-  });
-  const result = await response.json() as { ok: true; value: unknown } | { ok: false; error: string };
-  if (!result.ok) {
-    throw new Error(result.error);
-  }
-  return result.value;
-};
+import {
+  buttonFromEvent,
+  callPlastic,
+  escapeHtml,
+  type CodexStatus,
+  type PlasticEvent,
+  type PlasticExtension,
+  type PlasticSnapshot,
+  type PlasticState
+} from "./renderer-client.js";
 
 let lastRenderedEventCount = -1;
 let topbarCollapsed = window.localStorage.getItem("plastic.topbarCollapsed") === "true";
@@ -139,7 +65,7 @@ const renderNow = async (force = false) => {
   lastRenderedEventCount = state.events.count;
   const buttonEvents = await callPlastic("events/list", { types: ["panel.button.added"], limit: 100 }) as PlasticEvent[];
   const addedButtons = buttonEvents
-    .map((event) => (event.payload as { button?: ChatButton }).button)
+    .map(buttonFromEvent)
     .filter((button): button is ChatButton => Boolean(button));
 
   const buildChatButtons = (chatId: string): ChatButton[] => {
