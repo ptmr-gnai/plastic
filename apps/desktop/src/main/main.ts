@@ -1,6 +1,5 @@
 import { createRequire } from "node:module";
 import { spawn as spawnProcess } from "node:child_process";
-import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 import type { BrowserWindow as ElectronBrowserWindow } from "electron";
 import { Effect } from "effect";
@@ -32,22 +31,30 @@ import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeBuildModule } from "./runtime-build-methods.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
+import { createRuntimeHostConfig } from "./runtime-host-config.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeModulePlan } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
-import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 import { createWindowCapabilityModule } from "./window-capability-methods.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
 const { app, BrowserWindow, ipcMain } = electron;
-const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
-const plasticDir = join(workspaceDir, ".plastic");
-const bundledExtensionsDir = join(workspaceDir, "apps", "desktop", "extensions", "bundled");
-const runtimePaths = resolvePlasticRuntimePaths(workspaceDir);
-const eventPath = runtimePaths.eventPath;
+const {
+  workspaceDir,
+  plasticDir,
+  bundledExtensionsDir,
+  runtimePaths,
+  eventPath,
+  runtimeHost,
+  runtimePort,
+  buildHost,
+  buildPort,
+  runtimeRpcUrls,
+  preferredRuntimeRpcUrl
+} = createRuntimeHostConfig();
 
 const logStartup = (stage: string) => {
   console.log(`[plastic:startup] ${stage}`);
@@ -75,26 +82,6 @@ const runLocalCommand = async (command: string, args: string[]) =>
 
 const windows = new Set<ElectronBrowserWindow>();
 const processStartedAt = new Date().toISOString();
-const runtimeHost = process.env.PLASTIC_RUNTIME_HOST ?? "0.0.0.0";
-const runtimePort = Number(process.env.PLASTIC_RUNTIME_PORT ?? 7331);
-const buildHost = process.env.PLASTIC_BUILD_HOST ?? "127.0.0.1";
-const buildPort = Number(process.env.PLASTIC_BUILD_PORT ?? 7332);
-
-const getHostRpcUrls = () => {
-  const urls = [`http://127.0.0.1:${runtimePort}/rpc`];
-  for (const interfaces of Object.values(networkInterfaces())) {
-    for (const candidate of interfaces ?? []) {
-      if (candidate.family === "IPv4" && !candidate.internal) {
-        urls.push(`http://${candidate.address}:${runtimePort}/rpc`);
-      }
-    }
-  }
-  urls.push(`http://host.docker.internal:${runtimePort}/rpc`);
-  return [...new Set(urls)];
-};
-
-const runtimeRpcUrls = getHostRpcUrls();
-const preferredRuntimeRpcUrl = process.env.PLASTIC_RPC_URL ?? runtimeRpcUrls[1] ?? runtimeRpcUrls[0] ?? `http://127.0.0.1:${runtimePort}/rpc`;
 const runtimeCapabilities = createElectronRuntimeCapabilities();
 logStartup("create runtime kernel");
 const runtime = await createPlasticRuntime({ workspaceDir, eventPath, capabilities: runtimeCapabilities });

@@ -1,5 +1,4 @@
 import { execFile } from "node:child_process";
-import { join } from "node:path";
 import { promisify } from "node:util";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
@@ -20,23 +19,25 @@ import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-b
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
+import { createRuntimeHostConfig } from "./runtime-host-config.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeModulePlan } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
-import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 import { createWindowCapabilityModule } from "./window-capability-methods.js";
 
-const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
-const plasticDir = join(workspaceDir, ".plastic");
-const runtimePaths = resolvePlasticRuntimePaths(workspaceDir);
-const eventPath = runtimePaths.eventPath;
-const bundledExtensionsDir = join(workspaceDir, "apps", "desktop", "extensions", "bundled");
-const runtimeHost = process.env.PLASTIC_RUNTIME_HOST ?? "0.0.0.0";
-const runtimePort = Number(process.env.PLASTIC_RUNTIME_PORT ?? 7331);
-const runtimeRpcUrl = process.env.PLASTIC_RPC_URL ?? `http://127.0.0.1:${runtimePort}/rpc`;
-const buildHost = process.env.PLASTIC_BUILD_HOST ?? "127.0.0.1";
-const buildPort = Number(process.env.PLASTIC_BUILD_PORT ?? 7332);
+const {
+  workspaceDir,
+  plasticDir,
+  runtimePaths,
+  eventPath,
+  bundledExtensionsDir,
+  runtimeHost,
+  runtimePort,
+  runtimeRpcUrl,
+  buildHost,
+  buildPort
+} = createRuntimeHostConfig();
 const startedAt = new Date().toISOString();
 const runtimeCapabilities = createHeadlessRuntimeCapabilities();
 
