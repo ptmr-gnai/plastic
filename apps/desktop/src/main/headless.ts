@@ -1,10 +1,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
-  prepareBundledExtensionStateAtStartup,
-  registerAndActivateExtensionsAtStartup
+  prepareBundledExtensionStateAtStartup
 } from "./extension-startup.js";
-import { panelMailboxModule } from "./panel-methods.js";
 import type { RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
@@ -21,7 +19,7 @@ import {
 } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { registerRuntimeModulePlan } from "./runtime-module-plan.js";
+import { registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 
@@ -149,7 +147,11 @@ const supportModules = createRuntimeHostSupportModules({
   })
 });
 const capabilityModules = createRuntimeHostCapabilityModules();
-await registerRuntimeModulePlan({
+await registerCoreRuntimeModulesAtStartup({
+  workspaceDir,
+  eventStore,
+  methods,
+  runPromise,
   runtime,
   state: runtimeStateModule,
   snapshot: runtimeSnapshotModule,
@@ -162,8 +164,6 @@ await registerRuntimeModulePlan({
   windowCapability: capabilityModules.windowCapability,
   deixis: capabilityModules.deixis
 });
-await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });
-await runtime.registerModules([panelMailboxModule]);
 await runtime.appendEvent({
   type: "runtime.started",
   payload: { mode: "headless" }

@@ -13,10 +13,8 @@ import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js
 import { createCodexAdapter } from "./codex-adapter.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
 import {
-  prepareBundledExtensionStateAtStartup,
-  registerAndActivateExtensionsAtStartup
+  prepareBundledExtensionStateAtStartup
 } from "./extension-startup.js";
-import { panelMailboxModule } from "./panel-methods.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
 import {
@@ -33,7 +31,7 @@ import {
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { registerRuntimeModulePlan } from "./runtime-module-plan.js";
+import { registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 
@@ -272,7 +270,11 @@ const supportModules = createRuntimeHostSupportModules({
     viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
   })
 });
-await registerRuntimeModulePlan({
+await registerCoreRuntimeModulesAtStartup({
+  workspaceDir,
+  eventStore,
+  methods,
+  runPromise,
   runtime,
   state: runtimeStateModule,
   snapshot: runtimeSnapshotModule,
@@ -286,15 +288,9 @@ await registerRuntimeModulePlan({
   windowCapability: capabilityModules.windowCapability,
   deixis: capabilityModules.deixis,
   health: null,
-  onRegister: (module) => logStartup(`register ${module.id} module`)
+  onRegister: (module) => logStartup(`register ${module.id} module`),
+  onPhase: logStartup
 });
-logStartup("register extension methods");
-await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });
-logStartup("register panel mailbox methods");
-await runtime.registerModules(
-  [panelMailboxModule],
-  (module) => logStartup(`register ${module.id} module`)
-);
 logStartup("register codex methods");
 await codexAdapter.registerMethods();
 const runtimeHealthModule = createRuntimeHealthModule({
