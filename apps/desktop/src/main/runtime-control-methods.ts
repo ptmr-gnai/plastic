@@ -9,6 +9,11 @@ import {
 } from "@plastic/core";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
+const runtimeControlAvailability = {
+  status: "available" as const,
+  notes: "Runtime control is provided by Plastic's shared method registry in headed and headless modes."
+};
+
 export const registerRuntimeControlMethods = async (input: RuntimeMethodContext) => {
   await registerMethodDiscovery(input);
   await registerRpcCall(input);
@@ -35,6 +40,7 @@ const registerMethodDiscovery = async (input: {
       title: "Plastic methods",
       description: "Lists all registered RPC methods.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeControlAvailability,
       handler: () => methods.list()
     })
   );
@@ -45,6 +51,7 @@ const registerMethodDiscovery = async (input: {
       title: "Describe method",
       description: "Returns one RPC method with schemas, examples, effects, links, and ownership metadata.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeControlAvailability,
       inputSchema: {
         type: "object",
         required: ["id"],
@@ -86,6 +93,7 @@ const registerRpcCall = async (input: {
       title: "Call RPC method",
       description: "Calls any registered Plastic RPC method through the shared method registry.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeControlAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
           const rpcInput = methodInput as { method?: string; input?: unknown };
@@ -135,6 +143,7 @@ const registerEventReaders = async (input: {
       title: "List events",
       description: "Lists bounded raw events with optional type, scope, cursor, and delta filters.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeControlAvailability,
       handler: (methodInput) =>
         Effect.map(eventStore.list(), (events) => selectEvents(events, methodInput as EventListInput | undefined))
     })
@@ -146,6 +155,7 @@ const registerEventReaders = async (input: {
       title: "Event timeline",
       description: "Returns deterministic, agent-readable summaries of recent events with cursors and links.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeControlAvailability,
       handler: (methodInput) =>
         Effect.map(eventStore.list(), (events) => buildTimeline(events, methodInput as TimelineInput | undefined))
     })
@@ -165,6 +175,7 @@ const registerEventAppend = async (input: {
       title: "Append event",
       description: "Appends a durable event to the Plastic event stream.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeControlAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
           const eventInput = methodInput as {
@@ -195,6 +206,7 @@ const registerThemeControl = async (input: {
       title: "Set theme",
       description: "Durably changes the app theme projected by renderer windows.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeControlAvailability,
       inputSchema: {
         type: "object",
         properties: {

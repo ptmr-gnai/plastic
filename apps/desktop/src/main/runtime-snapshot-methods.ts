@@ -6,6 +6,11 @@ import {
 } from "@plastic/core";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
+const runtimeSnapshotAvailability = {
+  status: "available" as const,
+  notes: "Snapshot projection is a shared runtime primitive in headed and headless modes."
+};
+
 type SnapshotHostDetails = {
   app: Record<string, unknown>;
   build: unknown;
@@ -25,6 +30,7 @@ export const createRuntimeSnapshotModule = (input: {
         title: "Plastic snapshot",
         description: "Returns a high-signal observable snapshot for agents: app, build, methods, panels, windows, extensions, visible refs, Codex, and recent events.",
         owner: { kind: "runtime", id: "plastic.runtime" },
+        availability: runtimeSnapshotAvailability,
         handler: () =>
           Effect.promise(async () => {
             const events = await runPromise(eventStore.list());
