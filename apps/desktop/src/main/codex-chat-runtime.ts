@@ -81,6 +81,35 @@ const threadStartPayload = (reason: string, cwd?: string) => {
 export const createCodexChatRuntime = (input: ChatRuntimeInput) => {
   const threadChatBindings = new Map<string, string>();
 
+  const appendChatAgentEvent = (type: string, payload: Record<string, unknown>) => {
+    const threadId = input.asString(payload.threadId);
+    const chatId = threadId ? threadChatBindings.get(threadId) : undefined;
+    if (!chatId) {
+      return;
+    }
+
+    void input.runPromise(
+      input.eventStore.append(
+        createEvent({
+          type,
+          payload: {
+            chatId,
+            ...payload
+          },
+          scope: {
+            panelId: chatId,
+            agentId: "codex"
+          },
+          actor: {
+            kind: "agent",
+            id: "codex",
+            name: "Codex"
+          }
+        })
+      )
+    );
+  };
+
   const bindThreadToChat = async (chatId: string, threadId: string, reason: string) => {
     for (const [existingThreadId, existingChatId] of threadChatBindings.entries()) {
       if (existingChatId === chatId && existingThreadId !== threadId) {
@@ -169,7 +198,7 @@ export const createCodexChatRuntime = (input: ChatRuntimeInput) => {
 
   return {
     bindThreadToChat,
-    chatIdForThread,
+    appendChatAgentEvent,
     developerInstructionsForChat,
     getBoundThreadId,
     getChatBinding,

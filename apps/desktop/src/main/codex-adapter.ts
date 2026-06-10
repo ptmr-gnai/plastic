@@ -1,15 +1,11 @@
 import { Effect } from "effect";
 import { createEvent, type EventStore, type MethodRegistry } from "@plastic/core";
+import { createCodexAdapterMethodRegistrar } from "./codex-adapter-methods.js";
 import { createCodexAppServerSession } from "./codex-app-server-session.js";
-import { registerCodexChatMethods } from "./codex-chat-method-registration.js";
 import { createCodexChatRuntime } from "./codex-chat-runtime.js";
+import { createCodexDefaultsReader } from "./codex-defaults.js";
 import { createCodexMessageHandler } from "./codex-message-handler.js";
 import { createCodexMcpConfig } from "./codex-mcp-config.js";
-import {
-  registerCodexAliasMethods,
-  registerCodexBridgeMethods,
-  registerCodexCoreMethods
-} from "./codex-method-registration.js";
 
 export interface CodexRpcMessage {
   id?: number;
@@ -32,6 +28,15 @@ export interface CodexAdapter {
   registerMethods: () => Promise<void>;
 }
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? value as Record<string, unknown> : {};
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === "string" && value.length > 0 ? value : undefined;
+
+const isThreadNotFoundError = (error: unknown) =>
+  error instanceof Error && error.message.includes("thread not found");
+
 export const createCodexAdapter = (input: {
   eventStore: EventStore;
   methods: MethodRegistry;
@@ -40,20 +45,12 @@ export const createCodexAdapter = (input: {
   runtimeRpcUrl?: string;
   runtimeRpcUrls?: string[];
 }): CodexAdapter => {
-  let bridgeMcpThreadId: string | null = null;
   const pending = new Map<number, PendingRequest>();
-
-  const asRecord = (value: unknown): Record<string, unknown> =>
-    value && typeof value === "object" ? value as Record<string, unknown> : {};
-
-  const asString = (value: unknown): string | undefined =>
-    typeof value === "string" && value.length > 0 ? value : undefined;
 
   const runtimeRpcUrl = input.runtimeRpcUrl ?? "http://127.0.0.1:7331/rpc";
   const runtimeRpcUrls = input.runtimeRpcUrls ?? [runtimeRpcUrl];
   const workspaceDir = input.workspaceDir ?? process.cwd();
   const fallbackCodexModel = process.env.PLASTIC_CODEX_MODEL ?? "gpt-5.4-mini";
-  let currentCodexDefaults = { model: fallbackCodexModel };
 
   const appendCodexEvent = (type: string, payload: unknown) =>
     input.runPromise(
@@ -71,50 +68,13 @@ export const createCodexAdapter = (input: {
       )
     );
 
-  const getCodexDefaults = async () => {
-    const events = await input.runPromise(input.eventStore.list());
-    let latest: (typeof events)[number] | undefined;
-    for (let index = events.length - 1; index >= 0; index -= 1) {
-      if (events[index]?.type === "codex.defaults.updated") {
-        latest = events[index];
-        break;
-      }
-    }
-    const payload = asRecord(latest?.payload);
-    currentCodexDefaults = {
-      model: asString(payload.model) ?? fallbackCodexModel
-    };
-    return currentCodexDefaults;
-  };
-
-  const appendChatAgentEvent = (type: string, payload: Record<string, unknown>) => {
-    const threadId = asString(payload.threadId);
-    const chatId = threadId ? chatRuntime.chatIdForThread(threadId) : undefined;
-    if (!chatId) {
-      return;
-    }
-
-    void input.runPromise(
-      input.eventStore.append(
-        createEvent({
-          type,
-          payload: {
-            chatId,
-            ...payload
-          },
-          scope: {
-            panelId: chatId,
-            agentId: "codex"
-          },
-          actor: {
-            kind: "agent",
-            id: "codex",
-            name: "Codex"
-          }
-        })
-      )
-    );
-  };
+  const codexDefaults = createCodexDefaultsReader({
+    eventStore: input.eventStore,
+    runPromise: input.runPromise,
+    fallbackModel: fallbackCodexModel,
+    asRecord,
+    asString
+  });
 
   let request: (method: string, params?: unknown) => Promise<unknown>;
 
@@ -131,21 +91,18 @@ export const createCodexAdapter = (input: {
     workspaceDir: input.workspaceDir,
     runtimeRpcUrl,
     runtimeRpcUrls,
-    getCodexDefaults,
+    getCodexDefaults: codexDefaults.getCodexDefaults,
     request: (method, params) => request(method, params),
     asRecord,
     asString
   });
-
-  const isThreadNotFoundError = (error: unknown) =>
-    error instanceof Error && error.message.includes("thread not found");
 
   const handleMessage = createCodexMessageHandler({
     pending,
     methods: input.methods,
     runPromise: input.runPromise,
     appendCodexEvent,
-    appendChatAgentEvent,
+    appendChatAgentEvent: chatRuntime.appendChatAgentEvent,
     respondToServerRequest: (id, result) => session.respondToServerRequest(id, result),
     rejectServerRequest: (id, error) => session.rejectServerRequest(id, error),
     asRecord,
@@ -165,69 +122,32 @@ export const createCodexAdapter = (input: {
 
   const status = () => ({
     ...session.status(),
-    defaults: currentCodexDefaults,
+    defaults: codexDefaults.current(),
     plasticMcp: {
       ...plasticMcp.state(),
       runtimeRpcUrl
     }
   });
-  const registerMethods = async () => {
-    await registerCodexCoreMethods({
-      methods: input.methods,
-      runPromise: input.runPromise,
-      status,
-      getCodexDefaults,
-      appendCodexEvent,
-      connect: session.connect,
-      initialize: session.initialize,
-      ensureInitialized: session.ensureInitialized,
-      request
-    });
-
-    await registerCodexBridgeMethods({
-      methods: input.methods,
-      runPromise: input.runPromise,
-      workspaceDir,
-      runtimeRpcUrl,
-      getBridgeThreadId: () => bridgeMcpThreadId,
-      setBridgeThreadId: (threadId) => {
-        bridgeMcpThreadId = threadId;
-      },
-      getPlasticMcpState: plasticMcp.state,
-      appendCodexEvent,
-      configurePlasticMcp: plasticMcp.configure,
-      ensureInitialized: session.ensureInitialized,
-      request,
-      asRecord,
-      asString
-    });
-
-    await registerCodexAliasMethods({
-      methods: input.methods,
-      runPromise: input.runPromise,
-      ensureInitialized: session.ensureInitialized,
-      requestAlias
-    });
-
-    await registerCodexChatMethods({
-      eventStore: input.eventStore,
-      methods: input.methods,
-      runPromise: input.runPromise,
-      workspaceDir,
-      getCodexDefaults,
-      bindThreadToChat: chatRuntime.bindThreadToChat,
-      getBoundThreadId: chatRuntime.getBoundThreadId,
-      getChatBinding: chatRuntime.getChatBinding,
-      startThreadForChat: chatRuntime.startThreadForChat,
-      threadStartPayload: chatRuntime.threadStartPayload,
-      developerInstructionsForChat: chatRuntime.developerInstructionsForChat,
-      ensureInitialized: session.ensureInitialized,
-      request,
-      isThreadNotFoundError,
-      asRecord,
-      asString
-    });
-  };
+  const registerMethods = createCodexAdapterMethodRegistrar({
+    eventStore: input.eventStore,
+    methods: input.methods,
+    runPromise: input.runPromise,
+    workspaceDir,
+    runtimeRpcUrl,
+    status,
+    getCodexDefaults: codexDefaults.getCodexDefaults,
+    appendCodexEvent,
+    connect: session.connect,
+    initialize: session.initialize,
+    ensureInitialized: session.ensureInitialized,
+    request,
+    requestAlias,
+    plasticMcp,
+    chatRuntime,
+    isThreadNotFoundError,
+    asRecord,
+    asString
+  });
 
   return {
     status,
