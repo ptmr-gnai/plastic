@@ -1,18 +1,24 @@
 import type { BrowserWindow as ElectronBrowserWindow } from "electron";
 import { Effect } from "effect";
-import { projectWindows } from "@plastic/core";
-import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
+import { projectPanels, projectWindows } from "@plastic/core";
+import {
+  availabilityFromCapabilities,
+  type RuntimeMethodContext,
+  type RuntimeModule
+} from "./runtime-method-context.js";
 
-type ElectronWindowHost = {
+type WindowHost = {
   getAllWindows: () => ElectronBrowserWindow[];
 };
 
-export const createElectronWindowModule = (input: {
-  browserWindow: ElectronWindowHost;
-  createWindow: (title?: string) => Promise<unknown>;
-  scrollRefIntoViewScript: (ref: string) => string;
-}): RuntimeModule => ({
-  id: "electron-window",
+type WindowCapabilityModuleInput = {
+  browserWindow?: WindowHost;
+  createWindow?: (title?: string) => Promise<unknown>;
+  scrollRefIntoViewScript?: (ref: string) => string;
+};
+
+export const createWindowCapabilityModule = (input: WindowCapabilityModuleInput = {}): RuntimeModule => ({
+  id: "window-capability",
   register: async (context) => {
     await registerWindowList(context);
     await registerWindowCreate(context, input.createWindow);
@@ -23,24 +29,30 @@ export const createElectronWindowModule = (input: {
 
 const registerWindowList = async (context: RuntimeMethodContext) => {
   const { eventStore, methods, runPromise } = context;
+  const availability = context.capabilities.has("electron.window")
+    ? availabilityFromCapabilities(context.capabilities, ["electron.window", "window.projection"])
+    : {
+        status: "degraded" as const,
+        requiredCapabilities: ["window.projection"],
+        missingCapabilities: context.capabilities.missing(["electron.window"]),
+        notes: "This host can project durable windows but cannot inspect live Electron windows."
+      };
+
   await runPromise(
     methods.register({
       id: "windows/list",
       title: "List windows",
       description: "Returns known windows rebuilt from durable events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["electron.window", "window.projection"]
-      },
-      handler: () => Effect.map(eventStore.list(), (events) => projectWindows(events))
+      availability,
+      handler: () => Effect.map(eventStore.list(), (events) => projectWindows(events, projectPanels(events)))
     })
   );
 };
 
 const registerWindowCreate = async (
   context: RuntimeMethodContext,
-  createWindow: (title?: string) => Promise<unknown>
+  createWindow?: (title?: string) => Promise<unknown>
 ) => {
   const { methods, runPromise } = context;
   await runPromise(
@@ -49,12 +61,16 @@ const registerWindowCreate = async (
       title: "Create window",
       description: "Opens a new Electron window and appends window.created.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["electron.window"]
-      },
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["electron.window"],
+        "Requires a host that can create Electron BrowserWindow instances."
+      ),
       handler: (methodInput) =>
         Effect.promise(async () => {
+          if (!createWindow) {
+            throw new Error("windows/create is unavailable: missing electron.window capability");
+          }
           const windowInput = methodInput as { title?: string };
           return createWindow(windowInput.title);
         })
@@ -64,8 +80,8 @@ const registerWindowCreate = async (
 
 const registerWindowFocusPanel = async (
   context: RuntimeMethodContext,
-  browserWindow: ElectronWindowHost,
-  scrollRefIntoViewScript: (ref: string) => string
+  browserWindow?: WindowHost,
+  scrollRefIntoViewScript?: (ref: string) => string
 ) => {
   const { methods, runPromise } = context;
   await runPromise(
@@ -74,12 +90,16 @@ const registerWindowFocusPanel = async (
       title: "Focus panel",
       description: "Scrolls a visible panel into view and focuses its window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["electron.window", "dom.refs"]
-      },
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["electron.window", "dom.refs"],
+        "Requires a rendered DOM and a focusable Electron window."
+      ),
       handler: (methodInput) =>
         Effect.promise(async () => {
+          if (!browserWindow || !scrollRefIntoViewScript) {
+            throw new Error("windows/focusPanel is unavailable: missing electron.window or dom.refs capability");
+          }
           const panelId = (methodInput as { panelId?: string }).panelId;
           if (!panelId) {
             throw new Error("windows/focusPanel requires panelId");
@@ -92,8 +112,8 @@ const registerWindowFocusPanel = async (
 
 const registerWindowScrollToRef = async (
   context: RuntimeMethodContext,
-  browserWindow: ElectronWindowHost,
-  scrollRefIntoViewScript: (ref: string) => string
+  browserWindow?: WindowHost,
+  scrollRefIntoViewScript?: (ref: string) => string
 ) => {
   const { methods, runPromise } = context;
   await runPromise(
@@ -102,12 +122,16 @@ const registerWindowScrollToRef = async (
       title: "Scroll to visible ref",
       description: "Scrolls any visible data-plastic-ref into view.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["electron.window", "dom.refs"]
-      },
+      availability: availabilityFromCapabilities(
+        context.capabilities,
+        ["electron.window", "dom.refs"],
+        "Requires a rendered DOM and a focusable Electron window."
+      ),
       handler: (methodInput) =>
         Effect.promise(async () => {
+          if (!browserWindow || !scrollRefIntoViewScript) {
+            throw new Error("windows/scrollToRef is unavailable: missing electron.window or dom.refs capability");
+          }
           const ref = (methodInput as { ref?: string }).ref;
           if (!ref) {
             throw new Error("windows/scrollToRef requires ref");
@@ -119,7 +143,7 @@ const registerWindowScrollToRef = async (
 };
 
 const scrollWindowsToRef = async (
-  browserWindow: ElectronWindowHost,
+  browserWindow: WindowHost,
   script: string
 ) => {
   const result = [];

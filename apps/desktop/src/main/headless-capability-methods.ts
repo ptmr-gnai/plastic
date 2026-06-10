@@ -1,7 +1,5 @@
 import { Effect } from "effect";
 import {
-  projectPanels,
-  projectWindows,
   type PlasticMethod
 } from "@plastic/core";
 import { availabilityFromCapabilities, type RuntimeMethodContext, type RuntimeModule } from "./runtime-method-context.js";
@@ -52,27 +50,6 @@ const unavailable = (context: RuntimeMethodContext, method: UnavailableMethodSpe
 };
 
 const headlessUnavailableMethodSpecs: UnavailableMethodSpec[] = [
-  {
-    id: "windows/create",
-    title: "Create window",
-    description: "Creates an Electron window.",
-    requiredCapabilities: ["electron.window"],
-    notes: "Headless mode has no Electron BrowserWindow host."
-  },
-  {
-    id: "windows/focusPanel",
-    title: "Focus panel",
-    description: "Focuses a panel in an Electron window.",
-    requiredCapabilities: ["electron.window", "dom.refs"],
-    notes: "Headless mode has no focused window or DOM."
-  },
-  {
-    id: "windows/scrollToRef",
-    title: "Scroll to visible UI reference",
-    description: "Scrolls an Electron window to a visible data-plastic-ref.",
-    requiredCapabilities: ["electron.window", "dom.refs"],
-    notes: "Headless mode has no rendered DOM to scroll."
-  },
   {
     id: "windows/screenshot",
     title: "Capture window screenshot",
@@ -127,24 +104,7 @@ const headlessUnavailableMethodSpecs: UnavailableMethodSpec[] = [
 export const headlessCapabilityModule: RuntimeModule = {
   id: "headless-capabilities",
   register: async (context: RuntimeMethodContext) => {
-    const { eventStore, methods, runPromise } = context;
-
-    await runPromise(
-      methods.register({
-        id: "windows/list",
-        title: "List windows",
-        description: "Returns the event-projected window model. In headless mode this is projection-only.",
-        owner: { kind: "runtime", id: "plastic.runtime" },
-        availability: {
-          status: "degraded",
-          requiredCapabilities: ["window.projection"],
-          missingCapabilities: context.capabilities.missing(["electron.window"]),
-          notes: "Headless can project durable windows but cannot inspect live Electron windows."
-        },
-        handler: () =>
-          Effect.map(eventStore.list(), (events) => projectWindows(events, projectPanels(events)))
-      })
-    );
+    const { methods, runPromise } = context;
 
     for (const method of headlessUnavailableMethodSpecs) {
       await runPromise(methods.register(unavailable(context, method)));

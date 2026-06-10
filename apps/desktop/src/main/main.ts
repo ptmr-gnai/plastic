@@ -21,7 +21,6 @@ import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import type { RefInput, ScreenshotInput, VerifyRefActionInput, VisibleRef, WindowVisibleRefs } from "./deixis-types.js";
-import { createElectronWindowModule } from "./electron-window-methods.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
@@ -37,6 +36,7 @@ import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
+import { createWindowCapabilityModule } from "./window-capability-methods.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
@@ -539,7 +539,7 @@ await ensureBundledPanels(eventStore);
 logStartup("ensure panel renderer bindings");
 await ensurePanelRendererBindings(eventStore);
 logStartup("register runtime methods");
-const electronWindowModule = createElectronWindowModule({
+const windowCapabilityModule = createWindowCapabilityModule({
   browserWindow: BrowserWindow,
   createWindow,
   scrollRefIntoViewScript
@@ -664,7 +664,7 @@ await runtime.registerModules(
     rendererControlModule,
     runtimeControlModule,
     panelControlModule,
-    electronWindowModule,
+    windowCapabilityModule,
     deixisMethodModule
   ],
   (module) => logStartup(`register ${module.id} module`)

@@ -23,6 +23,7 @@ import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
+import { createWindowCapabilityModule } from "./window-capability-methods.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
 const plasticDir = join(workspaceDir, ".plastic");
@@ -216,6 +217,7 @@ const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
 });
 const extensionAuthoringModule = createExtensionAuthoringModule({ plasticDir });
 const rendererControlModule = createRendererControlModule({});
+const windowCapabilityModule = createWindowCapabilityModule();
 await runtime.registerModules([
   runtimeStateModule,
   runtimeSnapshotModule,
@@ -228,6 +230,7 @@ await runtime.registerModules([
   agentBackendFallbackModule,
   runtimeControlModule,
   panelControlModule,
+  windowCapabilityModule,
   headlessCapabilityModule,
   runtimeHealthModule
 ]);
