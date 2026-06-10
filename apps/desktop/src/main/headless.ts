@@ -12,6 +12,7 @@ import {
   createRuntimeDiagnostics,
 } from "./runtime-host-status.js";
 import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
+import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 
 const hostConfig = createRuntimeHostConfig();
@@ -70,19 +71,28 @@ const agentModules = createRuntimeHostAgentModules({
   },
   orient: { workspaceDir }
 });
+const headlessDiagnostics = () => createRuntimeDiagnostics({
+  config: hostConfig,
+  appReady: false,
+  windowCount: 0,
+  retainedWindowCount: 0,
+  viteUrl: null,
+  runtimeRpcUrl,
+  runtimePort
+});
 const supportModules = createRuntimeHostSupportModules({
   plasticDir,
   getBuildStatus: buildStatus,
   runCommand: runLocalCommand,
-  getDiagnostics: () => createRuntimeDiagnostics({
-    config: hostConfig,
-    appReady: false,
-    windowCount: 0,
-    retainedWindowCount: 0,
-    viteUrl: null,
-    runtimeRpcUrl,
-    runtimePort
-  })
+  getDiagnostics: () => headlessDiagnostics()
+});
+const runtimeHealthModule = createRuntimeHealthModule({
+  description: "Runs a fast control-plane health check for event store, projections, methods, build status, diagnostics, and headless agent fallback.",
+  hostChecks: [
+    { id: "build:status", run: () => buildStatus() },
+    { id: "diagnostics:status", run: () => headlessDiagnostics() },
+    { id: "agent-backend:fallback", run: () => runPromise(methods.call("codex/status", {})) }
+  ]
 });
 const capabilityModules = createRuntimeHostCapabilityModules();
 const transports = await startRuntimeHostControlPlane({
@@ -102,6 +112,7 @@ const transports = await startRuntimeHostControlPlane({
   rendererControl: capabilityModules.rendererControl,
   windowCapability: capabilityModules.windowCapability,
   deixis: capabilityModules.deixis,
+  health: runtimeHealthModule,
   startedPayload: { mode: "headless" },
   runtimeHost,
   runtimePort,
