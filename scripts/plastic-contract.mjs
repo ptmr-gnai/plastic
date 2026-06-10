@@ -88,6 +88,7 @@ await check("plastic/methods", async () => {
     "methods/describe",
     "panels/create",
     "extensions/list",
+    "events/append",
     "events/list",
     "events/timeline",
     "plastic/selfTest"
@@ -140,6 +141,19 @@ await check("agent/workbench", async () => {
     actions: workbench.control.recommendedActions.length,
     visibleRefs: workbench.observability.visibleRefs?.length ?? 0
   };
+});
+
+await check("events/append", async () => {
+  const appended = await rpc("events/append", {
+    type: "contract.event.appended",
+    payload: { runId },
+    scope: { workspaceId: "default" }
+  });
+  assert(appended?.id, "events/append returned no event id");
+  const appendedEvents = await rpc("events/list", { type: "contract.event.appended", limit: 10 });
+  assertArray(appendedEvents, "events/list after append is not an array");
+  assert(appendedEvents.some((event) => event.id === appended.id), "appended event not readable");
+  return { eventId: appended.id };
 });
 
 await check("panel lifecycle", async () => {

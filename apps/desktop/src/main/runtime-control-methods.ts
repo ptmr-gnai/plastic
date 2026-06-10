@@ -14,6 +14,7 @@ export const registerRuntimeControlMethods = async (input: RuntimeMethodContext)
   await registerRpcCall(input);
   await registerCapabilityDiscovery(input);
   await registerEventReaders(input);
+  await registerEventAppend(input);
   await registerThemeControl(input);
 };
 
@@ -147,6 +148,36 @@ const registerEventReaders = async (input: {
       owner: { kind: "runtime", id: "plastic.runtime" },
       handler: (methodInput) =>
         Effect.map(eventStore.list(), (events) => buildTimeline(events, methodInput as TimelineInput | undefined))
+    })
+  );
+};
+
+const registerEventAppend = async (input: {
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+  appendEvent: AppendEvent;
+}) => {
+  const { methods, runPromise, appendEvent } = input;
+
+  await runPromise(
+    methods.register({
+      id: "events/append",
+      title: "Append event",
+      description: "Appends a durable event to the Plastic event stream.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      handler: (methodInput) =>
+        Effect.promise(async () => {
+          const eventInput = methodInput as {
+            type?: string;
+            payload?: unknown;
+            scope?: { workspaceId?: string; windowId?: string; panelId?: string; extensionId?: string; agentId?: string; projectDir?: string };
+          };
+          return appendEvent({
+            type: eventInput.type ?? "event.appended",
+            payload: eventInput.payload ?? {},
+            ...(eventInput.scope ? { scope: eventInput.scope } : {})
+          });
+        })
     })
   );
 };

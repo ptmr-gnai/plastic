@@ -739,24 +739,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
     })
   );
 
-  await runPromise(
-    methods.register({
-      id: "events/append",
-      title: "Append event",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: (input) => {
-        const eventInput = input as { type?: string; payload?: unknown; scope?: { workspaceId?: string } };
-        return store.append(
-          createEvent({
-            type: eventInput.type ?? "event.appended",
-            payload: eventInput.payload ?? {},
-            ...(eventInput.scope ? { scope: eventInput.scope } : {})
-          })
-        );
-      }
-    })
-  );
-
 };
 
 const startBuildSocket = () => {
