@@ -21,6 +21,7 @@ import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { registerPanelControlMethods } from "./panel-control-methods.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
+import { createRuntimeMethodContext } from "./runtime-method-context.js";
 import { registerRuntimeControlMethods } from "./runtime-control-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
@@ -351,21 +352,17 @@ const discoverExtensionsAtStartup = async () => {
 
 await discoverExtensionsAtStartup();
 await registerHeadlessMethods();
-await registerRuntimeControlMethods({
+const runtimeMethodContext = createRuntimeMethodContext({
   eventStore,
   methods,
   runPromise,
   appendEvent: (eventInput) => appendEvent(eventStore, eventInput)
 });
-await registerPanelControlMethods({
-  eventStore,
-  methods,
-  runPromise,
-  appendEvent: (eventInput) => appendEvent(eventStore, eventInput)
-});
+await registerRuntimeControlMethods(runtimeMethodContext);
+await registerPanelControlMethods(runtimeMethodContext);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
-await registerPanelMailboxMethods({ eventStore, methods, runPromise });
+await registerPanelMailboxMethods(runtimeMethodContext);
 await appendEvent(eventStore, {
   type: "runtime.started",
   payload: { mode: "headless" }

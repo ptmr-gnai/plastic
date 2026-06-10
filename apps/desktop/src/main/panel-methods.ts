@@ -1,20 +1,14 @@
 import { Effect } from "effect";
 import {
-  createEvent,
   projectPanelMessages,
-  projectPanels,
-  type EventStore,
-  type MethodRegistry
+  projectPanels
 } from "@plastic/core";
+import type { RuntimeMethodContext } from "./runtime-method-context.js";
 
-type RunPromise = <A>(effect: Effect.Effect<A, unknown>) => Promise<A>;
+type PanelMailboxContext = Pick<RuntimeMethodContext, "eventStore" | "methods" | "runPromise" | "appendEvent">;
 
-export const registerPanelMailboxMethods = async (input: {
-  eventStore: EventStore;
-  methods: MethodRegistry;
-  runPromise: RunPromise;
-}) => {
-  const { eventStore, methods, runPromise } = input;
+export const registerPanelMailboxMethods = async (input: PanelMailboxContext) => {
+  const { eventStore, methods, runPromise, appendEvent } = input;
 
   await runPromise(
     methods.register({
@@ -33,23 +27,25 @@ export const registerPanelMailboxMethods = async (input: {
         if (!messageInput.fromPanelId || !messageInput.toPanelId) {
           throw new Error("panels/sendMessage requires fromPanelId and toPanelId");
         }
+        const fromPanelId = messageInput.fromPanelId;
+        const toPanelId = messageInput.toPanelId;
 
-        return eventStore.append(
-          createEvent({
+        return Effect.promise(() =>
+          appendEvent({
             type: "panel.message.sent",
             payload: {
               id: crypto.randomUUID(),
-              fromPanelId: messageInput.fromPanelId,
-              toPanelId: messageInput.toPanelId,
+              fromPanelId,
+              toPanelId,
               messageType: messageInput.messageType ?? "text",
               content: messageInput.content,
               payload: messageInput.payload
             },
-            scope: { panelId: messageInput.toPanelId },
+            scope: { panelId: toPanelId },
             meta: {
               links: [
-                { rel: "source-panel", href: "panels/get", method: "panels/get", target: messageInput.fromPanelId },
-                { rel: "target-panel", href: "panels/get", method: "panels/get", target: messageInput.toPanelId }
+                { rel: "source-panel", href: "panels/get", method: "panels/get", target: fromPanelId },
+                { rel: "target-panel", href: "panels/get", method: "panels/get", target: toPanelId }
               ]
             }
           })
@@ -86,8 +82,8 @@ export const registerPanelMailboxMethods = async (input: {
         if (!id) {
           throw new Error("panels/markMessageRead requires id");
         }
-        return eventStore.append(
-          createEvent({
+        return Effect.promise(() =>
+          appendEvent({
             type: "panel.message.read",
             payload: { id }
           })

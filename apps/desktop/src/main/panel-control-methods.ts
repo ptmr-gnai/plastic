@@ -1,15 +1,10 @@
 import { Effect } from "effect";
 import {
-  createEvent,
   projectPanels,
   type EventStore,
-  type MethodRegistry,
-  type PlasticEvent
+  type MethodRegistry
 } from "@plastic/core";
-
-type RunPromise = <A>(effect: Effect.Effect<A, unknown>) => Promise<A>;
-type EventInput = Parameters<typeof createEvent>[0];
-type AppendEvent = (eventInput: EventInput) => Promise<PlasticEvent>;
+import type { AppendEvent, RuntimeMethodContext, RunPromise } from "./runtime-method-context.js";
 
 type PanelCreateInput = {
   id?: string;
@@ -23,15 +18,7 @@ type PanelCreateInput = {
   order?: number;
 };
 
-export const createDirectAppendEvent = (eventStore: EventStore, runPromise: RunPromise): AppendEvent =>
-  (eventInput) => runPromise(eventStore.append(createEvent(eventInput)));
-
-export const registerPanelControlMethods = async (input: {
-  eventStore: EventStore;
-  methods: MethodRegistry;
-  runPromise: RunPromise;
-  appendEvent: AppendEvent;
-}) => {
+export const registerPanelControlMethods = async (input: RuntimeMethodContext) => {
   const { eventStore, methods, runPromise, appendEvent } = input;
 
   await registerPanelList({ eventStore, methods, runPromise });

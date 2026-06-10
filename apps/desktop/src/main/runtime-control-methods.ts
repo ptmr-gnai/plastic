@@ -1,25 +1,15 @@
 import { Effect } from "effect";
 import {
-  createEvent,
   buildTimeline,
   selectEvents,
   type EventListInput,
   type EventStore,
   type MethodRegistry,
-  type PlasticEvent,
   type TimelineInput
 } from "@plastic/core";
+import type { AppendEvent, RuntimeMethodContext, RunPromise } from "./runtime-method-context.js";
 
-type RunPromise = <A>(effect: Effect.Effect<A, unknown>) => Promise<A>;
-type EventInput = Parameters<typeof createEvent>[0];
-type AppendEvent = (eventInput: EventInput) => Promise<PlasticEvent>;
-
-export const registerRuntimeControlMethods = async (input: {
-  eventStore: EventStore;
-  methods: MethodRegistry;
-  runPromise: RunPromise;
-  appendEvent: AppendEvent;
-}) => {
+export const registerRuntimeControlMethods = async (input: RuntimeMethodContext) => {
   await registerMethodDiscovery(input);
   await registerRpcCall(input);
   await registerEventReaders(input);
