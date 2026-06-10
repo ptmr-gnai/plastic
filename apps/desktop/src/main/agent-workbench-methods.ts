@@ -52,6 +52,11 @@ type AgentWorkbenchHost = {
   visualActions?: (input: { ref?: string; panelId?: string }) => Array<Record<string, unknown>>;
 };
 
+const agentWorkbenchAvailability = {
+  status: "available" as const,
+  notes: "Agent workbench is a shared runtime observability primitive in headed and headless modes."
+};
+
 export const createAgentWorkbenchModule = (host: AgentWorkbenchHost): RuntimeModule => ({
   id: "agent-workbench",
   register: async ({ eventStore, methods, runPromise }: RuntimeMethodContext) => {
@@ -61,6 +66,7 @@ export const createAgentWorkbenchModule = (host: AgentWorkbenchHost): RuntimeMod
         title: "Agent workbench",
         description: "Returns a high-signal workbench packet for agents: state, refs, events, methods, git dirt, and recommended actions.",
         owner: { kind: "runtime", id: "plastic.runtime" },
+        availability: agentWorkbenchAvailability,
         handler: (input) =>
           Effect.promise(() => buildWorkbench({ eventStore, methods, runPromise, host, input }))
       })

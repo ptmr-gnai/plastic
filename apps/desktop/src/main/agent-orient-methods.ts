@@ -32,6 +32,11 @@ type AgentOrientHost = {
   listVisibleRefs?: () => Promise<VisibleRefWindow[]>;
 };
 
+const agentOrientAvailability = {
+  status: "available" as const,
+  notes: "Agent orientation is a shared runtime observability primitive in headed and headless modes."
+};
+
 export const createAgentOrientModule = (host: AgentOrientHost): RuntimeModule => ({
   id: "agent-orient",
   register: async ({ eventStore, methods, runPromise }: RuntimeMethodContext) => {
@@ -41,6 +46,7 @@ export const createAgentOrientModule = (host: AgentOrientHost): RuntimeModule =>
         title: "Orient agent",
         description: "Returns a compact local orientation packet for an embodied agent or panel.",
         owner: { kind: "runtime", id: "plastic.runtime" },
+        availability: agentOrientAvailability,
         handler: (input) =>
           Effect.promise(() => buildOrientation({ eventStore, methods, runPromise, host, input }))
       })

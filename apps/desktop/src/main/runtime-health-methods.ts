@@ -17,6 +17,11 @@ type HostHealthCheck = {
   run: () => Promise<unknown> | unknown;
 };
 
+const runtimeHealthAvailability = {
+  status: "available" as const,
+  notes: "Self-test is a shared runtime health primitive in headed and headless modes."
+};
+
 export const createRuntimeHealthModule = (input: {
   description?: string;
   hostChecks?: HostHealthCheck[];
@@ -29,6 +34,7 @@ export const createRuntimeHealthModule = (input: {
         title: "Plastic self-test",
         description: input.description ?? "Runs a fast control-plane health check for event store, projections, methods, and host capabilities.",
         owner: { kind: "runtime", id: "plastic.runtime" },
+        availability: runtimeHealthAvailability,
         handler: () =>
           Effect.promise(async () => {
             const checks: HealthCheck[] = [];
