@@ -204,16 +204,23 @@ const checkExtensionManifest = async (file, text) => {
 
 const stagedFiles = () => {
   try {
-    return execFileSync("git", ["diff", "--cached", "--name-only"], { cwd: root, encoding: "utf8" })
+    return execFileSync("git", ["diff", "--cached", "--name-status"], { cwd: root, encoding: "utf8" })
       .split(/\r?\n/)
-      .filter(Boolean);
+      .filter(Boolean)
+      .map((line) => {
+        const [status, ...pathParts] = line.split(/\s+/);
+        return { status, path: pathParts.join(" ") };
+      });
   } catch {
     return [];
   }
 };
 
 const checkStagedArtifacts = () => {
-  for (const file of stagedFiles()) {
+  for (const { status, path: file } of stagedFiles()) {
+    if (status === "D") {
+      continue;
+    }
     if (/^\.plastic\/.*\.(png|jpg|jpeg|webp)$/.test(file)) {
       addWarning("runtime-artifact", file, "Screenshot/runtime image is staged.");
     }

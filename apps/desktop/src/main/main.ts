@@ -4,7 +4,7 @@ import { mkdirSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { spawn as spawnProcess } from "node:child_process";
 import { networkInterfaces } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { BrowserWindow as ElectronBrowserWindow, Rectangle } from "electron";
 import { Effect } from "effect";
 import {
@@ -31,6 +31,7 @@ import { createCodexAdapter } from "./codex-adapter.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
+import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
@@ -38,8 +39,9 @@ const { app, BrowserWindow, ipcMain } = electron;
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
 const plasticDir = join(workspaceDir, ".plastic");
 const bundledExtensionsDir = join(workspaceDir, "apps", "desktop", "extensions", "bundled");
-const eventPath = join(plasticDir, "events", "events.jsonl");
-mkdirSync(join(plasticDir, "events"), { recursive: true });
+const runtimePaths = resolvePlasticRuntimePaths(workspaceDir);
+const eventPath = runtimePaths.eventPath;
+mkdirSync(dirname(eventPath), { recursive: true });
 
 const logStartup = (stage: string) => {
   console.log(`[plastic:startup] ${stage}`);
@@ -157,6 +159,7 @@ const buildStatus = () => ({
   status: "running",
   workspaceDir,
   plasticDir,
+  dataDir: runtimePaths.dataDir,
   extensionsDir: join(plasticDir, "extensions"),
   eventPath,
   viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,

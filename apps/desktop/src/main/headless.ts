@@ -1,7 +1,7 @@
 import { createServer, type ServerResponse } from "node:http";
 import { execFile } from "node:child_process";
 import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { Effect } from "effect";
 import {
@@ -22,17 +22,19 @@ import {
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
+import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
 const plasticDir = join(workspaceDir, ".plastic");
-const eventPath = join(plasticDir, "events", "events.jsonl");
+const runtimePaths = resolvePlasticRuntimePaths(workspaceDir);
+const eventPath = runtimePaths.eventPath;
 const bundledExtensionsDir = join(workspaceDir, "apps", "desktop", "extensions", "bundled");
 const runtimeHost = process.env.PLASTIC_RUNTIME_HOST ?? "0.0.0.0";
 const runtimePort = Number(process.env.PLASTIC_RUNTIME_PORT ?? 7331);
 const runtimeRpcUrl = process.env.PLASTIC_RPC_URL ?? `http://127.0.0.1:${runtimePort}/rpc`;
 const startedAt = new Date().toISOString();
 
-mkdirSync(join(plasticDir, "events"), { recursive: true });
+mkdirSync(dirname(eventPath), { recursive: true });
 
 const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(effect);
 const execFileAsync = promisify(execFile);
@@ -114,6 +116,7 @@ const buildStatus = () => ({
   status: "running",
   workspaceDir,
   plasticDir,
+  dataDir: runtimePaths.dataDir,
   eventPath,
   runtimeRpcUrl,
   runtimePort,
