@@ -3,13 +3,16 @@ import {
   projectExtensions,
   projectPanels,
   type EventStore,
+  type MethodRegistry,
   type PlasticEvent,
   type PlasticExtension
 } from "@plastic/core";
 import {
   scanBundledExtensions,
-  scanWorkspaceExtensions
+  scanWorkspaceExtensions,
+  registerExtensionMethods
 } from "./extension-loader.js";
+import { activateExtensions } from "./extension-host.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 type ExtensionStartupInput = {
@@ -17,6 +20,11 @@ type ExtensionStartupInput = {
   bundledExtensionsDir: string;
   eventStore: EventStore;
   runPromise: RunPromise;
+};
+
+type ExtensionStateInput = ExtensionStartupInput;
+type ExtensionActivationInput = Omit<ExtensionStartupInput, "bundledExtensionsDir"> & {
+  methods: MethodRegistry;
 };
 
 export const discoverBundledExtensionsAtStartup = async (input: ExtensionStartupInput) => {
@@ -32,7 +40,7 @@ export const discoverBundledExtensionsAtStartup = async (input: ExtensionStartup
 };
 
 export const discoverWorkspaceExtensionsAtStartup = async (
-  input: Omit<ExtensionStartupInput, "bundledExtensionsDir">
+  input: ExtensionActivationInput
 ) => {
   const extensions = await scanWorkspaceExtensions(input.workspaceDir);
   for (const extension of extensions) {
@@ -47,7 +55,19 @@ export const discoverWorkspaceExtensionsAtStartup = async (
   return extensions;
 };
 
-export const ensureBundledPanelsAtStartup = async (input: Omit<ExtensionStartupInput, "bundledExtensionsDir">) => {
+export const prepareBundledExtensionStateAtStartup = async (input: ExtensionStateInput) => {
+  await discoverBundledExtensionsAtStartup(input);
+  await ensureBundledPanelsAtStartup(input);
+  await ensurePanelRendererBindingsAtStartup(input);
+};
+
+export const registerAndActivateExtensionsAtStartup = async (input: ExtensionActivationInput) => {
+  await registerExtensionMethods(input);
+  await discoverWorkspaceExtensionsAtStartup(input);
+  await activateExtensions(input);
+};
+
+export const ensureBundledPanelsAtStartup = async (input: Omit<ExtensionStartupInput, "bundledExtensionsDir" | "methods">) => {
   const events = await input.runPromise(input.eventStore.list());
   const extensions = projectExtensions(events);
   const existingPanelIds = new Set(projectPanels(events).map((panel) => panel.id));

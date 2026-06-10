@@ -5,14 +5,10 @@ import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { startBuildHttpTransport } from "./build-http-transport.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import {
-  discoverBundledExtensionsAtStartup,
-  discoverWorkspaceExtensionsAtStartup,
-  ensureBundledPanelsAtStartup,
-  ensurePanelRendererBindingsAtStartup
+  prepareBundledExtensionStateAtStartup,
+  registerAndActivateExtensionsAtStartup
 } from "./extension-startup.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
-import { activateExtensions } from "./extension-host.js";
-import { registerExtensionMethods } from "./extension-loader.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
@@ -107,10 +103,7 @@ const buildStatus = () => ({
   startedAt
 });
 
-await discoverBundledExtensionsAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
-await ensureBundledPanelsAtStartup({ workspaceDir, eventStore, runPromise });
-await ensurePanelRendererBindingsAtStartup({ workspaceDir, eventStore, runPromise });
-await discoverWorkspaceExtensionsAtStartup({ workspaceDir, eventStore, runPromise });
+await prepareBundledExtensionStateAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
 const runtimeStateModule = createRuntimeStateModule({
   decorateState: (state) => ({
     ...state,
@@ -186,8 +179,7 @@ await runtime.registerModules([
     deixis: deixisMethodModule
   })
 ]);
-await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
-await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
+await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });
 await runtime.registerModules([panelMailboxModule]);
 await runtime.appendEvent({
   type: "runtime.started",

@@ -17,14 +17,10 @@ import { createCodexAdapter } from "./codex-adapter.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
 import {
-  discoverBundledExtensionsAtStartup,
-  discoverWorkspaceExtensionsAtStartup,
-  ensureBundledPanelsAtStartup,
-  ensurePanelRendererBindingsAtStartup
+  prepareBundledExtensionStateAtStartup,
+  registerAndActivateExtensionsAtStartup
 } from "./extension-startup.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
-import { activateExtensions } from "./extension-host.js";
-import { registerExtensionMethods } from "./extension-loader.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
@@ -185,11 +181,7 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
 });
 
 logStartup("ensure bundled extensions");
-await discoverBundledExtensionsAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
-logStartup("ensure bundled panels");
-await ensureBundledPanelsAtStartup({ workspaceDir, eventStore, runPromise });
-logStartup("ensure panel renderer bindings");
-await ensurePanelRendererBindingsAtStartup({ workspaceDir, eventStore, runPromise });
+await prepareBundledExtensionStateAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
 logStartup("register runtime methods");
 const electronDeixisHost = createElectronDeixisHost(BrowserWindow);
 const windowCapabilityModule = createWindowCapabilityModule({
@@ -315,11 +307,7 @@ await runtime.registerModules(
   (module) => logStartup(`register ${module.id} module`)
 );
 logStartup("register extension methods");
-await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
-logStartup("scan workspace extensions");
-await discoverWorkspaceExtensionsAtStartup({ workspaceDir, eventStore, runPromise });
-logStartup("activate extensions");
-await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
+await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });
 logStartup("register panel mailbox methods");
 await runtime.registerModules(
   [panelMailboxModule],
