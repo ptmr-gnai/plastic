@@ -3,13 +3,12 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { Effect } from "effect";
 import {
-  buildTimeline,
-  groupMethodsByOwner,
   projectExtensions,
   projectPanels,
   projectWindows,
   type EventStore
 } from "@plastic/core";
+import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { headlessCapabilityModule } from "./headless-capability-methods.js";
@@ -96,69 +95,6 @@ const buildStatus = () => ({
 });
 
 const registerHeadlessMethods = async () => {
-  await runPromise(methods.register({
-    id: "agent/workbench",
-    title: "Agent workbench",
-    description: "Returns a high-signal workbench packet for agents in headless mode.",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: (input) => Effect.promise(async () => {
-      const workbenchInput = input as { panelId?: string; eventCursor?: string; limit?: number } | undefined;
-      const events = await runPromise(eventStore.list());
-      const methodList = await runPromise(methods.list());
-      const panels = projectPanels(events);
-      const extensions = projectExtensions(events);
-      const panel = workbenchInput?.panelId ? panels.find((candidate) => candidate.id === workbenchInput.panelId) : undefined;
-      const extension = panel?.extensionId ? extensions.find((candidate) => candidate.id === panel.extensionId) : undefined;
-      const timeline = buildTimeline(events, {
-        limit: workbenchInput?.limit ?? 25,
-        ...(workbenchInput?.eventCursor ? { after: workbenchInput.eventCursor } : {}),
-        ...(panel?.id ? { scope: { panelId: panel.id } } : {})
-      });
-
-      return {
-        app: {
-          mode: "headless",
-          workspaceDir,
-          eventPath,
-          runtime: buildStatus(),
-          codex: { connected: false, initialized: false, pid: null, pendingRequests: 0 }
-        },
-        focus: {
-          ref: null,
-          panelId: panel?.id ?? null,
-          panel: panel ?? null,
-          extension: extension ?? null,
-          window: projectWindows(events, panels)[0] ?? null
-        },
-        observability: {
-          visibleRefs: [],
-          sourceHints: [],
-          timeline,
-          latestEventId: events.at(-1)?.id ?? null
-        },
-        control: {
-          methodCount: methodList.length,
-          methodGroups: groupMethodsByOwner(methodList),
-          recommendedActions: [
-            { id: "refresh-workbench", title: "Refresh workbench", method: "agent/workbench", input: { panelId: panel?.id, eventCursor: events.at(-1)?.id } },
-            { id: "read-state", title: "Read state", method: "plastic/state" },
-            { id: "read-methods", title: "Read methods", method: "plastic/methods" },
-            { id: "read-timeline", title: "Read timeline", method: "events/list", input: { limit: 25 } }
-          ]
-        },
-        workspace: {
-          git: await readGitStatus()
-        },
-        obligations: {
-          orientBeforeMutation: true,
-          preferRuntimeEvidence: true,
-          verifyAfterMutation: true,
-          keepChangesScoped: true
-        }
-      };
-    })
-  }));
-
   await runPromise(methods.register({
     id: "codex/status",
     title: "Codex status",
@@ -286,9 +222,18 @@ const runtimeSnapshotModule = createRuntimeSnapshotModule({
     visibleRefs: []
   })
 });
+const agentWorkbenchModule = createAgentWorkbenchModule({
+  mode: "headless",
+  workspaceDir,
+  eventPath,
+  getRuntimeStatus: buildStatus,
+  getCodexStatus: () => ({ connected: false, initialized: false, pid: null, pendingRequests: 0 }),
+  readGitStatus
+});
 await runtime.registerModules([
   runtimeStateModule,
   runtimeSnapshotModule,
+  agentWorkbenchModule,
   runtimeControlModule,
   panelControlModule,
   headlessCapabilityModule,
