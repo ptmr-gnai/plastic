@@ -33,6 +33,7 @@ import { readJsonBody, sendJson, startRuntimeHttpTransport } from "./runtime-htt
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
+import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
@@ -296,58 +297,6 @@ const readGitStatus = async () => {
   };
 };
 
-const buildSnapshot = async () => {
-  const events = await runPromise(eventStore.list());
-  const registeredMethods = await runPromise(methods.list());
-  const panels = projectPanels(events);
-  const windowsModel = projectWindows(events, panels);
-  const extensions = projectExtensions(events);
-  const visibleRefs = await listVisibleRefs();
-
-  return {
-    app: {
-      name: "Plastic",
-      version: app.getVersion(),
-      ready: app.isReady(),
-      workspaceDir,
-      eventPath
-    },
-    build: buildStatus(),
-    runtime: {
-      windowCount: BrowserWindow.getAllWindows().length,
-      retainedWindowCount: windows.size,
-      eventStream: "runtime-http-transport"
-    },
-    codex: codexAdapter.status(),
-    methods: {
-      count: registeredMethods.length,
-      items: registeredMethods.map((method) => ({
-        id: method.id,
-        title: method.title,
-        owner: method.owner,
-        description: method.description,
-        links: method.links ?? []
-      }))
-    },
-    panels,
-    windows: windowsModel,
-    extensions,
-    visibleRefs,
-    events: {
-      count: events.length,
-      latest: events.at(-1) ?? null,
-      recent: events.slice(-30)
-    },
-    links: [
-      { rel: "state", href: "plastic/state", method: "plastic/state" },
-      { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
-      { rel: "events", href: "events/list", method: "events/list" },
-      { rel: "visible-refs", href: "deixis/listVisibleRefs", method: "deixis/listVisibleRefs" },
-      { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" }
-    ]
-  };
-};
-
 const resolveVisibleRef = async (ref: string) => {
   const visibleRefs = await listVisibleRefs();
   for (const windowRefs of visibleRefs) {
@@ -500,16 +449,6 @@ const ensurePanelRendererBindings = async (store: EventStore) => {
 };
 
 const registerRuntimeMethods = async (store: EventStore) => {
-  await runPromise(
-    methods.register({
-      id: "plastic/snapshot",
-      title: "Plastic snapshot",
-      description: "Returns a high-signal observable snapshot for agents: app, build, methods, panels, windows, extensions, visible refs, Codex, and recent events.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: () => Effect.promise(buildSnapshot)
-    })
-  );
-
   await runPromise(
     methods.register({
       id: "agent/orient",
@@ -951,7 +890,7 @@ const startBuildSocket = () => {
 
     if (request.method === "GET" && request.url === "/snapshot") {
       try {
-        sendJson(response, 200, { ok: true, value: await buildSnapshot() });
+        sendJson(response, 200, { ok: true, value: await runPromise(methods.call("plastic/snapshot", {})) });
       } catch (error) {
         sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
       }
@@ -1087,8 +1026,28 @@ const runtimeStateModule = createRuntimeStateModule({
     ]
   })
 });
+const runtimeSnapshotModule = createRuntimeSnapshotModule({
+  getHostDetails: async () => ({
+    app: {
+      name: "Plastic",
+      mode: "electron",
+      version: app.getVersion(),
+      ready: app.isReady(),
+      workspaceDir,
+      eventPath
+    },
+    build: buildStatus(),
+    runtime: {
+      windowCount: BrowserWindow.getAllWindows().length,
+      retainedWindowCount: windows.size,
+      eventStream: "runtime-http-transport"
+    },
+    codex: codexAdapter.status(),
+    visibleRefs: await listVisibleRefs()
+  })
+});
 await runtime.registerModules(
-  [runtimeStateModule, runtimeControlModule, panelControlModule, electronWindowModule, deixisMethodModule],
+  [runtimeStateModule, runtimeSnapshotModule, runtimeControlModule, panelControlModule, electronWindowModule, deixisMethodModule],
   (module) => logStartup(`register ${module.id} module`)
 );
 logStartup("register extension methods");

@@ -56,6 +56,7 @@ const itemsFrom = (value, message) => {
 };
 
 let state;
+let snapshot;
 let methods;
 let createdPanelEvent;
 let extensions;
@@ -94,6 +95,25 @@ await check("plastic/methods", async () => {
     assert(items.some((method) => method.id === id), `missing method ${id}`);
   }
   return { count: items.length };
+});
+
+await check("plastic/snapshot", async () => {
+  snapshot = await rpc("plastic/snapshot");
+  assert(snapshot?.app?.name === "Plastic", "snapshot.app.name is not Plastic");
+  assert(snapshot.app.mode === "electron" || snapshot.app.mode === "headless", "snapshot.app.mode must identify the host");
+  assertArray(snapshot.panels, "snapshot.panels is not an array");
+  assertArray(snapshot.windows, "snapshot.windows is not an array");
+  assertArray(snapshot.extensions, "snapshot.extensions is not an array");
+  assertArray(snapshot.visibleRefs, "snapshot.visibleRefs is not an array");
+  assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
+  assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
+  return {
+    mode: snapshot.app.mode,
+    methods: snapshot.methods.count,
+    panels: snapshot.panels.length,
+    windows: snapshot.windows.length,
+    extensions: snapshot.extensions.length
+  };
 });
 
 await check("methods/describe", async () => {

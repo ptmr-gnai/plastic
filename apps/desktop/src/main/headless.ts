@@ -19,6 +19,7 @@ import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
+import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
@@ -95,29 +96,6 @@ const buildStatus = () => ({
 });
 
 const registerHeadlessMethods = async () => {
-  await runPromise(methods.register({
-    id: "plastic/snapshot",
-    title: "Plastic snapshot",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: () => Effect.promise(async () => {
-      const events = await runPromise(eventStore.list());
-      const registeredMethods = await runPromise(methods.list());
-      const panels = projectPanels(events);
-      return {
-        app: { name: "Plastic", mode: "headless", workspaceDir, eventPath },
-        build: buildStatus(),
-        runtime: { windowCount: 0 },
-        codex: { connected: false, initialized: false, pid: null, pendingRequests: 0 },
-        methods: { count: registeredMethods.length, items: registeredMethods },
-        panels,
-        windows: projectWindows(events, panels),
-        extensions: projectExtensions(events),
-        visibleRefs: [],
-        events: { count: events.length, latest: events.at(-1) ?? null, recent: events.slice(-30) }
-      };
-    })
-  }));
-
   await runPromise(methods.register({
     id: "agent/workbench",
     title: "Agent workbench",
@@ -299,7 +277,23 @@ const runtimeStateModule = createRuntimeStateModule({
   })
 });
 const runtimeHealthModule = createRuntimeHealthModule();
-await runtime.registerModules([runtimeStateModule, runtimeControlModule, panelControlModule, headlessCapabilityModule, runtimeHealthModule]);
+const runtimeSnapshotModule = createRuntimeSnapshotModule({
+  getHostDetails: () => ({
+    app: { name: "Plastic", mode: "headless", workspaceDir, eventPath },
+    build: buildStatus(),
+    runtime: { windowCount: 0 },
+    codex: { connected: false, initialized: false, pid: null, pendingRequests: 0 },
+    visibleRefs: []
+  })
+});
+await runtime.registerModules([
+  runtimeStateModule,
+  runtimeSnapshotModule,
+  runtimeControlModule,
+  panelControlModule,
+  headlessCapabilityModule,
+  runtimeHealthModule
+]);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
 await runtime.registerModules([panelMailboxModule]);
