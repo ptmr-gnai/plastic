@@ -12,6 +12,7 @@ const clayPattern = new RegExp(String.raw`\bclay\b|\.clay|C` + "lay");
 
 const skippedDirs = new Set([
   ".git",
+  ".plastic",
   "node_modules",
   "dist",
   "dist-electron",
