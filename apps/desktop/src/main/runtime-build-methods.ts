@@ -10,6 +10,11 @@ export type RuntimeCommandResult = {
   stderr: string;
 };
 
+const runtimeBuildAvailability = {
+  status: "available" as const,
+  notes: "Build methods are shared runtime primitives backed by the current host command runner."
+};
+
 export const createRuntimeBuildModule = (input: {
   getStatus: () => unknown;
   runCommand: (command: string, args: string[]) => Promise<RuntimeCommandResult>;
@@ -22,6 +27,7 @@ export const createRuntimeBuildModule = (input: {
         title: "Build status",
         description: "Returns the local build/dev socket status and key development environment paths.",
         owner: { kind: "runtime", id: "plastic.build" },
+        availability: runtimeBuildAvailability,
         handler: () => Effect.sync(input.getStatus)
       })
     );
@@ -32,6 +38,7 @@ export const createRuntimeBuildModule = (input: {
         title: "Run typecheck",
         description: "Runs pnpm typecheck, records stdout/stderr, and appends a durable build.typecheck.completed event.",
         owner: { kind: "runtime", id: "plastic.build" },
+        availability: runtimeBuildAvailability,
         handler: () =>
           Effect.promise(async () => {
             const startedAt = new Date().toISOString();
