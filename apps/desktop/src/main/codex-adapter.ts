@@ -1,7 +1,6 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { createInterface } from "node:readline";
 import { Effect } from "effect";
 import { createEvent, type EventStore, type MethodRegistry } from "@plastic/core";
+import { createCodexAppServerSession } from "./codex-app-server-session.js";
 import { registerCodexChatMethods } from "./codex-chat-method-registration.js";
 import { createCodexChatRuntime } from "./codex-chat-runtime.js";
 import { createCodexMessageHandler } from "./codex-message-handler.js";
@@ -41,11 +40,7 @@ export const createCodexAdapter = (input: {
   runtimeRpcUrl?: string;
   runtimeRpcUrls?: string[];
 }): CodexAdapter => {
-  let processHandle: ChildProcessWithoutNullStreams | null = null;
-  let nextId = 1;
-  let initialized = false;
   let bridgeMcpThreadId: string | null = null;
-  let connectedAt: string | null = null;
   const pending = new Map<number, PendingRequest>();
 
   const asRecord = (value: unknown): Record<string, unknown> =>
@@ -121,55 +116,12 @@ export const createCodexAdapter = (input: {
     );
   };
 
-  const send = (message: CodexRpcMessage) => {
-    if (!processHandle) {
-      throw new Error("Codex app-server is not connected");
-    }
-    processHandle.stdin.write(`${JSON.stringify(message)}\n`);
-  };
-
-  const respondToServerRequest = (id: number, result: unknown) => {
-    send({ id, result });
-  };
-
-  const rejectServerRequest = (id: number, error: unknown) => {
-    send({
-      id,
-      error: error instanceof Error ? { message: error.message } : { message: String(error) }
-    });
-  };
-
-  const request = async (method: string, params?: unknown): Promise<unknown> => {
-    const id = nextId;
-    nextId += 1;
-    const sentEvent = await appendCodexEvent("codex.request.sent", {
-      id,
-      method,
-      params
-    });
-    send({ id, method, params });
-    return new Promise((resolve, reject) => {
-      pending.set(id, {
-        method,
-        params,
-        sentEventId: sentEvent.id,
-        resolve,
-        reject
-      });
-    });
-  };
-
-  const notify = (method: string, params?: unknown) => {
-    void appendCodexEvent("codex.notification.sent", { method, params });
-    send({ method, params });
-  };
-
-  const requestAlias = (method: string, methodInput: unknown) => request(method, methodInput);
+  let request: (method: string, params?: unknown) => Promise<unknown>;
 
   const plasticMcp = createCodexMcpConfig({
     workspaceDir,
     runtimeRpcUrl,
-    request,
+    request: (method, params) => request(method, params),
     appendCodexEvent
   });
 
@@ -180,7 +132,7 @@ export const createCodexAdapter = (input: {
     runtimeRpcUrl,
     runtimeRpcUrls,
     getCodexDefaults,
-    request,
+    request: (method, params) => request(method, params),
     asRecord,
     asString
   });
@@ -194,111 +146,25 @@ export const createCodexAdapter = (input: {
     runPromise: input.runPromise,
     appendCodexEvent,
     appendChatAgentEvent,
-    respondToServerRequest,
-    rejectServerRequest,
+    respondToServerRequest: (id, result) => session.respondToServerRequest(id, result),
+    rejectServerRequest: (id, error) => session.rejectServerRequest(id, error),
     asRecord,
     asString
   });
 
-  const connect = async (codexPath = "codex") => {
-    if (processHandle) {
-      return {
-        connected: true,
-        initialized,
-        pid: processHandle.pid ?? null,
-        connectedAt
-      };
-    }
-
-    processHandle = spawn(codexPath, ["app-server", "--listen", "stdio://"], {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        PLASTIC_RPC_URL: runtimeRpcUrl,
-        PLASTIC_RPC_URLS: runtimeRpcUrls.join(","),
-        PLASTIC_RUNTIME_PORT: String(new URL(runtimeRpcUrl).port || 7331)
-      }
-    });
-    connectedAt = new Date().toISOString();
-
-    const lines = createInterface({ input: processHandle.stdout });
-    lines.on("line", (line) => {
-      if (line.trim().length === 0) {
-        return;
-      }
-      try {
-        handleMessage(JSON.parse(line) as CodexRpcMessage);
-      } catch (error) {
-        void appendCodexEvent("codex.message.parse_failed", {
-          line,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    });
-
-    processHandle.stderr.on("data", (chunk: Buffer) => {
-      void appendCodexEvent("codex.stderr", {
-        text: chunk.toString("utf8")
-      });
-    });
-
-    processHandle.on("exit", (code, signal) => {
-      void appendCodexEvent("codex.connection.exited", { code, signal });
-      processHandle = null;
-      initialized = false;
-      for (const requestState of pending.values()) {
-        requestState.reject(new Error("Codex app-server exited"));
-      }
-      pending.clear();
-    });
-
-    await appendCodexEvent("codex.connection.started", {
-      pid: processHandle.pid ?? null,
-      codexPath
-    });
-
-    return {
-      connected: true,
-      initialized,
-      pid: processHandle.pid ?? null,
-      connectedAt
-    };
-  };
-
-  const initialize = async () => {
-    await connect();
-    const result = await request("initialize", {
-      clientInfo: {
-        name: "plastic",
-        title: "Plastic",
-        version: "0.0.0"
-      },
-      capabilities: {
-        experimentalApi: true
-      }
-    });
-    notify("initialized");
-    initialized = true;
-    await appendCodexEvent("codex.connection.initialized", { result });
-    await plasticMcp.configure();
-    return result;
-  };
-
-  const ensureInitialized = async () => {
-    if (!processHandle) {
-      await connect();
-    }
-    if (!initialized) {
-      await initialize();
-    }
-  };
+  const session = createCodexAppServerSession({
+    runtimeRpcUrl,
+    runtimeRpcUrls,
+    pending,
+    appendCodexEvent,
+    handleMessage,
+    configurePlasticMcp: plasticMcp.configure
+  });
+  request = session.request;
+  const requestAlias = (method: string, methodInput: unknown) => request(method, methodInput);
 
   const status = () => ({
-    connected: Boolean(processHandle),
-    initialized,
-    pid: processHandle?.pid ?? null,
-    connectedAt,
-    pendingRequests: pending.size,
+    ...session.status(),
     defaults: currentCodexDefaults,
     plasticMcp: {
       ...plasticMcp.state(),
@@ -312,9 +178,9 @@ export const createCodexAdapter = (input: {
       status,
       getCodexDefaults,
       appendCodexEvent,
-      connect,
-      initialize,
-      ensureInitialized,
+      connect: session.connect,
+      initialize: session.initialize,
+      ensureInitialized: session.ensureInitialized,
       request
     });
 
@@ -330,7 +196,7 @@ export const createCodexAdapter = (input: {
       getPlasticMcpState: plasticMcp.state,
       appendCodexEvent,
       configurePlasticMcp: plasticMcp.configure,
-      ensureInitialized,
+      ensureInitialized: session.ensureInitialized,
       request,
       asRecord,
       asString
@@ -339,7 +205,7 @@ export const createCodexAdapter = (input: {
     await registerCodexAliasMethods({
       methods: input.methods,
       runPromise: input.runPromise,
-      ensureInitialized,
+      ensureInitialized: session.ensureInitialized,
       requestAlias
     });
 
@@ -355,7 +221,7 @@ export const createCodexAdapter = (input: {
       startThreadForChat: chatRuntime.startThreadForChat,
       threadStartPayload: chatRuntime.threadStartPayload,
       developerInstructionsForChat: chatRuntime.developerInstructionsForChat,
-      ensureInitialized,
+      ensureInitialized: session.ensureInitialized,
       request,
       isThreadNotFoundError,
       asRecord,
