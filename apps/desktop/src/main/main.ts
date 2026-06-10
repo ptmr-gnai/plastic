@@ -863,6 +863,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "List windows",
       description: "Returns known windows rebuilt from durable events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["electron.window", "window.projection"]
+      },
       handler: () => Effect.map(store.list(), (events) => projectWindows(events))
     })
   );
@@ -873,6 +877,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Create window",
       description: "Opens a new Electron window and appends window.created.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["electron.window"]
+      },
       handler: (input) =>
         Effect.promise(async () => {
           const windowInput = input as { title?: string };
@@ -887,6 +895,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Focus panel",
       description: "Scrolls a visible panel into view and focuses its window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["electron.window", "dom.refs"]
+      },
       handler: (input) =>
         Effect.promise(async () => {
           const panelId = (input as { panelId?: string }).panelId;
@@ -913,6 +925,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Scroll to visible ref",
       description: "Scrolls any visible data-plastic-ref into view.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["electron.window", "dom.refs"]
+      },
       handler: (input) =>
         Effect.promise(async () => {
           const ref = (input as { ref?: string }).ref;
@@ -1114,6 +1130,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       id: "deixis/listVisibleRefs",
       title: "List visible UI references",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["dom.refs"]
+      },
       handler: () =>
         Effect.promise(listVisibleRefs)
     })
@@ -1125,6 +1145,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Capture window screenshot",
       description: "Captures the focused window, a specific window id, or a visible data-plastic-ref region as a data URL.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["electron.window", "screenshot"]
+      },
       handler: (input) =>
         Effect.promise(() => captureWindow(input as ScreenshotInput | undefined))
     })
@@ -1136,6 +1160,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Resolve visible UI reference",
       description: "Explains a data-plastic-ref with DOM, panel, extension, command, source hints, and recent event lineage.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["dom.refs"]
+      },
       handler: (input) =>
         Effect.promise(async () => {
           const ref = (input as { ref?: string }).ref;
@@ -1260,6 +1288,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Evaluate DOM script",
       description: "Permissive v0 DOM evaluation in the focused window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["dom.eval"]
+      },
       handler: (input) =>
         Effect.promise(async () => {
           const code = (input as { code?: string }).code;
@@ -1281,6 +1313,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Verify ref action",
       description: "Verifies that a recent ref-driven action produced the expected durable event.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["dom.refs", "event.projection"]
+      },
       handler: (input) =>
         Effect.promise(async () => {
           const verifyInput = input as VerifyRefActionInput;
@@ -1366,6 +1402,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Click visible UI reference",
       description: "Clicks a visible data-plastic-ref in the focused or selected window and records the action.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["dom.refs", "dom.input"]
+      },
       handler: (input) =>
         Effect.promise(async () => {
           const refInput = input as RefInput;
@@ -1437,6 +1477,10 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Fill visible UI reference",
       description: "Fills an input or textarea inside a visible data-plastic-ref and records the action.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: {
+        status: "available",
+        requiredCapabilities: ["dom.refs", "dom.input"]
+      },
       handler: (input) =>
         Effect.promise(async () => {
           const refInput = input as RefInput;

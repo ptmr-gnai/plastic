@@ -51,6 +51,12 @@ export interface PlasticMethod {
     notes?: string;
   };
   permissions?: string[];
+  availability?: {
+    status: "available" | "degraded" | "unavailable";
+    requiredCapabilities?: string[];
+    missingCapabilities?: string[];
+    notes?: string;
+  };
   links?: PlasticLink[];
   handler?: (input: unknown) => Effect.Effect<unknown>;
 }
