@@ -5,7 +5,58 @@ import { createExtensionAuthoringModule } from "./extension-authoring-methods.js
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
+import { createSnapshotAppDetails, decorateRuntimeState } from "./runtime-host-status.js";
+import type { createRuntimeHostConfig } from "./runtime-host-config.js";
+import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
+import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { createWindowCapabilityModule } from "./window-capability-methods.js";
+
+type RuntimeHostConfig = ReturnType<typeof createRuntimeHostConfig>;
+type RuntimeMode = "electron" | "headless";
+
+export const createRuntimeHostProjectionModules = (input: {
+  config: RuntimeHostConfig;
+  mode: RuntimeMode;
+  bus: Record<string, unknown>;
+  resource: {
+    id: string;
+    title: string;
+    state: unknown;
+    rpcUrl: string;
+  };
+  getHostDetails: () => Promise<{
+    app?: Record<string, unknown>;
+    build: unknown;
+    runtime: unknown;
+    codex: unknown;
+    visibleRefs: unknown;
+  }> | {
+    app?: Record<string, unknown>;
+    build: unknown;
+    runtime: unknown;
+    codex: unknown;
+    visibleRefs: unknown;
+  };
+}) => ({
+  state: createRuntimeStateModule({
+    decorateState: (state) => decorateRuntimeState({
+      state,
+      mode: input.mode,
+      bus: input.bus,
+      resource: input.resource
+    })
+  }),
+  snapshot: createRuntimeSnapshotModule({
+    getHostDetails: async () => {
+      const details = await input.getHostDetails();
+      const app = createSnapshotAppDetails({ config: input.config, mode: input.mode });
+      return {
+        ...details,
+        app: { ...app, ...details.app }
+      };
+    }
+  })
+});
 
 export const createRuntimeHostAgentModules = (input: {
   workbench: Parameters<typeof createAgentWorkbenchModule>[0];

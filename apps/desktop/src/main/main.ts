@@ -20,20 +20,17 @@ import { createRuntimeHostConfig } from "./runtime-host-config.js";
 import {
   createRuntimeHostAgentModules,
   createRuntimeHostCapabilityModules,
+  createRuntimeHostProjectionModules,
   createRuntimeHostSupportModules
 } from "./runtime-host-modules.js";
 import {
   createRuntimeBuildStatus,
   createRuntimeDiagnostics,
-  createSnapshotAppDetails,
-  decorateRuntimeState
 } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { appendRuntimeStartedEvent, registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
-import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
-import { createRuntimeStateModule } from "./runtime-state-methods.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
@@ -161,37 +158,28 @@ const capabilityModules = createRuntimeHostCapabilityModules({
   },
   deixis: electronDeixisHost
 });
-const runtimeStateModule = createRuntimeStateModule({
-  decorateState: (state) => decorateRuntimeState({
-    state,
-    mode: "electron",
-    bus: {
+const projectionModules = createRuntimeHostProjectionModules({
+  config: hostConfig,
+  mode: "electron",
+  bus: {
+    runtimeRpcUrl: preferredRuntimeRpcUrl,
+    runtimeRpcUrls,
+    runtimeHost,
+    runtimePort
+  },
+  resource: {
+    id: "rpc-bus",
+    title: "Plastic RPC Bus",
+    state: {
       runtimeRpcUrl: preferredRuntimeRpcUrl,
       runtimeRpcUrls,
       runtimeHost,
       runtimePort
     },
-    resource: {
-      id: "rpc-bus",
-      title: "Plastic RPC Bus",
-      state: {
-        runtimeRpcUrl: preferredRuntimeRpcUrl,
-        runtimeRpcUrls,
-        runtimeHost,
-        runtimePort
-      },
-      rpcUrl: preferredRuntimeRpcUrl
-    }
-  })
-});
-const runtimeSnapshotModule = createRuntimeSnapshotModule({
+    rpcUrl: preferredRuntimeRpcUrl
+  },
   getHostDetails: async () => ({
-    app: createSnapshotAppDetails({
-      config: hostConfig,
-      mode: "electron",
-      version: app.getVersion(),
-      ready: app.isReady()
-    }),
+    app: { version: app.getVersion(), ready: app.isReady() },
     build: buildStatus(),
     runtime: {
       windowCount: BrowserWindow.getAllWindows().length,
@@ -253,8 +241,8 @@ await registerCoreRuntimeModulesAtStartup({
   methods,
   runPromise,
   runtime,
-  state: runtimeStateModule,
-  snapshot: runtimeSnapshotModule,
+  state: projectionModules.state,
+  snapshot: projectionModules.snapshot,
   agentWorkbench: agentModules.agentWorkbench,
   agentOrient: agentModules.agentOrient,
   build: supportModules.build,

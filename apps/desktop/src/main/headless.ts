@@ -7,19 +7,16 @@ import { createRuntimeHostConfig } from "./runtime-host-config.js";
 import {
   createRuntimeHostAgentModules,
   createRuntimeHostCapabilityModules,
+  createRuntimeHostProjectionModules,
   createRuntimeHostSupportModules
 } from "./runtime-host-modules.js";
 import {
   createRuntimeBuildStatus,
   createRuntimeDiagnostics,
-  createSnapshotAppDetails,
-  decorateRuntimeState
 } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { appendRuntimeStartedEvent, registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
-import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
-import { createRuntimeStateModule } from "./runtime-state-methods.js";
 
 const hostConfig = createRuntimeHostConfig();
 const {
@@ -50,22 +47,17 @@ const buildStatus = () => createRuntimeBuildStatus({
 });
 
 await prepareBundledExtensionStateAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
-const runtimeStateModule = createRuntimeStateModule({
-  decorateState: (state) => decorateRuntimeState({
-    state,
-    mode: "headless",
-    bus: { runtimeRpcUrl, runtimePort },
-    resource: {
-      id: "headless-runtime",
-      title: "Plastic Headless Runtime",
-      state: buildStatus(),
-      rpcUrl: runtimeRpcUrl
-    }
-  })
-});
-const runtimeSnapshotModule = createRuntimeSnapshotModule({
+const projectionModules = createRuntimeHostProjectionModules({
+  config: hostConfig,
+  mode: "headless",
+  bus: { runtimeRpcUrl, runtimePort },
+  resource: {
+    id: "headless-runtime",
+    title: "Plastic Headless Runtime",
+    state: buildStatus(),
+    rpcUrl: runtimeRpcUrl
+  },
   getHostDetails: () => ({
-    app: createSnapshotAppDetails({ config: hostConfig, mode: "headless" }),
     build: buildStatus(),
     runtime: { windowCount: 0 },
     codex: { connected: false, initialized: false, pid: null, pendingRequests: 0 },
@@ -104,8 +96,8 @@ await registerCoreRuntimeModulesAtStartup({
   methods,
   runPromise,
   runtime,
-  state: runtimeStateModule,
-  snapshot: runtimeSnapshotModule,
+  state: projectionModules.state,
+  snapshot: projectionModules.snapshot,
   agentWorkbench: agentModules.agentWorkbench,
   agentOrient: agentModules.agentOrient,
   build: supportModules.build,
