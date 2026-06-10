@@ -1,4 +1,3 @@
-import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { spawn as spawnProcess } from "node:child_process";
 import { networkInterfaces } from "node:os";
@@ -15,6 +14,7 @@ import {
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
+import { startBuildHttpTransport } from "./build-http-transport.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import type { RefInput, ScreenshotInput, VerifyRefActionInput, VisibleRef, WindowVisibleRefs } from "./deixis-types.js";
@@ -30,7 +30,7 @@ import { registerExtensionMethods } from "./extension-loader.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
-import { readJsonBody, sendJson, startRuntimeHttpTransport } from "./runtime-http-transport.js";
+import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeBuildModule } from "./runtime-build-methods.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
@@ -306,53 +306,6 @@ const panelIdFromRef = (ref: string) => {
   return messageMatch?.[1];
 };
 
-const startBuildSocket = () => {
-  const server = createServer(async (request, response) => {
-    if (request.method === "OPTIONS") {
-      sendJson(response, 204, {});
-      return;
-    }
-
-    if (request.method === "GET" && request.url === "/healthz") {
-      sendJson(response, 200, { ok: true, service: "plastic.build" });
-      return;
-    }
-
-    if (request.method === "GET" && request.url === "/status") {
-      sendJson(response, 200, {
-        ok: true,
-        value: buildStatus()
-      });
-      return;
-    }
-
-    if (request.method === "GET" && request.url === "/snapshot") {
-      try {
-        sendJson(response, 200, { ok: true, value: await runPromise(methods.call("plastic/snapshot", {})) });
-      } catch (error) {
-        sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
-      }
-      return;
-    }
-
-    if (request.method === "POST" && request.url === "/rpc") {
-      try {
-        const body = await readJsonBody(request) as RpcRequest;
-        const value = await runPromise(methods.call(body.method, body.input));
-        sendJson(response, 200, { ok: true, value });
-      } catch (error) {
-        sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
-      }
-      return;
-    }
-
-    sendJson(response, 404, { ok: false, error: "Not found" });
-  });
-
-  server.listen(buildPort, buildHost);
-  return server;
-};
-
 async function createWindow(title = "Plastic") {
   const window = new BrowserWindow({
     width: 1400,
@@ -591,7 +544,13 @@ const runtimeTransport = await startRuntimeHttpTransport({
   port: runtimePort,
   corsOrigin: "http://127.0.0.1:5173"
 });
-const buildSocket = startBuildSocket();
+const buildSocket = startBuildHttpTransport({
+  methods,
+  runPromise,
+  host: buildHost,
+  port: buildPort,
+  getStatus: buildStatus
+});
 logStartup(`runtime listening on ${runtimePort}, build listening on ${buildPort}`);
 
 app.on("ready", () => {

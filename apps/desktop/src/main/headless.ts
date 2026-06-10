@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import { agentBackendFallbackModule } from "./agent-backend-fallback-methods.js";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
+import { startBuildHttpTransport } from "./build-http-transport.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import {
   discoverBundledExtensionsAtStartup,
@@ -36,6 +37,8 @@ const bundledExtensionsDir = join(workspaceDir, "apps", "desktop", "extensions",
 const runtimeHost = process.env.PLASTIC_RUNTIME_HOST ?? "0.0.0.0";
 const runtimePort = Number(process.env.PLASTIC_RUNTIME_PORT ?? 7331);
 const runtimeRpcUrl = process.env.PLASTIC_RPC_URL ?? `http://127.0.0.1:${runtimePort}/rpc`;
+const buildHost = process.env.PLASTIC_BUILD_HOST ?? "127.0.0.1";
+const buildPort = Number(process.env.PLASTIC_BUILD_PORT ?? 7332);
 const startedAt = new Date().toISOString();
 const runtimeCapabilities = [
   { id: "runtime.capabilities", title: "Runtime capability registry", status: "available" as const },
@@ -110,6 +113,7 @@ const buildStatus = () => ({
   eventPath,
   runtimeRpcUrl,
   runtimePort,
+  buildSocket: `http://${buildHost}:${buildPort}`,
   pid: process.pid,
   startedAt
 });
@@ -214,13 +218,25 @@ const runtimeTransport = await startRuntimeHttpTransport({
     console.log(`[plastic:headless] RPC listening at ${runtimeRpcUrl}`);
   }
 });
+const buildTransport = startBuildHttpTransport({
+  methods,
+  runPromise,
+  host: buildHost,
+  port: buildPort,
+  getStatus: buildStatus,
+  onListening: () => {
+    console.log(`[plastic:headless] Build RPC listening at http://${buildHost}:${buildPort}/rpc`);
+  }
+});
 
 process.on("SIGINT", () => {
   runtimeTransport.close();
+  buildTransport.close();
   process.exit(130);
 });
 
 process.on("SIGTERM", () => {
   runtimeTransport.close();
+  buildTransport.close();
   process.exit(143);
 });
