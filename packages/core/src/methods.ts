@@ -28,6 +28,28 @@ export interface PlasticMethod {
   };
   inputSchema?: unknown;
   outputSchema?: unknown;
+  examples?: Array<{
+    title: string;
+    input: unknown;
+    expectedEvents?: string[];
+    verifyWith?: {
+      method: string;
+      input: unknown;
+    };
+  }>;
+  effects?: {
+    durableEvents?: string[];
+    mutatesProjection?: string[];
+    opensWindow?: boolean;
+    touchesFilesystem?: boolean;
+    startsProcess?: boolean;
+  };
+  preconditions?: string[];
+  reversibility?: {
+    reversible: boolean;
+    method?: string;
+    notes?: string;
+  };
   permissions?: string[];
   links?: PlasticLink[];
   handler?: (input: unknown) => Effect.Effect<unknown>;
@@ -36,6 +58,7 @@ export interface PlasticMethod {
 export interface MethodRegistry {
   register: (method: PlasticMethod) => Effect.Effect<PlasticMethod>;
   list: () => Effect.Effect<PlasticMethod[]>;
+  get: (methodId: string) => Effect.Effect<PlasticMethod | undefined>;
   call: (methodId: string, input: unknown) => Effect.Effect<unknown, Error>;
 }
 
@@ -49,6 +72,7 @@ export const createMethodRegistry = (): MethodRegistry => {
         return method;
       }),
     list: () => Effect.sync(() => [...methods.values()]),
+    get: (methodId) => Effect.sync(() => methods.get(methodId)),
     call: (methodId, input) =>
       Effect.flatMap(
         Effect.sync(() => methods.get(methodId)),
@@ -61,4 +85,3 @@ export const createMethodRegistry = (): MethodRegistry => {
       )
   };
 };
-

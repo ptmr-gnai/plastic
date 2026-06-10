@@ -579,6 +579,40 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
+      id: "methods/describe",
+      title: "Describe method",
+      description: "Returns one RPC method with schemas, examples, effects, links, and ownership metadata.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      inputSchema: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "RPC method id to describe." }
+        }
+      },
+      examples: [
+        {
+          title: "Describe panel movement",
+          input: { id: "panels/move" }
+        }
+      ],
+      handler: (input) =>
+        Effect.promise(async () => {
+          const id = (input as { id?: string }).id;
+          if (!id) {
+            throw new Error("methods/describe requires id");
+          }
+          const method = await runPromise(methods.get(id));
+          if (!method) {
+            throw new Error(`Method not found: ${id}`);
+          }
+          return method;
+        })
+    })
+  );
+
+  await runPromise(
+    methods.register({
       id: "rpc/call",
       title: "Call RPC method",
       description: "Calls any registered Plastic RPC method through the shared method registry.",
@@ -1341,7 +1375,31 @@ const registerRuntimeMethods = async (store: EventStore) => {
     methods.register({
       id: "app/setTheme",
       title: "Set theme",
+      description: "Durably changes the app theme projected by renderer windows.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      inputSchema: {
+        type: "object",
+        properties: {
+          theme: { enum: ["light", "dark"], description: "Theme to project in the app UI." }
+        }
+      },
+      examples: [
+        {
+          title: "Switch to dark mode",
+          input: { theme: "dark" },
+          expectedEvents: ["theme.changed"],
+          verifyWith: { method: "plastic/state", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["theme.changed"],
+        mutatesProjection: ["app.theme"]
+      },
+      reversibility: {
+        reversible: true,
+        method: "app/setTheme",
+        notes: "Call again with the previous theme."
+      },
       handler: (input) => {
         const theme = (input as { theme?: "light" | "dark" }).theme === "dark" ? "dark" : "light";
         return store.append(
