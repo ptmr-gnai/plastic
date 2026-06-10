@@ -33,7 +33,7 @@ import {
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { createRuntimeModulePlan } from "./runtime-module-plan.js";
+import { registerRuntimeModulePlan } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 
@@ -272,23 +272,22 @@ const supportModules = createRuntimeHostSupportModules({
     viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
   })
 });
-await runtime.registerModules(
-  createRuntimeModulePlan({
-    state: runtimeStateModule,
-    snapshot: runtimeSnapshotModule,
-    agentWorkbench: agentModules.agentWorkbench,
-    agentOrient: agentModules.agentOrient,
-    build: supportModules.build,
-    diagnostics: supportModules.diagnostics,
-    extensionAuthoring: supportModules.extensionAuthoring,
-    rendererControl: capabilityModules.rendererControl,
-    agentBackend: null,
-    windowCapability: capabilityModules.windowCapability,
-    deixis: capabilityModules.deixis,
-    health: null
-  }),
-  (module) => logStartup(`register ${module.id} module`)
-);
+await registerRuntimeModulePlan({
+  runtime,
+  state: runtimeStateModule,
+  snapshot: runtimeSnapshotModule,
+  agentWorkbench: agentModules.agentWorkbench,
+  agentOrient: agentModules.agentOrient,
+  build: supportModules.build,
+  diagnostics: supportModules.diagnostics,
+  extensionAuthoring: supportModules.extensionAuthoring,
+  rendererControl: capabilityModules.rendererControl,
+  agentBackend: null,
+  windowCapability: capabilityModules.windowCapability,
+  deixis: capabilityModules.deixis,
+  health: null,
+  onRegister: (module) => logStartup(`register ${module.id} module`)
+});
 logStartup("register extension methods");
 await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });
 logStartup("register panel mailbox methods");

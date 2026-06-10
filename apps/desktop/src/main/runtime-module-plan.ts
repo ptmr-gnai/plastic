@@ -1,4 +1,5 @@
 import { agentBackendFallbackModule } from "./agent-backend-fallback-methods.js";
+import type { PlasticRuntime } from "./runtime-kernel.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
@@ -38,4 +39,14 @@ export const createRuntimeModulePlan = (input: RuntimeModulePlanInput): RuntimeM
     input.deixis,
     health
   ].filter((module): module is RuntimeModule => Boolean(module));
+};
+
+export const registerRuntimeModulePlan = (
+  input: RuntimeModulePlanInput & {
+    runtime: Pick<PlasticRuntime, "registerModules">;
+    onRegister?: (module: RuntimeModule) => void;
+  }
+) => {
+  const { runtime, onRegister, ...planInput } = input;
+  return runtime.registerModules(createRuntimeModulePlan(planInput), onRegister);
 };

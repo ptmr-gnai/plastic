@@ -21,7 +21,7 @@ import {
 } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { createRuntimeModulePlan } from "./runtime-module-plan.js";
+import { registerRuntimeModulePlan } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 
@@ -149,20 +149,19 @@ const supportModules = createRuntimeHostSupportModules({
   })
 });
 const capabilityModules = createRuntimeHostCapabilityModules();
-await runtime.registerModules([
-  ...createRuntimeModulePlan({
-    state: runtimeStateModule,
-    snapshot: runtimeSnapshotModule,
-    agentWorkbench: agentModules.agentWorkbench,
-    agentOrient: agentModules.agentOrient,
-    build: supportModules.build,
-    diagnostics: supportModules.diagnostics,
-    extensionAuthoring: supportModules.extensionAuthoring,
-    rendererControl: capabilityModules.rendererControl,
-    windowCapability: capabilityModules.windowCapability,
-    deixis: capabilityModules.deixis
-  })
-]);
+await registerRuntimeModulePlan({
+  runtime,
+  state: runtimeStateModule,
+  snapshot: runtimeSnapshotModule,
+  agentWorkbench: agentModules.agentWorkbench,
+  agentOrient: agentModules.agentOrient,
+  build: supportModules.build,
+  diagnostics: supportModules.diagnostics,
+  extensionAuthoring: supportModules.extensionAuthoring,
+  rendererControl: capabilityModules.rendererControl,
+  windowCapability: capabilityModules.windowCapability,
+  deixis: capabilityModules.deixis
+});
 await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });
 await runtime.registerModules([panelMailboxModule]);
 await runtime.appendEvent({
