@@ -11,9 +11,6 @@ import {
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
-import {
-  prepareBundledExtensionStateAtStartup
-} from "./extension-startup.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createGitStatusReader, createWorkspaceCommandRunner } from "./runtime-host-command.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
@@ -30,7 +27,7 @@ import {
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { appendRuntimeStartedEvent, registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
+import { runRuntimeStartupSequence } from "./runtime-startup.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
@@ -139,9 +136,6 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
   }
 });
 
-logStartup("ensure bundled extensions");
-await prepareBundledExtensionStateAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
-logStartup("register runtime methods");
 const electronDeixisHost = createElectronDeixisHost(BrowserWindow);
 const capabilityModules = createRuntimeHostCapabilityModules({
   rendererControl: {
@@ -235,8 +229,9 @@ const runtimeHealthModule = createRuntimeHealthModule({
     { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
   ]
 });
-await registerCoreRuntimeModulesAtStartup({
+await runRuntimeStartupSequence({
   workspaceDir,
+  bundledExtensionsDir,
   eventStore,
   methods,
   runPromise,
@@ -254,13 +249,15 @@ await registerCoreRuntimeModulesAtStartup({
   deixis: capabilityModules.deixis,
   health: runtimeHealthModule,
   onRegister: (module) => logStartup(`register ${module.id} module`),
-  onPhase: logStartup
-});
-logStartup("register codex methods");
-await codexAdapter.registerMethods();
-await appendRuntimeStartedEvent(runtime, {
-  mode: "electron",
-  version: app.getVersion()
+  onPhase: logStartup,
+  startedPayload: {
+    mode: "electron",
+    version: app.getVersion()
+  },
+  beforeStarted: async () => {
+    logStartup("register codex methods");
+    await codexAdapter.registerMethods();
+  }
 });
 
 logStartup("start sockets");

@@ -1,5 +1,8 @@
 import type { EventStore, MethodRegistry } from "@plastic/core";
-import { registerAndActivateExtensionsAtStartup } from "./extension-startup.js";
+import {
+  prepareBundledExtensionStateAtStartup,
+  registerAndActivateExtensionsAtStartup
+} from "./extension-startup.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import type { PlasticRuntime } from "./runtime-kernel.js";
 import {
@@ -13,9 +16,15 @@ type CoreRuntimeStartupInput = RuntimeModulePlanInput & {
   eventStore: EventStore;
   methods: MethodRegistry;
   runPromise: RunPromise;
-  runtime: Pick<PlasticRuntime, "registerModules">;
+  runtime: Pick<PlasticRuntime, "appendEvent" | "registerModules">;
   onRegister?: (module: RuntimeModule) => void;
   onPhase?: (phase: string) => void;
+};
+
+type RuntimeStartupSequenceInput = CoreRuntimeStartupInput & {
+  bundledExtensionsDir: string;
+  startedPayload: Record<string, unknown>;
+  beforeStarted?: () => Promise<void>;
 };
 
 export const appendRuntimeStartedEvent = (
@@ -50,4 +59,19 @@ export const registerCoreRuntimeModulesAtStartup = async (input: CoreRuntimeStar
 
   onPhase?.("register panel mailbox methods");
   await runtime.registerModules([panelMailboxModule], onRegister);
+};
+
+export const runRuntimeStartupSequence = async (input: RuntimeStartupSequenceInput) => {
+  input.onPhase?.("ensure bundled extensions");
+  await prepareBundledExtensionStateAtStartup({
+    workspaceDir: input.workspaceDir,
+    bundledExtensionsDir: input.bundledExtensionsDir,
+    eventStore: input.eventStore,
+    runPromise: input.runPromise
+  });
+
+  input.onPhase?.("register runtime methods");
+  await registerCoreRuntimeModulesAtStartup(input);
+  await input.beforeStarted?.();
+  await appendRuntimeStartedEvent(input.runtime, input.startedPayload);
 };

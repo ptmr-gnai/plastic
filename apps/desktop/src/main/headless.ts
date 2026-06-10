@@ -1,6 +1,3 @@
-import {
-  prepareBundledExtensionStateAtStartup
-} from "./extension-startup.js";
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createGitStatusReader, createWorkspaceCommandRunner } from "./runtime-host-command.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
@@ -16,7 +13,7 @@ import {
 } from "./runtime-host-status.js";
 import { startRuntimeHostTransports } from "./runtime-host-transports.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { appendRuntimeStartedEvent, registerCoreRuntimeModulesAtStartup } from "./runtime-startup.js";
+import { runRuntimeStartupSequence } from "./runtime-startup.js";
 
 const hostConfig = createRuntimeHostConfig();
 const {
@@ -46,7 +43,6 @@ const buildStatus = () => createRuntimeBuildStatus({
   runtimePort
 });
 
-await prepareBundledExtensionStateAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
 const projectionModules = createRuntimeHostProjectionModules({
   config: hostConfig,
   mode: "headless",
@@ -90,8 +86,9 @@ const supportModules = createRuntimeHostSupportModules({
   })
 });
 const capabilityModules = createRuntimeHostCapabilityModules();
-await registerCoreRuntimeModulesAtStartup({
+await runRuntimeStartupSequence({
   workspaceDir,
+  bundledExtensionsDir,
   eventStore,
   methods,
   runPromise,
@@ -105,9 +102,9 @@ await registerCoreRuntimeModulesAtStartup({
   extensionAuthoring: supportModules.extensionAuthoring,
   rendererControl: capabilityModules.rendererControl,
   windowCapability: capabilityModules.windowCapability,
-  deixis: capabilityModules.deixis
+  deixis: capabilityModules.deixis,
+  startedPayload: { mode: "headless" }
 });
-await appendRuntimeStartedEvent(runtime, { mode: "headless" });
 
 const transports = await startRuntimeHostTransports({
   eventStore,
