@@ -9,10 +9,7 @@ import {
   createEvent,
   eventSummary,
   isNoisyEvent,
-  projectExtensions,
-  projectPanels,
   type EventScopeInput,
-  type EventStore,
   type PlasticEvent
 } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
@@ -21,7 +18,12 @@ import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import type { RefInput, ScreenshotInput, VerifyRefActionInput, VisibleRef, WindowVisibleRefs } from "./deixis-types.js";
-import { discoverBundledExtensionsAtStartup, discoverWorkspaceExtensionsAtStartup } from "./extension-startup.js";
+import {
+  discoverBundledExtensionsAtStartup,
+  discoverWorkspaceExtensionsAtStartup,
+  ensureBundledPanelsAtStartup,
+  ensurePanelRendererBindingsAtStartup
+} from "./extension-startup.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods } from "./extension-loader.js";
@@ -304,94 +306,6 @@ const panelIdFromRef = (ref: string) => {
   return messageMatch?.[1];
 };
 
-const ensureBundledPanels = async (store: EventStore) => {
-  const events = await runPromise(store.list());
-  const extensions = projectExtensions(events);
-  const existingPanelIds = new Set(projectPanels(events).map((panel) => panel.id));
-  const introducedPanelIds = new Set(
-    events
-      .filter((event) => event.type === "panel.created")
-      .map((event) => {
-        const payload = event.payload as { id?: string };
-        return payload.id ?? event.scope.panelId;
-      })
-      .filter((id): id is string => Boolean(id))
-  );
-
-  for (const extension of extensions.filter((candidate) => candidate.source === "bundled")) {
-    for (const panel of extension.panels) {
-      if (existingPanelIds.has(panel.id) || introducedPanelIds.has(panel.id)) {
-        continue;
-      }
-
-      await runPromise(
-        store.append(
-          createEvent({
-            type: "panel.created",
-            payload: {
-              ...panel,
-              extensionId: extension.id
-            },
-            scope: {
-              panelId: panel.id,
-              extensionId: extension.id
-            },
-            meta: {
-              links: [
-                { rel: "panel", href: "panels/get", method: "panels/get", target: panel.id },
-                { rel: "extension", href: "extensions/get", method: "extensions/get", target: extension.id }
-              ]
-            }
-          })
-        )
-      );
-    }
-  }
-};
-
-const ensurePanelRendererBindings = async (store: EventStore) => {
-  const events = await runPromise(store.list());
-  const extensions = projectExtensions(events);
-  const panels = projectPanels(events);
-
-  for (const panel of panels) {
-    if (panel.rendererId) {
-      continue;
-    }
-
-    const extension = extensions.find((candidate) => candidate.id === panel.extensionId);
-    const renderer = extension?.renderers.find((candidate) => candidate.panelKinds.includes(panel.kind))
-      ?? extension?.renderers[0];
-    if (!renderer) {
-      continue;
-    }
-
-    await runPromise(
-      store.append(
-        createEvent({
-          type: "panel.renderer.bound",
-          payload: {
-            id: panel.id,
-            extensionId: panel.extensionId,
-            rendererId: renderer.id,
-            reason: "matched extension renderer contribution"
-          },
-          scope: {
-            panelId: panel.id,
-            extensionId: panel.extensionId
-          },
-          meta: {
-            links: [
-              { rel: "panel", href: "panels/get", method: "panels/get", target: panel.id },
-              { rel: "extension", href: "extensions/get", method: "extensions/get", target: panel.extensionId }
-            ]
-          }
-        })
-      )
-    );
-  }
-};
-
 const startBuildSocket = () => {
   const server = createServer(async (request, response) => {
     if (request.method === "OPTIONS") {
@@ -497,9 +411,9 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
 logStartup("ensure bundled extensions");
 await discoverBundledExtensionsAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
 logStartup("ensure bundled panels");
-await ensureBundledPanels(eventStore);
+await ensureBundledPanelsAtStartup({ workspaceDir, eventStore, runPromise });
 logStartup("ensure panel renderer bindings");
-await ensurePanelRendererBindings(eventStore);
+await ensurePanelRendererBindingsAtStartup({ workspaceDir, eventStore, runPromise });
 logStartup("register runtime methods");
 const windowCapabilityModule = createWindowCapabilityModule({
   browserWindow: BrowserWindow,

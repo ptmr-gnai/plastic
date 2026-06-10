@@ -5,7 +5,12 @@ import { agentBackendFallbackModule } from "./agent-backend-fallback-methods.js"
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
-import { discoverBundledExtensionsAtStartup, discoverWorkspaceExtensionsAtStartup } from "./extension-startup.js";
+import {
+  discoverBundledExtensionsAtStartup,
+  discoverWorkspaceExtensionsAtStartup,
+  ensureBundledPanelsAtStartup,
+  ensurePanelRendererBindingsAtStartup
+} from "./extension-startup.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods } from "./extension-loader.js";
@@ -110,6 +115,8 @@ const buildStatus = () => ({
 });
 
 await discoverBundledExtensionsAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
+await ensureBundledPanelsAtStartup({ workspaceDir, eventStore, runPromise });
+await ensurePanelRendererBindingsAtStartup({ workspaceDir, eventStore, runPromise });
 await discoverWorkspaceExtensionsAtStartup({ workspaceDir, eventStore, runPromise });
 const runtimeStateModule = createRuntimeStateModule({
   decorateState: (state) => ({
