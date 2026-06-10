@@ -1,16 +1,14 @@
 import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import {
-  type EventStore
-} from "@plastic/core";
 import { agentBackendFallbackModule } from "./agent-backend-fallback-methods.js";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
+import { discoverBundledExtensionsAtStartup, discoverWorkspaceExtensionsAtStartup } from "./extension-startup.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
-import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
+import { registerExtensionMethods } from "./extension-loader.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
@@ -98,9 +96,6 @@ const runLocalCommand = async (command: string, args: string[]): Promise<Runtime
   }
 };
 
-const appendEvent = async (_store: EventStore, eventInput: Parameters<typeof runtime.appendEvent>[0]) =>
-  runtime.appendEvent(eventInput);
-
 const buildStatus = () => ({
   service: "plastic.headless",
   status: "running",
@@ -114,49 +109,8 @@ const buildStatus = () => ({
   startedAt
 });
 
-const discoverExtensionsAtStartup = async () => {
-  for (const extension of await scanBundledExtensions(workspaceDir, bundledExtensionsDir)) {
-    await appendEvent(eventStore, {
-      type: "extension.discovered",
-      payload: {
-        id: extension.id,
-        title: extension.title,
-        source: extension.source,
-        path: extension.path,
-        entry: extension.entry,
-        manifestPath: extension.manifestPath,
-        manifest: extension,
-        errors: extension.errors
-      },
-      scope: { extensionId: extension.id }
-    });
-  }
-
-  for (const extension of await scanWorkspaceExtensions(workspaceDir)) {
-    await appendEvent(eventStore, {
-      type: "extension.discovered",
-      payload: {
-        id: extension.id,
-        title: extension.title,
-        source: extension.source,
-        path: extension.path,
-        entry: extension.entry,
-        manifestPath: extension.manifestPath,
-        manifest: {
-          id: extension.id,
-          title: extension.title,
-          panels: extension.panels,
-          renderers: extension.renderers,
-          methods: extension.methods
-        },
-        errors: extension.errors
-      },
-      scope: { extensionId: extension.id }
-    });
-  }
-};
-
-await discoverExtensionsAtStartup();
+await discoverBundledExtensionsAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
+await discoverWorkspaceExtensionsAtStartup({ workspaceDir, eventStore, runPromise });
 const runtimeStateModule = createRuntimeStateModule({
   decorateState: (state) => ({
     ...state,
@@ -238,7 +192,7 @@ await runtime.registerModules([
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
 await runtime.registerModules([panelMailboxModule]);
-await appendEvent(eventStore, {
+await runtime.appendEvent({
   type: "runtime.started",
   payload: { mode: "headless" }
 });

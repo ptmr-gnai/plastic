@@ -21,9 +21,10 @@ import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
 import type { RefInput, ScreenshotInput, VerifyRefActionInput, VisibleRef, WindowVisibleRefs } from "./deixis-types.js";
+import { discoverBundledExtensionsAtStartup, discoverWorkspaceExtensionsAtStartup } from "./extension-startup.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
-import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
+import { registerExtensionMethods } from "./extension-loader.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
@@ -303,45 +304,6 @@ const panelIdFromRef = (ref: string) => {
   return messageMatch?.[1];
 };
 
-const ensureBundledExtensions = async (store: EventStore) => {
-  const events = await runPromise(store.list());
-  const bundledExtensions = await scanBundledExtensions(workspaceDir, bundledExtensionsDir);
-  for (const extension of bundledExtensions) {
-    const latestManifest = events
-      .filter((event) => event.type === "extension.discovered" && event.scope.extensionId === extension.id)
-      .map((event) => (event.payload as { manifest?: unknown }).manifest)
-      .at(-1);
-    if (JSON.stringify(latestManifest) === JSON.stringify(extension)) {
-      continue;
-    }
-
-    await runPromise(
-      store.append(
-        createEvent({
-          type: "extension.discovered",
-          payload: {
-            id: extension.id,
-            title: extension.title,
-            source: "bundled",
-            path: extension.path,
-            entry: extension.entry,
-            manifestPath: extension.manifestPath,
-            manifest: extension,
-            errors: extension.errors
-          },
-          scope: { extensionId: extension.id },
-          meta: {
-            links: [
-              { rel: "self", href: "extensions/get", method: "extensions/get", target: extension.id },
-              { rel: "extensions", href: "extensions/list", method: "extensions/list" }
-            ]
-          }
-        })
-      )
-    );
-  }
-};
-
 const ensureBundledPanels = async (store: EventStore) => {
   const events = await runPromise(store.list());
   const extensions = projectExtensions(events);
@@ -533,7 +495,7 @@ ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise
 });
 
 logStartup("ensure bundled extensions");
-await ensureBundledExtensions(eventStore);
+await discoverBundledExtensionsAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
 logStartup("ensure bundled panels");
 await ensureBundledPanels(eventStore);
 logStartup("ensure panel renderer bindings");
@@ -672,33 +634,7 @@ await runtime.registerModules(
 logStartup("register extension methods");
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 logStartup("scan workspace extensions");
-const discoveredExtensions = await scanWorkspaceExtensions(workspaceDir);
-for (const extension of discoveredExtensions) {
-  await runPromise(
-    eventStore.append(
-      createEvent({
-        type: "extension.discovered",
-        payload: {
-          id: extension.id,
-          title: extension.title,
-          source: extension.source,
-          path: extension.path,
-          entry: extension.entry,
-          manifestPath: extension.manifestPath,
-          manifest: {
-            id: extension.id,
-            title: extension.title,
-            panels: extension.panels,
-            renderers: extension.renderers,
-            methods: extension.methods
-          },
-          errors: extension.errors
-        },
-        scope: { extensionId: extension.id }
-      })
-    )
-  );
-}
+await discoverWorkspaceExtensionsAtStartup({ workspaceDir, eventStore, runPromise });
 logStartup("activate extensions");
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
 logStartup("register panel mailbox methods");
