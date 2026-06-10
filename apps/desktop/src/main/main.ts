@@ -32,6 +32,7 @@ import { panelMailboxModule } from "./panel-methods.js";
 import { readJsonBody, sendJson, startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeBuildModule } from "./runtime-build-methods.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
+import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
@@ -583,24 +584,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
-      id: "app/diagnostics",
-      title: "App diagnostics",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: () =>
-        Effect.sync(() => ({
-          cwd: process.cwd(),
-          workspaceDir,
-          eventPath,
-          appReady: app.isReady(),
-          windowCount: BrowserWindow.getAllWindows().length,
-          retainedWindowCount: windows.size,
-          viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
-        }))
-    })
-  );
-
-  await runPromise(
-    methods.register({
       id: "extensions/scaffold",
       title: "Scaffold extension",
       description: "Creates a simple workspace extension under .plastic/extensions and records the scaffold event.",
@@ -897,12 +880,24 @@ const runtimeBuildModule = createRuntimeBuildModule({
   getStatus: buildStatus,
   runCommand: runLocalCommand
 });
+const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
+  getDiagnostics: () => ({
+    cwd: process.cwd(),
+    workspaceDir,
+    eventPath,
+    appReady: app.isReady(),
+    windowCount: BrowserWindow.getAllWindows().length,
+    retainedWindowCount: windows.size,
+    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
+  })
+});
 await runtime.registerModules(
   [
     runtimeStateModule,
     runtimeSnapshotModule,
     agentWorkbenchModule,
     runtimeBuildModule,
+    runtimeDiagnosticsModule,
     runtimeControlModule,
     panelControlModule,
     electronWindowModule,

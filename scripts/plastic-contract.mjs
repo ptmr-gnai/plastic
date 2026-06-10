@@ -89,6 +89,7 @@ await check("plastic/methods", async () => {
     "panels/create",
     "extensions/list",
     "build/status",
+    "app/diagnostics",
     "events/append",
     "events/list",
     "events/timeline",
@@ -152,6 +153,17 @@ await check("build/status", async () => {
     service: build.service,
     runtimeRpcUrl: build.runtimeRpcUrl ?? null,
     runtimePort: build.runtimePort ?? null
+  };
+});
+
+await check("app/diagnostics", async () => {
+  const diagnostics = await rpc("app/diagnostics");
+  assert(diagnostics?.workspaceDir, "app/diagnostics missing workspaceDir");
+  assert(typeof diagnostics.windowCount === "number", "app/diagnostics missing windowCount");
+  return {
+    workspaceDir: diagnostics.workspaceDir,
+    windowCount: diagnostics.windowCount,
+    appReady: diagnostics.appReady
   };
 });
 

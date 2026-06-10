@@ -17,6 +17,7 @@ import { panelMailboxModule } from "./panel-methods.js";
 import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
+import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
@@ -257,11 +258,25 @@ const runtimeBuildModule = createRuntimeBuildModule({
   getStatus: buildStatus,
   runCommand: runLocalCommand
 });
+const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
+  getDiagnostics: () => ({
+    cwd: process.cwd(),
+    workspaceDir,
+    eventPath,
+    appReady: false,
+    windowCount: 0,
+    retainedWindowCount: 0,
+    viteUrl: null,
+    runtimeRpcUrl,
+    runtimePort
+  })
+});
 await runtime.registerModules([
   runtimeStateModule,
   runtimeSnapshotModule,
   agentWorkbenchModule,
   runtimeBuildModule,
+  runtimeDiagnosticsModule,
   runtimeControlModule,
   panelControlModule,
   headlessCapabilityModule,
