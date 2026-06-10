@@ -7,6 +7,11 @@ import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-conte
 
 type PanelMailboxContext = Pick<RuntimeMethodContext, "eventStore" | "methods" | "runPromise" | "appendEvent">;
 
+const panelMailboxAvailability = {
+  status: "available" as const,
+  notes: "Panel mailbox is a durable runtime primitive available in headed and headless modes."
+};
+
 export const registerPanelMailboxMethods = async (input: PanelMailboxContext) => {
   const { eventStore, methods, runPromise, appendEvent } = input;
 
@@ -16,6 +21,7 @@ export const registerPanelMailboxMethods = async (input: PanelMailboxContext) =>
       title: "Send panel message",
       description: "Sends a durable mailbox message from one panel to another.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelMailboxAvailability,
       handler: (methodInput) => {
         const messageInput = methodInput as {
           fromPanelId?: string;
@@ -60,6 +66,7 @@ export const registerPanelMailboxMethods = async (input: PanelMailboxContext) =>
       title: "List panel messages",
       description: "Lists durable panel mailbox messages, optionally filtered by panel id.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelMailboxAvailability,
       handler: (methodInput) =>
         Effect.map(eventStore.list(), (events) => {
           const panelId = (methodInput as { panelId?: string } | undefined)?.panelId;
@@ -77,6 +84,7 @@ export const registerPanelMailboxMethods = async (input: PanelMailboxContext) =>
       id: "panels/markMessageRead",
       title: "Mark panel message read",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelMailboxAvailability,
       handler: (methodInput) => {
         const id = (methodInput as { id?: string }).id;
         if (!id) {
@@ -98,6 +106,7 @@ export const registerPanelMailboxMethods = async (input: PanelMailboxContext) =>
       title: "Panel mailboxes",
       description: "Returns panels with inbox/outbox message counts.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: panelMailboxAvailability,
       handler: () =>
         Effect.map(eventStore.list(), (events) => {
           const panels = projectPanels(events);
