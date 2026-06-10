@@ -2,14 +2,13 @@ import { createRequire } from "node:module";
 import { spawn as spawnProcess } from "node:child_process";
 import { networkInterfaces } from "node:os";
 import { join } from "node:path";
-import type { BrowserWindow as ElectronBrowserWindow, Rectangle } from "electron";
+import type { BrowserWindow as ElectronBrowserWindow } from "electron";
 import { Effect } from "effect";
 import {
   createEvent,
   eventSummary,
   isNoisyEvent,
-  type EventScopeInput,
-  type PlasticEvent
+  type EventScopeInput
 } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
@@ -17,7 +16,7 @@ import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { startBuildHttpTransport } from "./build-http-transport.js";
 import { createCodexAdapter } from "./codex-adapter.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
-import type { RefInput, ScreenshotInput, VerifyRefActionInput, VisibleRef, WindowVisibleRefs } from "./deixis-types.js";
+import { createElectronDeixisHost } from "./electron-deixis-host.js";
 import {
   discoverBundledExtensionsAtStartup,
   discoverWorkspaceExtensionsAtStartup,
@@ -137,135 +136,6 @@ const buildStatus = () => ({
   startedAt: processStartedAt
 });
 
-const listVisibleRefs = async (): Promise<WindowVisibleRefs[]> => {
-  const refs = [];
-  for (const window of BrowserWindow.getAllWindows()) {
-    const windowRefs = await window.webContents.executeJavaScript(`
-      [...document.querySelectorAll("[data-plastic-ref]")].map((element) => ({
-        ref: element.dataset.plasticRef,
-        panel: element.dataset.plasticPanel,
-        extension: element.dataset.plasticExtension,
-        command: element.dataset.plasticCommand,
-        tag: element.tagName.toLowerCase(),
-        text: (element.innerText || element.textContent || "").slice(0, 240),
-        bounds: (() => {
-          const rect = element.getBoundingClientRect();
-          return {
-            x: Math.round(rect.x),
-            y: Math.round(rect.y),
-            width: Math.round(rect.width),
-            height: Math.round(rect.height)
-          };
-        })()
-      }))
-    `) as VisibleRef[];
-    refs.push({ windowId: window.id, refs: windowRefs });
-  }
-  return refs;
-};
-
-const scrollRefIntoViewScript = (ref: string) => `
-  (() => {
-    const ref = ${JSON.stringify(ref)};
-    const element = [...document.querySelectorAll("[data-plastic-ref]")]
-      .find((candidate) => candidate.dataset.plasticRef === ref);
-    if (!element) {
-      return false;
-    }
-    const rail = document.querySelector(".rail");
-    if (rail && rail.contains(element)) {
-      const railRect = rail.getBoundingClientRect();
-      const rect = element.getBoundingClientRect();
-      rail.scrollLeft += rect.left - railRect.left - Math.max(0, (rail.clientWidth - rect.width) / 2);
-      rail.scrollTop += rect.top - railRect.top - Math.max(0, (rail.clientHeight - rect.height) / 2);
-    } else {
-      element.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
-    }
-    return true;
-  })()
-`;
-
-const findWindow = (windowId?: number) => {
-  if (windowId !== undefined) {
-    return BrowserWindow.getAllWindows().find((window) => window.id === windowId) ?? null;
-  }
-  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
-};
-
-const captureWindow = async (input: ScreenshotInput = {}) => {
-  const target = findWindow(input.windowId);
-  if (!target) {
-    throw new Error("No window available");
-  }
-
-  let rect: Rectangle | undefined;
-  if (input.ref) {
-    const measured = await target.webContents.executeJavaScript(`
-      (async () => {
-        const ref = ${JSON.stringify(input.ref)};
-        const element = [...document.querySelectorAll("[data-plastic-ref]")]
-          .find((candidate) => candidate.dataset.plasticRef === ref);
-        if (!element) {
-          return null;
-        }
-        ${scrollRefIntoViewScript(input.ref)}
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-        const rect = element.getBoundingClientRect();
-        return {
-          x: Math.max(0, Math.floor(rect.x)),
-          y: Math.max(0, Math.floor(rect.y)),
-          width: Math.max(1, Math.ceil(rect.width)),
-          height: Math.max(1, Math.ceil(rect.height))
-        };
-      })()
-    `) as Rectangle | null;
-    if (!measured) {
-      throw new Error(`No visible element for ref ${input.ref}`);
-    }
-    rect = measured;
-  }
-
-  const image = await target.webContents.capturePage(rect);
-  const size = image.getSize();
-  return {
-    windowId: target.id,
-    ref: input.ref ?? null,
-    width: size.width,
-    height: size.height,
-    dataUrl: image.toDataURL()
-  };
-};
-
-const findRecentEvents = (events: PlasticEvent[], predicate: (event: PlasticEvent) => boolean, limit = 20) =>
-  events.filter(predicate).slice(-limit);
-
-const sourceHintsFor = (input: { ref?: string; panelId?: string; extensionId?: string; command?: string }) => {
-  const hints = new Set<string>();
-  if (input.ref?.startsWith("panel:") || input.panelId) {
-    hints.add("apps/desktop/src/renderer/main.ts");
-    hints.add("apps/desktop/src/renderer/styles.css");
-    hints.add("packages/core/src/panels.ts");
-  }
-  if (input.ref?.startsWith("panel-button:") || input.command?.startsWith("chats/")) {
-    hints.add("apps/desktop/src/main/main.ts");
-    hints.add("apps/desktop/src/main/codex-adapter.ts");
-    hints.add("apps/desktop/src/renderer/main.ts");
-  }
-  if (input.extensionId?.startsWith("workspace.")) {
-    hints.add("apps/desktop/src/main/extension-loader.ts");
-    hints.add(".plastic/extensions");
-  }
-  if (input.command?.startsWith("codex/")) {
-    hints.add("apps/desktop/src/main/codex-adapter.ts");
-    hints.add("docs/CODEX_APP_SERVER_INTEGRATION.md");
-  }
-  if (input.command?.startsWith("panels/")) {
-    hints.add("packages/core/src/panels.ts");
-    hints.add("apps/desktop/src/main/main.ts");
-  }
-  return [...hints];
-};
-
 const readGitStatus = async () => {
   const status = await runLocalCommand("git", ["status", "--short"]);
   return {
@@ -280,30 +150,6 @@ const readGitStatus = async () => {
       })),
     stderr: status.stderr
   };
-};
-
-const resolveVisibleRef = async (ref: string) => {
-  const visibleRefs = await listVisibleRefs();
-  for (const windowRefs of visibleRefs) {
-    const match = windowRefs.refs.find((candidate) => candidate.ref === ref);
-    if (match) {
-      return { windowId: windowRefs.windowId, ref: match };
-    }
-  }
-  return null;
-};
-
-const panelIdFromRef = (ref: string) => {
-  if (ref.startsWith("message:")) {
-    return ref.split(":")[1];
-  }
-  for (const prefix of ["panel:", "chat-compose:", "chat-shell:", "chat-status:", "chat-buttons:", "chat-log:"]) {
-    if (ref.startsWith(prefix)) {
-      return ref.slice(prefix.length);
-    }
-  }
-  const messageMatch = ref.match(/^message-([^-]+-.+)-\d+$/);
-  return messageMatch?.[1];
 };
 
 async function createWindow(title = "Plastic") {
@@ -368,20 +214,13 @@ await ensureBundledPanelsAtStartup({ workspaceDir, eventStore, runPromise });
 logStartup("ensure panel renderer bindings");
 await ensurePanelRendererBindingsAtStartup({ workspaceDir, eventStore, runPromise });
 logStartup("register runtime methods");
+const electronDeixisHost = createElectronDeixisHost(BrowserWindow);
 const windowCapabilityModule = createWindowCapabilityModule({
   browserWindow: BrowserWindow,
   createWindow,
-  scrollRefIntoViewScript
+  scrollRefIntoViewScript: electronDeixisHost.scrollRefIntoViewScript
 });
-const deixisMethodModule = createDeixisMethodModule({
-  captureWindow,
-  findWindow,
-  listVisibleRefs,
-  panelIdFromRef,
-  resolveVisibleRef,
-  scrollRefIntoViewScript,
-  sourceHintsFor
-});
+const deixisMethodModule = createDeixisMethodModule(electronDeixisHost);
 const runtimeStateModule = createRuntimeStateModule({
   decorateState: (state) => ({
     ...state,
@@ -433,7 +272,7 @@ const runtimeSnapshotModule = createRuntimeSnapshotModule({
       eventStream: "runtime-http-transport"
     },
     codex: codexAdapter.status(),
-    visibleRefs: await listVisibleRefs()
+    visibleRefs: await electronDeixisHost.listVisibleRefs()
   })
 });
 const agentWorkbenchModule = createAgentWorkbenchModule({
@@ -443,10 +282,10 @@ const agentWorkbenchModule = createAgentWorkbenchModule({
   getRuntimeStatus: buildStatus,
   getCodexStatus: () => codexAdapter.status(),
   readGitStatus,
-  getFocusedElectronWindowId: () => findWindow()?.id,
-  listVisibleRefs,
-  panelIdFromRef,
-  sourceHintsFor,
+  getFocusedElectronWindowId: () => electronDeixisHost.findWindow()?.id,
+  listVisibleRefs: electronDeixisHost.listVisibleRefs,
+  panelIdFromRef: electronDeixisHost.panelIdFromRef,
+  sourceHintsFor: electronDeixisHost.sourceHintsFor,
   visualActions: ({ ref, panelId }) => [
     { id: "list-refs", title: "List visible refs", method: "deixis/listVisibleRefs" },
     { id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: ref ? { ref } : {} },
@@ -455,8 +294,8 @@ const agentWorkbenchModule = createAgentWorkbenchModule({
 });
 const agentOrientModule = createAgentOrientModule({
   workspaceDir,
-  findFocusedWindowId: (windowId) => findWindow(windowId)?.id,
-  listVisibleRefs
+  findFocusedWindowId: (windowId) => electronDeixisHost.findWindow(windowId)?.id,
+  listVisibleRefs: electronDeixisHost.listVisibleRefs
 });
 const runtimeBuildModule = createRuntimeBuildModule({
   getStatus: buildStatus,
@@ -514,7 +353,7 @@ await codexAdapter.registerMethods();
 const runtimeHealthModule = createRuntimeHealthModule({
   description: "Runs a fast control-plane health check for event store, projections, methods, DOM refs, build status, and Codex status.",
   hostChecks: [
-    { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await listVisibleRefs()).length }) },
+    { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await electronDeixisHost.listVisibleRefs()).length }) },
     { id: "build:status", run: () => buildStatus() },
     { id: "codex:status", run: () => codexAdapter.status() },
     { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
