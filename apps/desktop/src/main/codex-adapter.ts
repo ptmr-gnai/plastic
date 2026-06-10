@@ -1,11 +1,11 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { Effect } from "effect";
 import { createEvent, type EventStore, type MethodRegistry } from "@plastic/core";
 import { registerCodexChatMethods } from "./codex-chat-method-registration.js";
 import { createCodexChatRuntime } from "./codex-chat-runtime.js";
 import { createCodexMessageHandler } from "./codex-message-handler.js";
+import { createCodexMcpConfig } from "./codex-mcp-config.js";
 import {
   registerCodexAliasMethods,
   registerCodexBridgeMethods,
@@ -44,8 +44,6 @@ export const createCodexAdapter = (input: {
   let processHandle: ChildProcessWithoutNullStreams | null = null;
   let nextId = 1;
   let initialized = false;
-  let plasticMcpConfigured = false;
-  let plasticMcpLastError: string | null = null;
   let bridgeMcpThreadId: string | null = null;
   let connectedAt: string | null = null;
   const pending = new Map<number, PendingRequest>();
@@ -59,7 +57,6 @@ export const createCodexAdapter = (input: {
   const runtimeRpcUrl = input.runtimeRpcUrl ?? "http://127.0.0.1:7331/rpc";
   const runtimeRpcUrls = input.runtimeRpcUrls ?? [runtimeRpcUrl];
   const workspaceDir = input.workspaceDir ?? process.cwd();
-  const plasticMcpServerPath = join(workspaceDir, "scripts", "plastic-mcp-server.mjs");
   const fallbackCodexModel = process.env.PLASTIC_CODEX_MODEL ?? "gpt-5.4-mini";
   let currentCodexDefaults = { model: fallbackCodexModel };
 
@@ -169,6 +166,13 @@ export const createCodexAdapter = (input: {
 
   const requestAlias = (method: string, methodInput: unknown) => request(method, methodInput);
 
+  const plasticMcp = createCodexMcpConfig({
+    workspaceDir,
+    runtimeRpcUrl,
+    request,
+    appendCodexEvent
+  });
+
   const chatRuntime = createCodexChatRuntime({
     eventStore: input.eventStore,
     runPromise: input.runPromise,
@@ -180,49 +184,6 @@ export const createCodexAdapter = (input: {
     asRecord,
     asString
   });
-
-  const configurePlasticMcp = async () => {
-    const value = {
-      command: "node",
-      args: [plasticMcpServerPath],
-      env: {
-        PLASTIC_RPC_URL: runtimeRpcUrl,
-        PLASTIC_MCP_ACTOR_ID: "plastic.mcp"
-      },
-      default_tools_enabled: true
-    };
-
-    try {
-      const writeResult = await request("config/value/write", {
-        keyPath: "mcp_servers.plastic",
-        value,
-        mergeStrategy: "upsert"
-      });
-      const reloadResult = await request("config/mcpServer/reload");
-      plasticMcpConfigured = true;
-      plasticMcpLastError = null;
-      await appendCodexEvent("bridge.plastic_mcp.configured", {
-        server: "plastic",
-        tool: "plastic_rpc",
-        path: plasticMcpServerPath,
-        runtimeRpcUrl,
-        writeResult,
-        reloadResult
-      });
-      return { configured: true, value, writeResult, reloadResult };
-    } catch (error) {
-      plasticMcpConfigured = false;
-      plasticMcpLastError = error instanceof Error ? error.message : String(error);
-      await appendCodexEvent("bridge.plastic_mcp.configure_failed", {
-        server: "plastic",
-        tool: "plastic_rpc",
-        path: plasticMcpServerPath,
-        runtimeRpcUrl,
-        error: plasticMcpLastError
-      });
-      throw error;
-    }
-  };
 
   const isThreadNotFoundError = (error: unknown) =>
     error instanceof Error && error.message.includes("thread not found");
@@ -319,7 +280,7 @@ export const createCodexAdapter = (input: {
     notify("initialized");
     initialized = true;
     await appendCodexEvent("codex.connection.initialized", { result });
-    await configurePlasticMcp();
+    await plasticMcp.configure();
     return result;
   };
 
@@ -340,9 +301,7 @@ export const createCodexAdapter = (input: {
     pendingRequests: pending.size,
     defaults: currentCodexDefaults,
     plasticMcp: {
-      configured: plasticMcpConfigured,
-      lastError: plasticMcpLastError,
-      serverPath: plasticMcpServerPath,
+      ...plasticMcp.state(),
       runtimeRpcUrl
     }
   });
@@ -368,13 +327,9 @@ export const createCodexAdapter = (input: {
       setBridgeThreadId: (threadId) => {
         bridgeMcpThreadId = threadId;
       },
-      getPlasticMcpState: () => ({
-        configured: plasticMcpConfigured,
-        lastError: plasticMcpLastError,
-        serverPath: plasticMcpServerPath
-      }),
+      getPlasticMcpState: plasticMcp.state,
       appendCodexEvent,
-      configurePlasticMcp,
+      configurePlasticMcp: plasticMcp.configure,
       ensureInitialized,
       request,
       asRecord,
