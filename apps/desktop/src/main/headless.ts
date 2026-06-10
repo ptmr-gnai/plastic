@@ -395,6 +395,55 @@ const registerHeadlessMethods = async () => {
   }));
 
   await runPromise(methods.register({
+    id: "panels/rename",
+    title: "Rename panel",
+    description: "Durably changes a panel title and optional subtitle.",
+    owner: { kind: "runtime", id: "plastic.runtime" },
+    inputSchema: {
+      type: "object",
+      required: ["id", "title"],
+      properties: {
+        id: { type: "string", description: "Panel id to rename." },
+        title: { type: "string", description: "New panel title." },
+        subtitle: { type: "string", description: "Optional new panel subtitle." }
+      }
+    },
+    examples: [
+      {
+        title: "Rename a chat panel",
+        input: { id: "chat-main", title: "Research Chat" },
+        expectedEvents: ["panel.renamed"],
+        verifyWith: { method: "panels/list", input: {} }
+      }
+    ],
+    effects: {
+      durableEvents: ["panel.renamed"],
+      mutatesProjection: ["panels"]
+    },
+    preconditions: ["The panel id must exist for the rename to affect projected layout."],
+    reversibility: {
+      reversible: true,
+      method: "panels/rename",
+      notes: "Call again with the previous title/subtitle."
+    },
+    handler: (input) => Effect.promise(async () => {
+      const panelInput = input as { id?: string; title?: string; subtitle?: string };
+      if (!panelInput.id || !panelInput.title) {
+        throw new Error("panels/rename requires id and title");
+      }
+      return appendEvent(eventStore, {
+        type: "panel.renamed",
+        payload: {
+          id: panelInput.id,
+          title: panelInput.title,
+          subtitle: panelInput.subtitle
+        },
+        scope: { panelId: panelInput.id }
+      });
+    })
+  }));
+
+  await runPromise(methods.register({
     id: "panels/close",
     title: "Close panel",
     owner: { kind: "runtime", id: "plastic.runtime" },

@@ -1020,7 +1020,35 @@ const registerRuntimeMethods = async (store: EventStore) => {
     methods.register({
       id: "panels/rename",
       title: "Rename panel",
+      description: "Durably changes a panel title and optional subtitle.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      inputSchema: {
+        type: "object",
+        required: ["id", "title"],
+        properties: {
+          id: { type: "string", description: "Panel id to rename." },
+          title: { type: "string", description: "New panel title." },
+          subtitle: { type: "string", description: "Optional new panel subtitle." }
+        }
+      },
+      examples: [
+        {
+          title: "Rename a chat panel",
+          input: { id: "chat-main", title: "Research Chat" },
+          expectedEvents: ["panel.renamed"],
+          verifyWith: { method: "panels/list", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["panel.renamed"],
+        mutatesProjection: ["panels"]
+      },
+      preconditions: ["The panel id must exist for the rename to affect projected layout."],
+      reversibility: {
+        reversible: true,
+        method: "panels/rename",
+        notes: "Call again with the previous title/subtitle."
+      },
       handler: (input) => {
         const panelInput = input as { id?: string; title?: string; subtitle?: string };
         if (!panelInput.id || !panelInput.title) {
