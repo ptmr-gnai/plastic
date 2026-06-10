@@ -15,6 +15,7 @@ import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtension
 import { headlessCapabilityModule } from "./headless-capability-methods.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
+import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
@@ -273,6 +274,7 @@ const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
   })
 });
 const extensionAuthoringModule = createExtensionAuthoringModule({ plasticDir });
+const rendererControlModule = createRendererControlModule({});
 await runtime.registerModules([
   runtimeStateModule,
   runtimeSnapshotModule,
@@ -280,6 +282,7 @@ await runtime.registerModules([
   runtimeBuildModule,
   runtimeDiagnosticsModule,
   extensionAuthoringModule,
+  rendererControlModule,
   runtimeControlModule,
   panelControlModule,
   headlessCapabilityModule,

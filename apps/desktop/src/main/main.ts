@@ -29,6 +29,7 @@ import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
+import { createRendererControlModule } from "./renderer-control-methods.js";
 import { readJsonBody, sendJson, startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeBuildModule } from "./runtime-build-methods.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
@@ -582,23 +583,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
     })
   );
 
-  await runPromise(
-    methods.register({
-      id: "renderer/reload",
-      title: "Reload renderer",
-      description: "Reloads all Electron renderer windows.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: () =>
-        Effect.sync(() => {
-          const result = BrowserWindow.getAllWindows().map((window) => {
-            window.webContents.reload();
-            return { windowId: window.id, reloaded: true };
-          });
-          return result;
-        })
-    })
-  );
-
 };
 
 const startBuildSocket = () => {
@@ -812,6 +796,13 @@ const runtimeDiagnosticsModule = createRuntimeDiagnosticsModule({
   })
 });
 const extensionAuthoringModule = createExtensionAuthoringModule({ plasticDir });
+const rendererControlModule = createRendererControlModule({
+  reloadRenderers: () =>
+    BrowserWindow.getAllWindows().map((window) => {
+      window.webContents.reload();
+      return { windowId: window.id, reloaded: true };
+    })
+});
 await runtime.registerModules(
   [
     runtimeStateModule,
@@ -820,6 +811,7 @@ await runtime.registerModules(
     runtimeBuildModule,
     runtimeDiagnosticsModule,
     extensionAuthoringModule,
+    rendererControlModule,
     runtimeControlModule,
     panelControlModule,
     electronWindowModule,

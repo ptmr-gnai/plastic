@@ -92,6 +92,7 @@ await check("plastic/methods", async () => {
     "extensions/scaffold",
     "build/status",
     "app/diagnostics",
+    "renderer/reload",
     "events/append",
     "events/list",
     "events/timeline",
@@ -166,6 +167,22 @@ await check("app/diagnostics", async () => {
     workspaceDir: diagnostics.workspaceDir,
     windowCount: diagnostics.windowCount,
     appReady: diagnostics.appReady
+  };
+});
+
+await check("renderer/reload metadata", async () => {
+  const description = await rpc("methods/describe", { id: "renderer/reload" });
+  assert(description.id === "renderer/reload", "described wrong renderer method");
+  assert(description.availability?.status, "renderer/reload missing availability");
+  assert(
+    state.app.mode === "electron"
+      ? description.availability.status === "available"
+      : description.availability.status === "unavailable",
+    "renderer/reload availability does not match host mode"
+  );
+  return {
+    availability: description.availability.status,
+    requiredCapabilities: description.availability.requiredCapabilities ?? []
   };
 });
 
