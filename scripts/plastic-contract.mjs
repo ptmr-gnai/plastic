@@ -88,6 +88,7 @@ await check("plastic/methods", async () => {
     "methods/describe",
     "panels/create",
     "extensions/list",
+    "build/status",
     "events/append",
     "events/list",
     "events/timeline",
@@ -140,6 +141,17 @@ await check("agent/workbench", async () => {
     methods: workbench.control.methodCount,
     actions: workbench.control.recommendedActions.length,
     visibleRefs: workbench.observability.visibleRefs?.length ?? 0
+  };
+});
+
+await check("build/status", async () => {
+  const build = await rpc("build/status");
+  assert(build?.status === "running", "build/status did not report running");
+  assert(build.workspaceDir, "build/status missing workspaceDir");
+  return {
+    service: build.service,
+    runtimeRpcUrl: build.runtimeRpcUrl ?? null,
+    runtimePort: build.runtimePort ?? null
   };
 });
 

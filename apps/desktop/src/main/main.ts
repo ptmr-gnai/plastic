@@ -30,6 +30,7 @@ import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtension
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { readJsonBody, sendJson, startRuntimeHttpTransport } from "./runtime-http-transport.js";
+import { createRuntimeBuildModule } from "./runtime-build-methods.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
@@ -600,50 +601,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
-      id: "build/status",
-      title: "Build status",
-      description: "Returns the local build/dev socket status and key development environment paths.",
-      owner: { kind: "runtime", id: "plastic.build" },
-      handler: () => Effect.sync(buildStatus)
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "build/typecheck",
-      title: "Run typecheck",
-      description: "Runs pnpm typecheck, records stdout/stderr, and appends a durable build.typecheck.completed event.",
-      owner: { kind: "runtime", id: "plastic.build" },
-      handler: () =>
-        Effect.promise(async () => {
-          const startedAt = new Date().toISOString();
-          const result = await runLocalCommand("pnpm", ["typecheck"]);
-          const ok = result.exitCode === 0;
-          const event = await runPromise(
-            store.append(
-              createEvent({
-                type: "build.typecheck.completed",
-                payload: {
-                  ok,
-                  startedAt,
-                  completedAt: new Date().toISOString(),
-                  command: result.command,
-                  args: result.args,
-                  exitCode: result.exitCode,
-                  signal: result.signal,
-                  stdout: result.stdout.slice(-20000),
-                  stderr: result.stderr.slice(-20000)
-                }
-              })
-            )
-          );
-          return { ok, ...result, eventId: event.id };
-        })
-    })
-  );
-
-  await runPromise(
-    methods.register({
       id: "extensions/scaffold",
       title: "Scaffold extension",
       description: "Creates a simple workspace extension under .plastic/extensions and records the scaffold event.",
@@ -936,8 +893,21 @@ const agentWorkbenchModule = createAgentWorkbenchModule({
     ...(panelId ? [{ id: "focus-panel", title: "Focus panel", method: "windows/focusPanel", input: { panelId } }] : [])
   ]
 });
+const runtimeBuildModule = createRuntimeBuildModule({
+  getStatus: buildStatus,
+  runCommand: runLocalCommand
+});
 await runtime.registerModules(
-  [runtimeStateModule, runtimeSnapshotModule, agentWorkbenchModule, runtimeControlModule, panelControlModule, electronWindowModule, deixisMethodModule],
+  [
+    runtimeStateModule,
+    runtimeSnapshotModule,
+    agentWorkbenchModule,
+    runtimeBuildModule,
+    runtimeControlModule,
+    panelControlModule,
+    electronWindowModule,
+    deixisMethodModule
+  ],
   (module) => logStartup(`register ${module.id} module`)
 );
 logStartup("register extension methods");

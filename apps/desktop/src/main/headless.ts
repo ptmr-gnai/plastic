@@ -14,6 +14,7 @@ import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtension
 import { headlessCapabilityModule } from "./headless-capability-methods.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
+import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
@@ -73,6 +74,28 @@ const readGitStatus = async () => {
       ok: false,
       exitCode: failure.code ?? 1,
       files: [],
+      stderr: failure.stderr ?? String(error)
+    };
+  }
+};
+
+const runLocalCommand = async (command: string, args: string[]): Promise<RuntimeCommandResult> => {
+  try {
+    const { stdout, stderr } = await execFileAsync(command, args, { cwd: workspaceDir });
+    return { command, args, exitCode: 0, signal: null, stdout, stderr };
+  } catch (error) {
+    const failure = error as {
+      code?: number;
+      signal?: NodeJS.Signals | string | null;
+      stdout?: string;
+      stderr?: string;
+    };
+    return {
+      command,
+      args,
+      exitCode: failure.code ?? 1,
+      signal: failure.signal ?? null,
+      stdout: failure.stdout ?? "",
       stderr: failure.stderr ?? String(error)
     };
   }
@@ -230,10 +253,15 @@ const agentWorkbenchModule = createAgentWorkbenchModule({
   getCodexStatus: () => ({ connected: false, initialized: false, pid: null, pendingRequests: 0 }),
   readGitStatus
 });
+const runtimeBuildModule = createRuntimeBuildModule({
+  getStatus: buildStatus,
+  runCommand: runLocalCommand
+});
 await runtime.registerModules([
   runtimeStateModule,
   runtimeSnapshotModule,
   agentWorkbenchModule,
+  runtimeBuildModule,
   runtimeControlModule,
   panelControlModule,
   headlessCapabilityModule,

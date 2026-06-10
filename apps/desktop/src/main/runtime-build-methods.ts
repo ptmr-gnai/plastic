@@ -1,0 +1,59 @@
+import { Effect } from "effect";
+import type { RuntimeModule } from "./runtime-method-context.js";
+
+export type RuntimeCommandResult = {
+  command: string;
+  args: string[];
+  exitCode: number | null;
+  signal: NodeJS.Signals | string | null;
+  stdout: string;
+  stderr: string;
+};
+
+export const createRuntimeBuildModule = (input: {
+  getStatus: () => unknown;
+  runCommand: (command: string, args: string[]) => Promise<RuntimeCommandResult>;
+}): RuntimeModule => ({
+  id: "runtime-build",
+  register: async ({ methods, runPromise, appendEvent }) => {
+    await runPromise(
+      methods.register({
+        id: "build/status",
+        title: "Build status",
+        description: "Returns the local build/dev socket status and key development environment paths.",
+        owner: { kind: "runtime", id: "plastic.build" },
+        handler: () => Effect.sync(input.getStatus)
+      })
+    );
+
+    await runPromise(
+      methods.register({
+        id: "build/typecheck",
+        title: "Run typecheck",
+        description: "Runs pnpm typecheck, records stdout/stderr, and appends a durable build.typecheck.completed event.",
+        owner: { kind: "runtime", id: "plastic.build" },
+        handler: () =>
+          Effect.promise(async () => {
+            const startedAt = new Date().toISOString();
+            const result = await input.runCommand("pnpm", ["typecheck"]);
+            const ok = result.exitCode === 0;
+            const event = await appendEvent({
+              type: "build.typecheck.completed",
+              payload: {
+                ok,
+                startedAt,
+                completedAt: new Date().toISOString(),
+                command: result.command,
+                args: result.args,
+                exitCode: result.exitCode,
+                signal: result.signal,
+                stdout: result.stdout.slice(-20000),
+                stderr: result.stderr.slice(-20000)
+              }
+            });
+            return { ok, ...result, eventId: event.id };
+          })
+      })
+    );
+  }
+});
