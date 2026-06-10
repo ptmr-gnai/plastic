@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -31,6 +31,7 @@ import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtension
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRuntimeMethodContext, registerRuntimeModules } from "./runtime-method-context.js";
+import { readJsonBody, sendJson, startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
@@ -75,7 +76,6 @@ const eventStore = await createJsonlEventStore(eventPath);
 logStartup("event store ready");
 const methods = createMethodRegistry();
 const windows = new Set<ElectronBrowserWindow>();
-const eventStreamClients = new Set<ServerResponse>();
 const processStartedAt = new Date().toISOString();
 const runtimeHost = process.env.PLASTIC_RUNTIME_HOST ?? "0.0.0.0";
 const runtimePort = Number(process.env.PLASTIC_RUNTIME_PORT ?? 7331);
@@ -343,7 +343,7 @@ const buildSnapshot = async () => {
     runtime: {
       windowCount: BrowserWindow.getAllWindows().length,
       retainedWindowCount: windows.size,
-      eventStreamClientCount: eventStreamClients.size
+      eventStream: "runtime-http-transport"
     },
     codex: codexAdapter.status(),
     methods: {
@@ -1498,108 +1498,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
   );
 };
 
-const readJsonBody = async (request: IncomingMessage): Promise<unknown> =>
-  new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    request.on("data", (chunk: Buffer) => chunks.push(chunk));
-    request.on("end", () => {
-      const body = Buffer.concat(chunks).toString("utf8");
-      if (body.trim().length === 0) {
-        resolve({});
-        return;
-      }
-      try {
-        resolve(JSON.parse(body));
-      } catch (error) {
-        reject(error);
-      }
-    });
-    request.on("error", reject);
-  });
-
-const sendJson = (response: ServerResponse, status: number, value: unknown) => {
-  response.writeHead(status, {
-    "content-type": "application/json",
-    "access-control-allow-origin": "http://127.0.0.1:5173",
-    "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type"
-  });
-  response.end(JSON.stringify(value));
-};
-
-const writeSse = (response: ServerResponse, event: string, data: unknown) => {
-  response.write(`event: ${event}\n`);
-  response.write(`data: ${JSON.stringify(data)}\n\n`);
-};
-
-await runPromise(
-  eventStore.subscribe((event) => {
-    for (const response of eventStreamClients) {
-      writeSse(response, "plastic.event", event);
-    }
-  })
-);
-
-const startRuntimeSocket = () => {
-  const server = createServer(async (request, response) => {
-    if (request.method === "OPTIONS") {
-      sendJson(response, 204, {});
-      return;
-    }
-
-    try {
-      if (request.method === "GET" && request.url === "/healthz") {
-        sendJson(response, 200, { ok: true, service: "plastic.runtime" });
-        return;
-      }
-
-      if (request.method === "GET" && request.url === "/state") {
-        const state = await runPromise(buildPlasticState(eventStore, methods));
-        sendJson(response, 200, { ok: true, value: state });
-        return;
-      }
-
-      if (request.method === "GET" && request.url === "/methods") {
-        const value = await runPromise(methods.list());
-        sendJson(response, 200, { ok: true, value });
-        return;
-      }
-
-      if (request.method === "GET" && request.url === "/events/stream") {
-        response.writeHead(200, {
-          "content-type": "text/event-stream",
-          "cache-control": "no-cache",
-          connection: "keep-alive",
-          "access-control-allow-origin": "http://127.0.0.1:5173"
-        });
-        eventStreamClients.add(response);
-        writeSse(response, "plastic.ready", { ok: true });
-        request.on("close", () => {
-          eventStreamClients.delete(response);
-        });
-        return;
-      }
-
-      if (request.method === "POST" && request.url === "/rpc") {
-        const body = await readJsonBody(request) as RpcRequest;
-        const value = await runPromise(methods.call(body.method, body.input));
-        sendJson(response, 200, { ok: true, value });
-        return;
-      }
-
-      sendJson(response, 404, { ok: false, error: "Not found" });
-    } catch (error) {
-      sendJson(response, 500, {
-        ok: false,
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  server.listen(runtimePort, runtimeHost);
-  return server;
-};
-
 const startBuildSocket = () => {
   const server = createServer(async (request, response) => {
     if (request.method === "OPTIONS") {
@@ -1768,7 +1666,14 @@ await runPromise(
 );
 
 logStartup("start sockets");
-const runtimeSocket = startRuntimeSocket();
+const runtimeTransport = await startRuntimeHttpTransport({
+  eventStore,
+  methods,
+  runPromise,
+  host: runtimeHost,
+  port: runtimePort,
+  corsOrigin: "http://127.0.0.1:5173"
+});
 const buildSocket = startBuildSocket();
 logStartup(`runtime listening on ${runtimePort}, build listening on ${buildPort}`);
 
@@ -1789,6 +1694,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
-  runtimeSocket.close();
+  runtimeTransport.close();
   buildSocket.close();
 });

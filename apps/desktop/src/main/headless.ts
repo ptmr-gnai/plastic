@@ -1,4 +1,3 @@
-import { createServer, type ServerResponse } from "node:http";
 import { execFile } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -14,14 +13,14 @@ import {
   projectExtensions,
   projectPanels,
   projectWindows,
-  type EventStore,
-  type PlasticEvent
+  type EventStore
 } from "@plastic/core";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRuntimeMethodContext, registerRuntimeModules } from "./runtime-method-context.js";
+import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
@@ -41,7 +40,6 @@ const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(e
 const execFileAsync = promisify(execFile);
 const eventStore = await createJsonlEventStore(eventPath);
 const methods = createMethodRegistry();
-const eventStreamClients = new Set<ServerResponse>();
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
@@ -75,42 +73,8 @@ const readGitStatus = async () => {
   }
 };
 
-const sendJson = (response: ServerResponse, statusCode: number, value: unknown) => {
-  response.writeHead(statusCode, {
-    "access-control-allow-origin": "*",
-    "access-control-allow-headers": "content-type",
-    "access-control-allow-methods": "GET,POST,OPTIONS",
-    "content-type": "application/json"
-  });
-  response.end(JSON.stringify(value));
-};
-
-const readJsonBody = async (request: NodeJS.ReadableStream) =>
-  new Promise<unknown>((resolve, reject) => {
-    let body = "";
-    request.on("data", (chunk) => {
-      body += chunk.toString("utf8");
-    });
-    request.on("end", () => {
-      try {
-        resolve(body.length > 0 ? JSON.parse(body) : {});
-      } catch (error) {
-        reject(error);
-      }
-    });
-    request.on("error", reject);
-  });
-
-const appendAndBroadcast = async (event: PlasticEvent) => {
-  for (const client of eventStreamClients) {
-    client.write(`event: plastic.event\n`);
-    client.write(`data: ${JSON.stringify({ id: event.id, type: event.type, timestamp: event.timestamp })}\n\n`);
-  }
-  return event;
-};
-
 const appendEvent = async (store: EventStore, eventInput: Parameters<typeof createEvent>[0]) =>
-  appendAndBroadcast(await runPromise(store.append(createEvent(eventInput))));
+  runPromise(store.append(createEvent(eventInput)));
 
 const buildStatus = () => ({
   service: "plastic.headless",
@@ -162,7 +126,7 @@ const registerHeadlessMethods = async () => {
       return {
         app: { name: "Plastic", mode: "headless", workspaceDir, eventPath },
         build: buildStatus(),
-        runtime: { windowCount: 0, eventStreamClientCount: eventStreamClients.size },
+        runtime: { windowCount: 0 },
         codex: { connected: false, initialized: false, pid: null, pendingRequests: 0 },
         methods: { count: registeredMethods.length, items: registeredMethods },
         panels,
@@ -367,52 +331,23 @@ await appendEvent(eventStore, {
   payload: { mode: "headless" }
 });
 
-const server = createServer(async (request, response) => {
-  if (request.method === "OPTIONS") {
-    sendJson(response, 200, { ok: true });
-    return;
+const runtimeTransport = await startRuntimeHttpTransport({
+  eventStore,
+  methods,
+  runPromise,
+  host: runtimeHost,
+  port: runtimePort,
+  onListening: () => {
+    console.log(`[plastic:headless] RPC listening at ${runtimeRpcUrl}`);
   }
-
-  if (request.method === "GET" && request.url === "/events/stream") {
-    response.writeHead(200, {
-      "access-control-allow-origin": "*",
-      "content-type": "text/event-stream",
-      "cache-control": "no-cache",
-      "connection": "keep-alive"
-    });
-    response.write("\n");
-    eventStreamClients.add(response);
-    request.on("close", () => eventStreamClients.delete(response));
-    return;
-  }
-
-  if (request.method === "POST" && request.url === "/rpc") {
-    try {
-      const body = await readJsonBody(request) as { method?: string; input?: unknown };
-      if (!body.method) {
-        throw new Error("RPC request requires method");
-      }
-      const value = await runPromise(methods.call(body.method, body.input));
-      sendJson(response, 200, { ok: true, value });
-    } catch (error) {
-      sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
-    }
-    return;
-  }
-
-  sendJson(response, 404, { ok: false, error: "Not found" });
-});
-
-server.listen(runtimePort, runtimeHost, () => {
-  console.log(`[plastic:headless] RPC listening at ${runtimeRpcUrl}`);
 });
 
 process.on("SIGINT", () => {
-  server.close();
+  runtimeTransport.close();
   process.exit(130);
 });
 
 process.on("SIGTERM", () => {
-  server.close();
+  runtimeTransport.close();
   process.exit(143);
 });
