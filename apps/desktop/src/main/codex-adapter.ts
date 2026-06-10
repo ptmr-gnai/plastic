@@ -606,6 +606,10 @@ export const createCodexAdapter = (input: {
       runtimeRpcUrl
     }
   });
+  const codexAvailability = {
+    status: "available" as const,
+    requiredCapabilities: ["agent.codex"]
+  };
 
   const registerMethods = async () => {
     await getCodexDefaults();
@@ -631,6 +635,7 @@ export const createCodexAdapter = (input: {
         id: "codex/status",
         title: "Codex status",
         owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        availability: codexAvailability,
         handler: () => Effect.sync(status)
       })
     );
@@ -862,6 +867,7 @@ export const createCodexAdapter = (input: {
         title: "Get chat backend binding",
         description: "Returns the current Codex thread binding and active turn state for a chat panel.",
         owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        availability: codexAvailability,
         handler: (methodInput) =>
           Effect.promise(async () => {
             const chatId = (methodInput as { chatId?: string } | undefined)?.chatId ?? "chat-main";
@@ -932,6 +938,7 @@ export const createCodexAdapter = (input: {
         title: "Create Codex chat",
         description: "Creates a new chat panel, starts a fresh Codex thread, and binds them.",
         owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        availability: codexAvailability,
         handler: (methodInput) =>
           Effect.promise(async () => {
             await ensureInitialized();
@@ -1110,6 +1117,7 @@ export const createCodexAdapter = (input: {
         title: "Send chat message to Codex",
         description: "Durably records a user message, binds the chat to a Codex thread, and starts a Codex turn.",
         owner: { kind: "runtime", id: "plastic.codex-adapter" },
+        availability: codexAvailability,
         handler: (methodInput) =>
           Effect.promise(async () => {
             await ensureInitialized();

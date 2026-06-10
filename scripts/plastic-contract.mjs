@@ -88,6 +88,10 @@ await check("plastic/methods", async () => {
     "plastic/methods",
     "methods/describe",
     "agent/orient",
+    "codex/status",
+    "chats/getBinding",
+    "chats/createCodexChat",
+    "chats/sendToCodex",
     "panels/create",
     "extensions/list",
     "extensions/scaffold",
@@ -160,6 +164,53 @@ await check("agent/orient", async () => {
     panelId: orientation.embodiment.panelId,
     visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
     recommendedActions: orientation.capabilities.recommendedActions.length
+  };
+});
+
+await check("agent backend metadata", async () => {
+  const expectedAvailability = state.app.mode === "electron" ? "available" : "unavailable";
+  const methodIds = ["codex/status", "chats/getBinding", "chats/createCodexChat", "chats/sendToCodex"];
+  const descriptions = await Promise.all(
+    methodIds.map((id) => rpc("methods/describe", { id }))
+  );
+  for (const description of descriptions) {
+    assert(description.availability?.status === expectedAvailability, `${description.id} availability mismatch`);
+    assert(description.availability.requiredCapabilities?.includes("agent.codex"), `${description.id} missing agent.codex capability`);
+  }
+  const binding = await rpc("chats/getBinding", { chatId: "chat-main" });
+  assert(binding.chatId === "chat-main", "chats/getBinding returned wrong chatId");
+  return {
+    availability: expectedAvailability,
+    methods: descriptions.map((description) => description.id),
+    bindingRuntime: binding.runtimeId ?? null
+  };
+});
+
+await check("headless agent backend fallback", async () => {
+  if (state.app.mode !== "headless") {
+    return { skipped: true, reason: "fallback path is headless-only" };
+  }
+  const chatId = `${runId}-fallback-chat`;
+  const created = await rpc("chats/createCodexChat", {
+    id: chatId,
+    title: "Contract Fallback Chat"
+  });
+  assert(created.chatId === chatId, "fallback chat returned wrong id");
+  assert(created.threadId === null, "fallback chat should not bind a Codex thread");
+  const sent = await rpc("chats/sendToCodex", {
+    chatId,
+    content: "Contract fallback message"
+  });
+  assert(sent.userEvent?.id, "fallback send missing user event");
+  assert(sent.agentEvent?.id, "fallback send missing agent event");
+  const timeline = await rpc("events/timeline", { scope: { panelId: chatId }, limit: 10 });
+  const timelineItems = itemsFrom(timeline, "fallback timeline returned no items");
+  assert(timelineItems.some((item) => item.eventId === sent.userEvent.id), "fallback user event missing from timeline");
+  return {
+    chatId,
+    createEventId: created.panelEvent.id,
+    userEventId: sent.userEvent.id,
+    agentEventId: sent.agentEvent.id
   };
 });
 

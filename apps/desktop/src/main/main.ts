@@ -101,7 +101,8 @@ const runtimeCapabilities = [
   { id: "dom.eval", title: "DOM evaluation", status: "available" as const },
   { id: "dom.input", title: "DOM input control", status: "available" as const },
   { id: "screenshot", title: "Window screenshot capture", status: "available" as const },
-  { id: "event.projection", title: "Event projection", status: "available" as const }
+  { id: "event.projection", title: "Event projection", status: "available" as const },
+  { id: "agent.codex", title: "Codex agent backend", status: "available" as const }
 ];
 logStartup("create runtime kernel");
 const runtime = await createPlasticRuntime({ workspaceDir, eventPath, capabilities: runtimeCapabilities });

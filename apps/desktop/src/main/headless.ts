@@ -1,10 +1,10 @@
 import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { Effect } from "effect";
 import {
   type EventStore
 } from "@plastic/core";
+import { agentBackendFallbackModule } from "./agent-backend-fallback-methods.js";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
@@ -41,7 +41,8 @@ const runtimeCapabilities = [
   { id: "dom.refs", title: "DOM visible refs", status: "unavailable" as const, notes: "Headless mode has no rendered DOM projection." },
   { id: "dom.eval", title: "DOM evaluation", status: "unavailable" as const, notes: "Headless mode has no renderer DOM." },
   { id: "dom.input", title: "DOM input control", status: "unavailable" as const, notes: "Headless mode has no rendered input elements." },
-  { id: "screenshot", title: "Window screenshot capture", status: "unavailable" as const, notes: "Headless mode has no screenshot provider." }
+  { id: "screenshot", title: "Window screenshot capture", status: "unavailable" as const, notes: "Headless mode has no screenshot provider." },
+  { id: "agent.codex", title: "Codex agent backend", status: "unavailable" as const, notes: "Headless mode has no Codex app-server adapter attached yet." }
 ];
 
 const execFileAsync = promisify(execFile);
@@ -112,58 +113,6 @@ const buildStatus = () => ({
   startedAt
 });
 
-const registerHeadlessMethods = async () => {
-  await runPromise(methods.register({
-    id: "codex/status",
-    title: "Codex status",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: () => Effect.succeed({ connected: false, initialized: false, pid: null, pendingRequests: 0 })
-  }));
-
-  await runPromise(methods.register({
-    id: "chats/getBinding",
-    title: "Get chat binding",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: (input) => Effect.succeed({
-      chatId: (input as { chatId?: string }).chatId ?? "chat-main",
-      runtimeId: "headless",
-      threadId: null,
-      activeTurnId: null,
-      activeTurnStatus: null
-    })
-  }));
-
-  await runPromise(methods.register({
-    id: "chats/sendToCodex",
-    title: "Send message to headless chat",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: (input) => Effect.promise(async () => {
-      const messageInput = input as { chatId?: string; content?: string };
-      const chatId = messageInput.chatId ?? "chat-main";
-      if (!messageInput.content) {
-        throw new Error("chats/sendToCodex requires content");
-      }
-      const userEvent = await appendEvent(eventStore, {
-        type: "chat.user_message.submitted",
-        payload: { chatId, content: messageInput.content },
-        scope: { panelId: chatId }
-      });
-      const agentEvent = await appendEvent(eventStore, {
-        type: "chat.agent_message.completed",
-        payload: {
-          chatId,
-          itemId: `headless-${crypto.randomUUID().slice(0, 8)}`,
-          content: "Headless runtime received this message. Codex app-server passthrough is disabled in this mode."
-        },
-        scope: { panelId: chatId },
-        causationId: userEvent.id
-      });
-      return { userEvent, agentEvent };
-    })
-  }));
-
-};
-
 const discoverExtensionsAtStartup = async () => {
   for (const extension of await scanBundledExtensions(workspaceDir, bundledExtensionsDir)) {
     await appendEvent(eventStore, {
@@ -207,7 +156,6 @@ const discoverExtensionsAtStartup = async () => {
 };
 
 await discoverExtensionsAtStartup();
-await registerHeadlessMethods();
 const runtimeStateModule = createRuntimeStateModule({
   decorateState: (state) => ({
     ...state,
@@ -277,6 +225,7 @@ await runtime.registerModules([
   runtimeDiagnosticsModule,
   extensionAuthoringModule,
   rendererControlModule,
+  agentBackendFallbackModule,
   runtimeControlModule,
   panelControlModule,
   headlessCapabilityModule,
