@@ -21,6 +21,7 @@ import {
 } from "@plastic/core";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
+import { registerPanelControlMethods } from "./panel-control-methods.js";
 import { registerPanelMailboxMethods } from "./panel-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
@@ -315,221 +316,6 @@ const registerHeadlessMethods = async () => {
   }));
 
   await runPromise(methods.register({
-    id: "panels/list",
-    title: "List panels",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: () => Effect.map(eventStore.list(), projectPanels)
-  }));
-
-  await runPromise(methods.register({
-    id: "panels/create",
-    title: "Create panel",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: (input) => Effect.promise(async () => {
-      const panelInput = input as { id?: string; title?: string; kind?: string; extensionId?: string; rendererId?: string; subtitle?: string; body?: string; order?: number };
-      const id = panelInput.id ?? `panel-${crypto.randomUUID().slice(0, 8)}`;
-      return appendEvent(eventStore, {
-        type: "panel.created",
-        payload: {
-          id,
-          title: panelInput.title ?? "Untitled panel",
-          kind: panelInput.kind ?? "generic",
-          extensionId: panelInput.extensionId ?? "plastic.user",
-          rendererId: panelInput.rendererId,
-          subtitle: panelInput.subtitle,
-          body: panelInput.body ?? "This panel was created through Plastic RPC.",
-          order: panelInput.order
-        },
-        scope: { panelId: id, extensionId: panelInput.extensionId ?? "plastic.user" }
-      });
-    })
-  }));
-
-  await runPromise(methods.register({
-    id: "panels/move",
-    title: "Move panel",
-    description: "Durably updates a panel's order and optionally assigns it to a window.",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    inputSchema: {
-      type: "object",
-      required: ["id"],
-      properties: {
-        id: { type: "string", description: "Panel id to move." },
-        windowId: { type: "string", description: "Optional target window id." },
-        order: { type: "number", description: "Optional projected ordering value." }
-      }
-    },
-    examples: [
-      {
-        title: "Move a chat after the first panel",
-        input: { id: "chat-main", order: 2 },
-        expectedEvents: ["panel.moved"],
-        verifyWith: { method: "panels/list", input: {} }
-      }
-    ],
-    effects: {
-      durableEvents: ["panel.moved"],
-      mutatesProjection: ["panels", "windows"]
-    },
-    preconditions: ["The panel id must exist for the move to affect projected layout."],
-    reversibility: {
-      reversible: true,
-      method: "panels/move",
-      notes: "Call again with the previous order/windowId."
-    },
-    handler: (input) => Effect.promise(async () => {
-      const panelInput = input as { id?: string; windowId?: string; order?: number };
-      if (!panelInput.id) {
-        throw new Error("panels/move requires id");
-      }
-      return appendEvent(eventStore, {
-        type: "panel.moved",
-        payload: {
-          id: panelInput.id,
-          windowId: panelInput.windowId,
-          order: panelInput.order
-        },
-        scope: { panelId: panelInput.id }
-      });
-    })
-  }));
-
-  await runPromise(methods.register({
-    id: "panels/rename",
-    title: "Rename panel",
-    description: "Durably changes a panel title and optional subtitle.",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    inputSchema: {
-      type: "object",
-      required: ["id", "title"],
-      properties: {
-        id: { type: "string", description: "Panel id to rename." },
-        title: { type: "string", description: "New panel title." },
-        subtitle: { type: "string", description: "Optional new panel subtitle." }
-      }
-    },
-    examples: [
-      {
-        title: "Rename a chat panel",
-        input: { id: "chat-main", title: "Research Chat" },
-        expectedEvents: ["panel.renamed"],
-        verifyWith: { method: "panels/list", input: {} }
-      }
-    ],
-    effects: {
-      durableEvents: ["panel.renamed"],
-      mutatesProjection: ["panels"]
-    },
-    preconditions: ["The panel id must exist for the rename to affect projected layout."],
-    reversibility: {
-      reversible: true,
-      method: "panels/rename",
-      notes: "Call again with the previous title/subtitle."
-    },
-    handler: (input) => Effect.promise(async () => {
-      const panelInput = input as { id?: string; title?: string; subtitle?: string };
-      if (!panelInput.id || !panelInput.title) {
-        throw new Error("panels/rename requires id and title");
-      }
-      return appendEvent(eventStore, {
-        type: "panel.renamed",
-        payload: {
-          id: panelInput.id,
-          title: panelInput.title,
-          subtitle: panelInput.subtitle
-        },
-        scope: { panelId: panelInput.id }
-      });
-    })
-  }));
-
-  await runPromise(methods.register({
-    id: "panels/remove",
-    title: "Remove panel",
-    description: "Durably removes a panel from the projected workspace.",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    inputSchema: {
-      type: "object",
-      required: ["id"],
-      properties: {
-        id: { type: "string", description: "Panel id to remove." },
-        reason: { type: "string", description: "Optional reason stored in the removal event." }
-      }
-    },
-    examples: [
-      {
-        title: "Remove a scratch panel",
-        input: { id: "scratch-panel", reason: "cleanup" },
-        expectedEvents: ["panel.removed"],
-        verifyWith: { method: "panels/list", input: {} }
-      }
-    ],
-    effects: {
-      durableEvents: ["panel.removed"],
-      mutatesProjection: ["panels", "windows"]
-    },
-    preconditions: ["The panel id must exist for the removal to affect projected layout."],
-    reversibility: {
-      reversible: false,
-      notes: "The event stream can be replayed, but there is no direct undo method yet."
-    },
-    handler: (input) => Effect.promise(async () => {
-      const panelInput = input as { id?: string; reason?: string };
-      if (!panelInput.id) {
-        throw new Error("panels/remove requires id");
-      }
-      return appendEvent(eventStore, {
-        type: "panel.removed",
-        payload: { id: panelInput.id, reason: panelInput.reason },
-        scope: { panelId: panelInput.id }
-      });
-    })
-  }));
-
-  await runPromise(methods.register({
-    id: "panels/close",
-    title: "Close panel",
-    description: "Closes a panel from the current workspace projection by appending panel.removed.",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    inputSchema: {
-      type: "object",
-      required: ["id"],
-      properties: {
-        id: { type: "string", description: "Panel id to close." },
-        reason: { type: "string", description: "Optional reason stored in the removal event." }
-      }
-    },
-    examples: [
-      {
-        title: "Close a panel",
-        input: { id: "scratch-panel", reason: "closed" },
-        expectedEvents: ["panel.removed"],
-        verifyWith: { method: "panels/list", input: {} }
-      }
-    ],
-    effects: {
-      durableEvents: ["panel.removed"],
-      mutatesProjection: ["panels", "windows"]
-    },
-    preconditions: ["The panel id must exist for the close to affect projected layout."],
-    reversibility: {
-      reversible: false,
-      notes: "The event stream can be replayed, but there is no direct undo method yet."
-    },
-    handler: (input) => Effect.promise(async () => {
-      const panelInput = input as { id?: string; reason?: string };
-      if (!panelInput.id) {
-        throw new Error("panels/close requires id");
-      }
-      return appendEvent(eventStore, {
-        type: "panel.removed",
-        payload: { id: panelInput.id, reason: panelInput.reason ?? "closed" },
-        scope: { panelId: panelInput.id }
-      });
-    })
-  }));
-
-  await runPromise(methods.register({
     id: "app/setTheme",
     title: "Set theme",
     description: "Durably changes the app theme projected by renderer windows.",
@@ -658,6 +444,12 @@ const discoverExtensionsAtStartup = async () => {
 
 await discoverExtensionsAtStartup();
 await registerHeadlessMethods();
+await registerPanelControlMethods({
+  eventStore,
+  methods,
+  runPromise,
+  appendEvent: (eventInput) => appendEvent(eventStore, eventInput)
+});
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
 await registerPanelMailboxMethods({ eventStore, methods, runPromise });
