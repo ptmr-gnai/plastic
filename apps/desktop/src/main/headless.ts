@@ -1,14 +1,10 @@
 import { execFile } from "node:child_process";
-import { mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { Effect } from "effect";
 import {
   buildPlasticState,
   buildTimeline,
-  createEvent,
-  createJsonlEventStore,
-  createMethodRegistry,
   groupMethodsByOwner,
   projectExtensions,
   projectPanels,
@@ -20,9 +16,9 @@ import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtension
 import { headlessCapabilityModule } from "./headless-capability-methods.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
-import { createRuntimeMethodContext, registerRuntimeModules } from "./runtime-method-context.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
+import { createPlasticRuntime } from "./runtime-kernel.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
@@ -45,12 +41,9 @@ const runtimeCapabilities = [
   { id: "screenshot", title: "Window screenshot capture", status: "unavailable" as const, notes: "Headless mode has no screenshot provider." }
 ];
 
-mkdirSync(dirname(eventPath), { recursive: true });
-
-const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(effect);
 const execFileAsync = promisify(execFile);
-const eventStore = await createJsonlEventStore(eventPath);
-const methods = createMethodRegistry();
+const runtime = await createPlasticRuntime({ workspaceDir, eventPath, capabilities: runtimeCapabilities });
+const { eventStore, methods, runPromise } = runtime;
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
@@ -84,8 +77,8 @@ const readGitStatus = async () => {
   }
 };
 
-const appendEvent = async (store: EventStore, eventInput: Parameters<typeof createEvent>[0]) =>
-  runPromise(store.append(createEvent(eventInput)));
+const appendEvent = async (_store: EventStore, eventInput: Parameters<typeof runtime.appendEvent>[0]) =>
+  runtime.appendEvent(eventInput);
 
 const buildStatus = () => ({
   service: "plastic.headless",
@@ -327,17 +320,10 @@ const discoverExtensionsAtStartup = async () => {
 
 await discoverExtensionsAtStartup();
 await registerHeadlessMethods();
-const runtimeMethodContext = createRuntimeMethodContext({
-  eventStore,
-  methods,
-  runPromise,
-  appendEvent: (eventInput) => appendEvent(eventStore, eventInput),
-  capabilities: runtimeCapabilities
-});
-await registerRuntimeModules(runtimeMethodContext, [runtimeControlModule, panelControlModule, headlessCapabilityModule]);
+await runtime.registerModules([runtimeControlModule, panelControlModule, headlessCapabilityModule]);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
-await registerRuntimeModules(runtimeMethodContext, [panelMailboxModule]);
+await runtime.registerModules([panelMailboxModule]);
 await appendEvent(eventStore, {
   type: "runtime.started",
   payload: { mode: "headless" }

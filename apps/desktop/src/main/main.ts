@@ -1,17 +1,14 @@
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { mkdirSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { spawn as spawnProcess } from "node:child_process";
 import { networkInterfaces } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import type { BrowserWindow as ElectronBrowserWindow, Rectangle } from "electron";
 import { Effect } from "effect";
 import {
   buildTimeline,
   createEvent,
-  createJsonlEventStore,
-  createMethodRegistry,
   buildPlasticState,
   eventSummary,
   groupMethodsByOwner,
@@ -33,9 +30,9 @@ import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { panelMailboxModule } from "./panel-methods.js";
-import { createRuntimeMethodContext, registerRuntimeModules } from "./runtime-method-context.js";
 import { readJsonBody, sendJson, startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
+import { createPlasticRuntime } from "./runtime-kernel.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const require = createRequire(import.meta.url);
@@ -46,13 +43,10 @@ const plasticDir = join(workspaceDir, ".plastic");
 const bundledExtensionsDir = join(workspaceDir, "apps", "desktop", "extensions", "bundled");
 const runtimePaths = resolvePlasticRuntimePaths(workspaceDir);
 const eventPath = runtimePaths.eventPath;
-mkdirSync(dirname(eventPath), { recursive: true });
 
 const logStartup = (stage: string) => {
   console.log(`[plastic:startup] ${stage}`);
 };
-
-const runPromise = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(effect);
 
 const runLocalCommand = async (command: string, args: string[]) =>
   new Promise<{ command: string; args: string[]; exitCode: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string }>((resolve, reject) => {
@@ -74,10 +68,6 @@ const runLocalCommand = async (command: string, args: string[]) =>
     });
   });
 
-logStartup("create event store");
-const eventStore = await createJsonlEventStore(eventPath);
-logStartup("event store ready");
-const methods = createMethodRegistry();
 const windows = new Set<ElectronBrowserWindow>();
 const processStartedAt = new Date().toISOString();
 const runtimeHost = process.env.PLASTIC_RUNTIME_HOST ?? "0.0.0.0";
@@ -110,6 +100,10 @@ const runtimeCapabilities = [
   { id: "screenshot", title: "Window screenshot capture", status: "available" as const },
   { id: "event.projection", title: "Event projection", status: "available" as const }
 ];
+logStartup("create runtime kernel");
+const runtime = await createPlasticRuntime({ workspaceDir, eventPath, capabilities: runtimeCapabilities });
+const { eventStore, methods, runPromise } = runtime;
+logStartup("runtime kernel ready");
 const codexAdapter = createCodexAdapter({
   eventStore,
   methods,
@@ -1124,12 +1118,6 @@ logStartup("ensure panel renderer bindings");
 await ensurePanelRendererBindings(eventStore);
 logStartup("register runtime methods");
 await registerRuntimeMethods(eventStore);
-const runtimeMethodContext = createRuntimeMethodContext({
-  eventStore,
-  methods,
-  runPromise,
-  capabilities: runtimeCapabilities
-});
 const electronWindowModule = createElectronWindowModule({
   browserWindow: BrowserWindow,
   createWindow,
@@ -1144,8 +1132,7 @@ const deixisMethodModule = createDeixisMethodModule({
   scrollRefIntoViewScript,
   sourceHintsFor
 });
-await registerRuntimeModules(
-  runtimeMethodContext,
+await runtime.registerModules(
   [runtimeControlModule, panelControlModule, electronWindowModule, deixisMethodModule],
   (module) => logStartup(`register ${module.id} module`)
 );
@@ -1182,8 +1169,7 @@ for (const extension of discoveredExtensions) {
 logStartup("activate extensions");
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
 logStartup("register panel mailbox methods");
-await registerRuntimeModules(
-  runtimeMethodContext,
+await runtime.registerModules(
   [panelMailboxModule],
   (module) => logStartup(`register ${module.id} module`)
 );
