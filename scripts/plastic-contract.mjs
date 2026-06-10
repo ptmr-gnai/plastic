@@ -454,10 +454,10 @@ await check("bundled extension projections", async () => {
 });
 
 await check("events list/timeline", async () => {
-  events = await rpc("events/list", { limit: 100 });
+  events = await rpc("events/list", { types: ["panel.created"], scope: { panelId }, limit: 100 });
   const eventItems = assertArray(events, "events/list is not an array");
   assert(eventItems.length > 0, "events/list returned no events");
-  assert(eventItems.some((event) => event.id === createdPanelEvent.id), "panel create event missing from recent events");
+  assert(eventItems.some((event) => event.id === createdPanelEvent.id), "panel create event missing from typed events");
   const timeline = await rpc("events/timeline", { scope: { panelId }, limit: 10 });
   const timelineItems = itemsFrom(timeline, "events/timeline returned no items");
   assert(timelineItems.some((item) => item.eventId === createdPanelEvent.id), "panel create event missing from timeline");
