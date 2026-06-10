@@ -390,6 +390,25 @@ await check("extensions scan/list", async () => {
   };
 });
 
+await check("bundled extension projections", async () => {
+  const projectedPanels = await rpc("panels/list");
+  const projectedExtensions = extensions ?? await rpc("extensions/list");
+  const panels = assertArray(projectedPanels, "panels/list is not an array");
+  const extensionItems = assertArray(projectedExtensions, "extensions/list is not an array");
+  const bundledExtensions = extensionItems.filter((extension) => extension.source === "bundled");
+  assert(bundledExtensions.length > 0, "no bundled extensions projected");
+  const bundledPanels = panels.filter((panel) =>
+    panel.extensionId && bundledExtensions.some((extension) => extension.id === panel.extensionId)
+  );
+  assert(bundledPanels.length > 0, "no bundled panels projected");
+  assert(bundledPanels.some((panel) => panel.rendererId), "no bundled panel has a renderer binding");
+  return {
+    bundledExtensions: bundledExtensions.length,
+    bundledPanels: bundledPanels.length,
+    rendererBoundPanels: bundledPanels.filter((panel) => panel.rendererId).length
+  };
+});
+
 await check("events list/timeline", async () => {
   events = await rpc("events/list", { limit: 100 });
   const eventItems = assertArray(events, "events/list is not an array");
