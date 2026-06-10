@@ -1128,7 +1128,33 @@ const registerRuntimeMethods = async (store: EventStore) => {
     methods.register({
       id: "panels/remove",
       title: "Remove panel",
+      description: "Durably removes a panel from the projected workspace.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      inputSchema: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "Panel id to remove." },
+          reason: { type: "string", description: "Optional reason stored in the removal event." }
+        }
+      },
+      examples: [
+        {
+          title: "Remove a scratch panel",
+          input: { id: "scratch-panel", reason: "cleanup" },
+          expectedEvents: ["panel.removed"],
+          verifyWith: { method: "panels/list", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["panel.removed"],
+        mutatesProjection: ["panels", "windows"]
+      },
+      preconditions: ["The panel id must exist for the removal to affect projected layout."],
+      reversibility: {
+        reversible: false,
+        notes: "The event stream can be replayed, but there is no direct undo method yet."
+      },
       handler: (input) => {
         const panelInput = input as { id?: string; reason?: string };
         if (!panelInput.id) {
@@ -1155,6 +1181,31 @@ const registerRuntimeMethods = async (store: EventStore) => {
       title: "Close panel",
       description: "Closes a panel from the current workspace projection by appending panel.removed.",
       owner: { kind: "runtime", id: "plastic.runtime" },
+      inputSchema: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "Panel id to close." },
+          reason: { type: "string", description: "Optional reason stored in the removal event." }
+        }
+      },
+      examples: [
+        {
+          title: "Close a panel",
+          input: { id: "scratch-panel", reason: "closed" },
+          expectedEvents: ["panel.removed"],
+          verifyWith: { method: "panels/list", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["panel.removed"],
+        mutatesProjection: ["panels", "windows"]
+      },
+      preconditions: ["The panel id must exist for the close to affect projected layout."],
+      reversibility: {
+        reversible: false,
+        notes: "The event stream can be replayed, but there is no direct undo method yet."
+      },
       handler: (input) => {
         const panelInput = input as { id?: string; reason?: string };
         if (!panelInput.id) {

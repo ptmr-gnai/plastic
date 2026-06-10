@@ -444,18 +444,87 @@ const registerHeadlessMethods = async () => {
   }));
 
   await runPromise(methods.register({
+    id: "panels/remove",
+    title: "Remove panel",
+    description: "Durably removes a panel from the projected workspace.",
+    owner: { kind: "runtime", id: "plastic.runtime" },
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id: { type: "string", description: "Panel id to remove." },
+        reason: { type: "string", description: "Optional reason stored in the removal event." }
+      }
+    },
+    examples: [
+      {
+        title: "Remove a scratch panel",
+        input: { id: "scratch-panel", reason: "cleanup" },
+        expectedEvents: ["panel.removed"],
+        verifyWith: { method: "panels/list", input: {} }
+      }
+    ],
+    effects: {
+      durableEvents: ["panel.removed"],
+      mutatesProjection: ["panels", "windows"]
+    },
+    preconditions: ["The panel id must exist for the removal to affect projected layout."],
+    reversibility: {
+      reversible: false,
+      notes: "The event stream can be replayed, but there is no direct undo method yet."
+    },
+    handler: (input) => Effect.promise(async () => {
+      const panelInput = input as { id?: string; reason?: string };
+      if (!panelInput.id) {
+        throw new Error("panels/remove requires id");
+      }
+      return appendEvent(eventStore, {
+        type: "panel.removed",
+        payload: { id: panelInput.id, reason: panelInput.reason },
+        scope: { panelId: panelInput.id }
+      });
+    })
+  }));
+
+  await runPromise(methods.register({
     id: "panels/close",
     title: "Close panel",
+    description: "Closes a panel from the current workspace projection by appending panel.removed.",
     owner: { kind: "runtime", id: "plastic.runtime" },
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id: { type: "string", description: "Panel id to close." },
+        reason: { type: "string", description: "Optional reason stored in the removal event." }
+      }
+    },
+    examples: [
+      {
+        title: "Close a panel",
+        input: { id: "scratch-panel", reason: "closed" },
+        expectedEvents: ["panel.removed"],
+        verifyWith: { method: "panels/list", input: {} }
+      }
+    ],
+    effects: {
+      durableEvents: ["panel.removed"],
+      mutatesProjection: ["panels", "windows"]
+    },
+    preconditions: ["The panel id must exist for the close to affect projected layout."],
+    reversibility: {
+      reversible: false,
+      notes: "The event stream can be replayed, but there is no direct undo method yet."
+    },
     handler: (input) => Effect.promise(async () => {
-      const id = (input as { id?: string }).id;
-      if (!id) {
+      const panelInput = input as { id?: string; reason?: string };
+      if (!panelInput.id) {
         throw new Error("panels/close requires id");
       }
       return appendEvent(eventStore, {
         type: "panel.removed",
-        payload: { id },
-        scope: { panelId: id }
+        payload: { id: panelInput.id, reason: panelInput.reason ?? "closed" },
+        scope: { panelId: panelInput.id }
       });
     })
   }));
