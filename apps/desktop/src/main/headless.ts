@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { Effect } from "effect";
 import {
-  buildPlasticState,
   buildTimeline,
   groupMethodsByOwner,
   projectExtensions,
@@ -19,6 +18,7 @@ import { panelMailboxModule } from "./panel-methods.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
+import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const workspaceDir = process.env.PLASTIC_WORKSPACE_DIR ?? process.cwd();
@@ -94,31 +94,6 @@ const buildStatus = () => ({
 });
 
 const registerHeadlessMethods = async () => {
-  await runPromise(methods.register({
-    id: "plastic/state",
-    title: "Plastic state",
-    owner: { kind: "runtime", id: "plastic.runtime" },
-    handler: () => Effect.map(buildPlasticState(eventStore, methods), (state) => ({
-      ...state,
-      bus: { runtimeRpcUrl, runtimePort },
-      resources: [
-        ...state.resources,
-        {
-          id: "headless-runtime",
-          kind: "service",
-          title: "Plastic Headless Runtime",
-          state: buildStatus(),
-          links: [
-            { rel: "rpc", href: runtimeRpcUrl, method: "http/post" },
-            { rel: "state", href: "plastic/state", method: "plastic/state" },
-            { rel: "methods", href: "plastic/methods", method: "plastic/methods" }
-          ],
-          actions: [{ id: "call", title: "Call RPC method", method: "rpc/call" }]
-        }
-      ]
-    }))
-  }));
-
   await runPromise(methods.register({
     id: "plastic/snapshot",
     title: "Plastic snapshot",
@@ -320,7 +295,29 @@ const discoverExtensionsAtStartup = async () => {
 
 await discoverExtensionsAtStartup();
 await registerHeadlessMethods();
-await runtime.registerModules([runtimeControlModule, panelControlModule, headlessCapabilityModule]);
+const runtimeStateModule = createRuntimeStateModule({
+  decorateState: (state) => ({
+    ...state,
+    app: { ...state.app, mode: "headless" },
+    bus: { runtimeRpcUrl, runtimePort },
+    resources: [
+      ...state.resources,
+      {
+        id: "headless-runtime",
+        kind: "service",
+        title: "Plastic Headless Runtime",
+        state: buildStatus(),
+        links: [
+          { rel: "rpc", href: runtimeRpcUrl, method: "http/post" },
+          { rel: "state", href: "plastic/state", method: "plastic/state" },
+          { rel: "methods", href: "plastic/methods", method: "plastic/methods" }
+        ],
+        actions: [{ id: "call", title: "Call RPC method", method: "rpc/call" }]
+      }
+    ]
+  })
+});
+await runtime.registerModules([runtimeStateModule, runtimeControlModule, panelControlModule, headlessCapabilityModule]);
 await registerExtensionMethods({ workspaceDir, eventStore, methods, runPromise });
 await activateExtensions({ workspaceDir, eventStore, methods, runPromise });
 await runtime.registerModules([panelMailboxModule]);

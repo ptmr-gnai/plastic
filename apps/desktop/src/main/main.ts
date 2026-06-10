@@ -9,7 +9,6 @@ import { Effect } from "effect";
 import {
   buildTimeline,
   createEvent,
-  buildPlasticState,
   eventSummary,
   groupMethodsByOwner,
   isNoisyEvent,
@@ -33,6 +32,7 @@ import { panelMailboxModule } from "./panel-methods.js";
 import { readJsonBody, sendJson, startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
+import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const require = createRequire(import.meta.url);
@@ -499,47 +499,6 @@ const ensurePanelRendererBindings = async (store: EventStore) => {
 };
 
 const registerRuntimeMethods = async (store: EventStore) => {
-  await runPromise(
-    methods.register({
-      id: "plastic/state",
-      title: "Plastic state",
-      description: "Returns HATEOAS-style app state.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      handler: () =>
-        Effect.map(buildPlasticState(store, methods), (state) => ({
-          ...state,
-          bus: {
-            runtimeRpcUrl: preferredRuntimeRpcUrl,
-            runtimeRpcUrls,
-            runtimeHost,
-            runtimePort
-          },
-          resources: [
-            ...state.resources,
-            {
-              id: "rpc-bus",
-              kind: "service",
-              title: "Plastic RPC Bus",
-              state: {
-                runtimeRpcUrl: preferredRuntimeRpcUrl,
-                runtimeRpcUrls,
-                runtimeHost,
-                runtimePort
-              },
-              links: [
-                { rel: "rpc", href: preferredRuntimeRpcUrl, method: "http/post" },
-                { rel: "state", href: "plastic/state", method: "plastic/state" },
-                { rel: "methods", href: "plastic/methods", method: "plastic/methods" }
-              ],
-              actions: [
-                { id: "call", title: "Call RPC method", method: "rpc/call" }
-              ]
-            }
-          ]
-        }))
-    })
-  );
-
   await runPromise(
     methods.register({
       id: "plastic/snapshot",
@@ -1132,8 +1091,42 @@ const deixisMethodModule = createDeixisMethodModule({
   scrollRefIntoViewScript,
   sourceHintsFor
 });
+const runtimeStateModule = createRuntimeStateModule({
+  decorateState: (state) => ({
+    ...state,
+    app: { ...state.app, mode: "electron" },
+    bus: {
+      runtimeRpcUrl: preferredRuntimeRpcUrl,
+      runtimeRpcUrls,
+      runtimeHost,
+      runtimePort
+    },
+    resources: [
+      ...state.resources,
+      {
+        id: "rpc-bus",
+        kind: "service",
+        title: "Plastic RPC Bus",
+        state: {
+          runtimeRpcUrl: preferredRuntimeRpcUrl,
+          runtimeRpcUrls,
+          runtimeHost,
+          runtimePort
+        },
+        links: [
+          { rel: "rpc", href: preferredRuntimeRpcUrl, method: "http/post" },
+          { rel: "state", href: "plastic/state", method: "plastic/state" },
+          { rel: "methods", href: "plastic/methods", method: "plastic/methods" }
+        ],
+        actions: [
+          { id: "call", title: "Call RPC method", method: "rpc/call" }
+        ]
+      }
+    ]
+  })
+});
 await runtime.registerModules(
-  [runtimeControlModule, panelControlModule, electronWindowModule, deixisMethodModule],
+  [runtimeStateModule, runtimeControlModule, panelControlModule, electronWindowModule, deixisMethodModule],
   (module) => logStartup(`register ${module.id} module`)
 );
 logStartup("register extension methods");

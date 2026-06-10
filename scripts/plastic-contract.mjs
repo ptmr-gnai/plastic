@@ -70,8 +70,9 @@ await check("plastic/state", async () => {
     : assertArray(state.resources, "state.resources is not an array")
       .filter((resource) => resource.id === "panels" || resource.kind === "panel");
   assert(panelResources.length > 0, "state does not expose panels");
+  assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
   return {
-    mode: state.app.mode ?? state.runtime?.mode ?? "unknown",
+    mode: state.app.mode,
     panels: panelResources.length,
     events: state.events?.count ?? null
   };
