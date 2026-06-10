@@ -11,17 +11,19 @@ import {
 } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
-import { createDeixisMethodModule } from "./deixis-methods.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
 import {
   prepareBundledExtensionStateAtStartup,
   registerAndActivateExtensionsAtStartup
 } from "./extension-startup.js";
 import { panelMailboxModule } from "./panel-methods.js";
-import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
-import { createRuntimeHostAgentModules, createRuntimeHostSupportModules } from "./runtime-host-modules.js";
+import {
+  createRuntimeHostAgentModules,
+  createRuntimeHostCapabilityModules,
+  createRuntimeHostSupportModules
+} from "./runtime-host-modules.js";
 import {
   createRuntimeBuildStatus,
   createRuntimeDiagnostics,
@@ -34,7 +36,6 @@ import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeModulePlan } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
-import { createWindowCapabilityModule } from "./window-capability-methods.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
@@ -179,12 +180,21 @@ logStartup("ensure bundled extensions");
 await prepareBundledExtensionStateAtStartup({ workspaceDir, bundledExtensionsDir, eventStore, runPromise });
 logStartup("register runtime methods");
 const electronDeixisHost = createElectronDeixisHost(BrowserWindow);
-const windowCapabilityModule = createWindowCapabilityModule({
-  browserWindow: BrowserWindow,
-  createWindow,
-  scrollRefIntoViewScript: electronDeixisHost.scrollRefIntoViewScript
+const capabilityModules = createRuntimeHostCapabilityModules({
+  rendererControl: {
+    reloadRenderers: () =>
+      BrowserWindow.getAllWindows().map((window) => {
+        window.webContents.reload();
+        return { windowId: window.id, reloaded: true };
+      })
+  },
+  windowCapability: {
+    browserWindow: BrowserWindow,
+    createWindow,
+    scrollRefIntoViewScript: electronDeixisHost.scrollRefIntoViewScript
+  },
+  deixis: electronDeixisHost
 });
-const deixisMethodModule = createDeixisMethodModule(electronDeixisHost);
 const runtimeStateModule = createRuntimeStateModule({
   decorateState: (state) => decorateRuntimeState({
     state,
@@ -262,13 +272,6 @@ const supportModules = createRuntimeHostSupportModules({
     viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
   })
 });
-const rendererControlModule = createRendererControlModule({
-  reloadRenderers: () =>
-    BrowserWindow.getAllWindows().map((window) => {
-      window.webContents.reload();
-      return { windowId: window.id, reloaded: true };
-    })
-});
 await runtime.registerModules(
   createRuntimeModulePlan({
     state: runtimeStateModule,
@@ -278,10 +281,10 @@ await runtime.registerModules(
     build: supportModules.build,
     diagnostics: supportModules.diagnostics,
     extensionAuthoring: supportModules.extensionAuthoring,
-    rendererControl: rendererControlModule,
+    rendererControl: capabilityModules.rendererControl,
     agentBackend: null,
-    windowCapability: windowCapabilityModule,
-    deixis: deixisMethodModule,
+    windowCapability: capabilityModules.windowCapability,
+    deixis: capabilityModules.deixis,
     health: null
   }),
   (module) => logStartup(`register ${module.id} module`)

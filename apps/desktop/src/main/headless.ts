@@ -1,16 +1,18 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { createDeixisMethodModule } from "./deixis-methods.js";
 import {
   prepareBundledExtensionStateAtStartup,
   registerAndActivateExtensionsAtStartup
 } from "./extension-startup.js";
 import { panelMailboxModule } from "./panel-methods.js";
-import { createRendererControlModule } from "./renderer-control-methods.js";
 import type { RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
-import { createRuntimeHostAgentModules, createRuntimeHostSupportModules } from "./runtime-host-modules.js";
+import {
+  createRuntimeHostAgentModules,
+  createRuntimeHostCapabilityModules,
+  createRuntimeHostSupportModules
+} from "./runtime-host-modules.js";
 import {
   createRuntimeBuildStatus,
   createRuntimeDiagnostics,
@@ -22,7 +24,6 @@ import { createPlasticRuntime } from "./runtime-kernel.js";
 import { createRuntimeModulePlan } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
-import { createWindowCapabilityModule } from "./window-capability-methods.js";
 
 const hostConfig = createRuntimeHostConfig();
 const {
@@ -147,9 +148,7 @@ const supportModules = createRuntimeHostSupportModules({
     runtimePort
   })
 });
-const rendererControlModule = createRendererControlModule({});
-const windowCapabilityModule = createWindowCapabilityModule();
-const deixisMethodModule = createDeixisMethodModule();
+const capabilityModules = createRuntimeHostCapabilityModules();
 await runtime.registerModules([
   ...createRuntimeModulePlan({
     state: runtimeStateModule,
@@ -159,9 +158,9 @@ await runtime.registerModules([
     build: supportModules.build,
     diagnostics: supportModules.diagnostics,
     extensionAuthoring: supportModules.extensionAuthoring,
-    rendererControl: rendererControlModule,
-    windowCapability: windowCapabilityModule,
-    deixis: deixisMethodModule
+    rendererControl: capabilityModules.rendererControl,
+    windowCapability: capabilityModules.windowCapability,
+    deixis: capabilityModules.deixis
   })
 ]);
 await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });

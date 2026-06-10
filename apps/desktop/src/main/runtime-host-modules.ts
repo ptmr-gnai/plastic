@@ -1,8 +1,11 @@
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
+import { createDeixisMethodModule } from "./deixis-methods.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
+import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
+import { createWindowCapabilityModule } from "./window-capability-methods.js";
 
 export const createRuntimeHostAgentModules = (input: {
   workbench: Parameters<typeof createAgentWorkbenchModule>[0];
@@ -10,6 +13,16 @@ export const createRuntimeHostAgentModules = (input: {
 }) => ({
   agentWorkbench: createAgentWorkbenchModule(input.workbench),
   agentOrient: createAgentOrientModule(input.orient)
+});
+
+export const createRuntimeHostCapabilityModules = (input: {
+  rendererControl?: Parameters<typeof createRendererControlModule>[0];
+  windowCapability?: Parameters<typeof createWindowCapabilityModule>[0];
+  deixis?: Parameters<typeof createDeixisMethodModule>[0];
+} = {}) => ({
+  rendererControl: createRendererControlModule(input.rendererControl ?? {}),
+  windowCapability: createWindowCapabilityModule(input.windowCapability ?? {}),
+  deixis: createDeixisMethodModule(input.deixis ?? {})
 });
 
 export const createRuntimeHostSupportModules = (input: {
