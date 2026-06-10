@@ -6,6 +6,7 @@ import { createEvent, projectPanels, type EventStore, type MethodRegistry } from
 import {
   codexBackendAvailability,
   registerCodexAliasMethods,
+  registerCodexBridgeMethods,
   registerCodexCoreMethods
 } from "./codex-method-registration.js";
 
@@ -624,141 +625,27 @@ export const createCodexAdapter = (input: {
       request
     });
 
-    await input.runPromise(
-      input.methods.register({
-        id: "bridge/configurePlasticMcp",
-        title: "Configure Plastic MCP bridge",
-        description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
-        owner: { kind: "runtime", id: "plastic.codex-adapter" },
-        handler: () =>
-          Effect.promise(async () => {
-            await ensureInitialized();
-            return configurePlasticMcp();
-          })
-      })
-    );
-
-    await input.runPromise(
-      input.methods.register({
-        id: "bridge/status",
-        title: "Plastic bridge status",
-        description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
-        owner: { kind: "runtime", id: "plastic.codex-adapter" },
-        handler: () =>
-          Effect.promise(async () => {
-            await ensureInitialized();
-            let mcpStatus: unknown = null;
-            let mcpError: string | null = null;
-            try {
-              mcpStatus = await request("mcpServerStatus/list", {
-                detail: "full",
-                limit: 50
-              });
-            } catch (error) {
-              mcpError = error instanceof Error ? error.message : String(error);
-            }
-            return {
-              plasticMcpConfigured,
-              plasticMcpLastError,
-              plasticMcpServerPath,
-              runtimeRpcUrl,
-              mcpStatus,
-              mcpError
-            };
-          })
-      })
-    );
-
-    await input.runPromise(
-      input.methods.register({
-        id: "bridge/test",
-        title: "Test Plastic MCP bridge",
-        description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
-        owner: { kind: "runtime", id: "plastic.codex-adapter" },
-        handler: () =>
-          Effect.promise(async () => {
-            await ensureInitialized();
-            const status = await request("mcpServerStatus/list", {
-              detail: "full",
-              limit: 50
-            });
-            const text = JSON.stringify(status);
-            const ok = text.includes("plastic") && text.includes("plastic_rpc");
-            const event = await appendCodexEvent("bridge.plastic_mcp.tested", {
-              ok,
-              status
-            });
-            return { ok, status, eventId: event.id };
-          })
-      })
-    );
-
-    await input.runPromise(
-      input.methods.register({
-        id: "bridge/callPlasticRpcTool",
-        title: "Call Plastic RPC through MCP",
-        description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
-        owner: { kind: "runtime", id: "plastic.codex-adapter" },
-        handler: (methodInput) =>
-          Effect.promise(async () => {
-            await ensureInitialized();
-            await configurePlasticMcp();
-            const payload = methodInput as {
-              threadId?: string;
-              method?: string;
-              input?: Record<string, unknown>;
-            };
-            if (!payload.method) {
-              throw new Error("bridge/callPlasticRpcTool requires method");
-            }
-            if (!payload.threadId && !bridgeMcpThreadId) {
-              const threadResult = await request("thread/start", {
-                cwd: input.workspaceDir,
-                approvalPolicy: "never",
-                sandbox: "danger-full-access",
-                personality: "friendly",
-                serviceName: "plastic",
-                developerInstructions:
-                  "You are a Plastic bridge validation thread. Use the plastic_rpc MCP tool when asked to observe or control Plastic."
-              });
-              const thread = asRecord(asRecord(threadResult).thread);
-              const threadId = asString(thread.id);
-              if (!threadId) {
-                throw new Error("Codex thread/start did not return thread.id");
-              }
-              bridgeMcpThreadId = threadId;
-              await appendCodexEvent("bridge.plastic_mcp.thread_started", {
-                threadId,
-                thread: asRecord(threadResult).thread ?? threadResult
-              });
-            }
-
-            const threadId = payload.threadId ?? bridgeMcpThreadId;
-            if (!threadId) {
-              throw new Error("bridge/callPlasticRpcTool requires threadId");
-            }
-            const result = await request("mcpServer/tool/call", {
-              threadId,
-              server: "plastic",
-              tool: "plastic_rpc",
-              arguments: {
-                method: payload.method,
-                input: payload.input ?? {}
-              },
-              meta: {
-                source: "plastic.bridge"
-              }
-            });
-            const event = await appendCodexEvent("bridge.plastic_rpc_tool.called", {
-              threadId,
-              method: payload.method,
-              input: payload.input ?? {},
-              result
-            });
-            return { threadId, result, eventId: event.id };
-          })
-      })
-    );
+    await registerCodexBridgeMethods({
+      methods: input.methods,
+      runPromise: input.runPromise,
+      workspaceDir,
+      runtimeRpcUrl,
+      getBridgeThreadId: () => bridgeMcpThreadId,
+      setBridgeThreadId: (threadId) => {
+        bridgeMcpThreadId = threadId;
+      },
+      getPlasticMcpState: () => ({
+        configured: plasticMcpConfigured,
+        lastError: plasticMcpLastError,
+        serverPath: plasticMcpServerPath
+      }),
+      appendCodexEvent,
+      configurePlasticMcp,
+      ensureInitialized,
+      request,
+      asRecord,
+      asString
+    });
 
     await registerCodexAliasMethods({
       methods: input.methods,

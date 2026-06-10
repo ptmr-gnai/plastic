@@ -25,6 +25,26 @@ type CodexCoreRegistrationInput = {
   request: (method: string, params?: unknown) => Promise<unknown>;
 };
 
+type CodexBridgeRegistrationInput = {
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+  workspaceDir: string;
+  runtimeRpcUrl: string;
+  getBridgeThreadId: () => string | null;
+  setBridgeThreadId: (threadId: string) => void;
+  getPlasticMcpState: () => {
+    configured: boolean;
+    lastError: string | null;
+    serverPath: string;
+  };
+  appendCodexEvent: (type: string, payload: unknown) => Promise<{ id: string }>;
+  configurePlasticMcp: () => Promise<unknown>;
+  ensureInitialized: () => Promise<void>;
+  request: (method: string, params?: unknown) => Promise<unknown>;
+  asRecord: (value: unknown) => Record<string, unknown>;
+  asString: (value: unknown) => string | undefined;
+};
+
 const codexAliasDefinitions: CodexAliasDefinition[] = [
   { id: "codex/threadStart", title: "Start Codex thread", codexMethod: "thread/start" },
   { id: "codex/threadResume", title: "Resume Codex thread", codexMethod: "thread/resume" },
@@ -142,6 +162,160 @@ const registerCodexRequest = async (input: CodexCoreRegistrationInput) => {
         })
     })
   );
+};
+
+export const registerCodexBridgeMethods = async (input: CodexBridgeRegistrationInput) => {
+  await registerConfigurePlasticMcp(input);
+  await registerBridgeStatus(input);
+  await registerBridgeTest(input);
+  await registerCallPlasticRpcTool(input);
+};
+
+const registerConfigurePlasticMcp = async (input: CodexBridgeRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "bridge/configurePlasticMcp",
+      title: "Configure Plastic MCP bridge",
+      description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      handler: () =>
+        Effect.promise(async () => {
+          await input.ensureInitialized();
+          return input.configurePlasticMcp();
+        })
+    })
+  );
+};
+
+const registerBridgeStatus = async (input: CodexBridgeRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "bridge/status",
+      title: "Plastic bridge status",
+      description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      handler: () =>
+        Effect.promise(async () => {
+          await input.ensureInitialized();
+          let mcpStatus: unknown = null;
+          let mcpError: string | null = null;
+          try {
+            mcpStatus = await input.request("mcpServerStatus/list", {
+              detail: "full",
+              limit: 50
+            });
+          } catch (error) {
+            mcpError = error instanceof Error ? error.message : String(error);
+          }
+          const mcp = input.getPlasticMcpState();
+          return {
+            plasticMcpConfigured: mcp.configured,
+            plasticMcpLastError: mcp.lastError,
+            plasticMcpServerPath: mcp.serverPath,
+            runtimeRpcUrl: input.runtimeRpcUrl,
+            mcpStatus,
+            mcpError
+          };
+        })
+    })
+  );
+};
+
+const registerBridgeTest = async (input: CodexBridgeRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "bridge/test",
+      title: "Test Plastic MCP bridge",
+      description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      handler: () =>
+        Effect.promise(async () => {
+          await input.ensureInitialized();
+          const status = await input.request("mcpServerStatus/list", {
+            detail: "full",
+            limit: 50
+          });
+          const text = JSON.stringify(status);
+          const ok = text.includes("plastic") && text.includes("plastic_rpc");
+          const event = await input.appendCodexEvent("bridge.plastic_mcp.tested", {
+            ok,
+            status
+          });
+          return { ok, status, eventId: event.id };
+        })
+    })
+  );
+};
+
+const registerCallPlasticRpcTool = async (input: CodexBridgeRegistrationInput) => {
+  await input.runPromise(
+    input.methods.register({
+      id: "bridge/callPlasticRpcTool",
+      title: "Call Plastic RPC through MCP",
+      description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
+      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      handler: (methodInput) =>
+        Effect.promise(async () => {
+          await input.ensureInitialized();
+          await input.configurePlasticMcp();
+          const payload = methodInput as {
+            threadId?: string;
+            method?: string;
+            input?: Record<string, unknown>;
+          };
+          if (!payload.method) {
+            throw new Error("bridge/callPlasticRpcTool requires method");
+          }
+          const threadId = await getOrStartBridgeThread(input, payload.threadId);
+          const result = await input.request("mcpServer/tool/call", {
+            threadId,
+            server: "plastic",
+            tool: "plastic_rpc",
+            arguments: {
+              method: payload.method,
+              input: payload.input ?? {}
+            },
+            meta: {
+              source: "plastic.bridge"
+            }
+          });
+          const event = await input.appendCodexEvent("bridge.plastic_rpc_tool.called", {
+            threadId,
+            method: payload.method,
+            input: payload.input ?? {},
+            result
+          });
+          return { threadId, result, eventId: event.id };
+        })
+    })
+  );
+};
+
+const getOrStartBridgeThread = async (input: CodexBridgeRegistrationInput, requestedThreadId: string | undefined) => {
+  const existingThreadId = requestedThreadId ?? input.getBridgeThreadId();
+  if (existingThreadId) {
+    return existingThreadId;
+  }
+  const threadResult = await input.request("thread/start", {
+    cwd: input.workspaceDir,
+    approvalPolicy: "never",
+    sandbox: "danger-full-access",
+    personality: "friendly",
+    serviceName: "plastic",
+    developerInstructions:
+      "You are a Plastic bridge validation thread. Use the plastic_rpc MCP tool when asked to observe or control Plastic."
+  });
+  const thread = input.asRecord(input.asRecord(threadResult).thread);
+  const threadId = input.asString(thread.id);
+  if (!threadId) {
+    throw new Error("Codex thread/start did not return thread.id");
+  }
+  input.setBridgeThreadId(threadId);
+  await input.appendCodexEvent("bridge.plastic_mcp.thread_started", {
+    threadId,
+    thread: input.asRecord(threadResult).thread ?? threadResult
+  });
+  return threadId;
 };
 
 export const registerCodexAliasMethods = async (input: {
