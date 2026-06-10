@@ -1,10 +1,8 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import {
   prepareBundledExtensionStateAtStartup
 } from "./extension-startup.js";
-import type { RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
+import { createGitStatusReader, createWorkspaceCommandRunner } from "./runtime-host-command.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
 import {
   createRuntimeHostAgentModules,
@@ -38,57 +36,10 @@ const {
 const startedAt = new Date().toISOString();
 const runtimeCapabilities = createHeadlessRuntimeCapabilities();
 
-const execFileAsync = promisify(execFile);
 const runtime = await createPlasticRuntime({ workspaceDir, eventPath, capabilities: runtimeCapabilities });
 const { eventStore, methods, runPromise } = runtime;
-
-const readGitStatus = async () => {
-  try {
-    const { stdout, stderr } = await execFileAsync("git", ["status", "--short"], { cwd: workspaceDir });
-    return {
-      ok: true,
-      exitCode: 0,
-      files: stdout
-        .split(/\r?\n/)
-        .filter((line) => line.length > 0)
-        .map((line) => ({
-          status: line.slice(0, 2),
-          path: line.slice(3)
-        })),
-      stderr
-    };
-  } catch (error) {
-    const failure = error as { code?: number; stderr?: string };
-    return {
-      ok: false,
-      exitCode: failure.code ?? 1,
-      files: [],
-      stderr: failure.stderr ?? String(error)
-    };
-  }
-};
-
-const runLocalCommand = async (command: string, args: string[]): Promise<RuntimeCommandResult> => {
-  try {
-    const { stdout, stderr } = await execFileAsync(command, args, { cwd: workspaceDir });
-    return { command, args, exitCode: 0, signal: null, stdout, stderr };
-  } catch (error) {
-    const failure = error as {
-      code?: number;
-      signal?: NodeJS.Signals | string | null;
-      stdout?: string;
-      stderr?: string;
-    };
-    return {
-      command,
-      args,
-      exitCode: failure.code ?? 1,
-      signal: failure.signal ?? null,
-      stdout: failure.stdout ?? "",
-      stderr: failure.stderr ?? String(error)
-    };
-  }
-};
+const runLocalCommand = createWorkspaceCommandRunner(workspaceDir);
+const readGitStatus = createGitStatusReader({ runCommand: runLocalCommand });
 
 const buildStatus = () => createRuntimeBuildStatus({
   config: hostConfig,

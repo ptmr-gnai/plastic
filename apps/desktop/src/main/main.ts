@@ -1,5 +1,4 @@
 import { createRequire } from "node:module";
-import { spawn as spawnProcess } from "node:child_process";
 import { join } from "node:path";
 import type { BrowserWindow as ElectronBrowserWindow } from "electron";
 import { Effect } from "effect";
@@ -16,6 +15,7 @@ import {
   prepareBundledExtensionStateAtStartup
 } from "./extension-startup.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
+import { createGitStatusReader, createWorkspaceCommandRunner } from "./runtime-host-command.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
 import {
   createRuntimeHostAgentModules,
@@ -56,25 +56,7 @@ const logStartup = (stage: string) => {
   console.log(`[plastic:startup] ${stage}`);
 };
 
-const runLocalCommand = async (command: string, args: string[]) =>
-  new Promise<{ command: string; args: string[]; exitCode: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string }>((resolve, reject) => {
-    const child = spawnProcess(command, args, {
-      cwd: workspaceDir,
-      env: process.env
-    });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-    child.on("error", reject);
-    child.on("exit", (exitCode, signal) => {
-      resolve({ command, args, exitCode, signal, stdout, stderr });
-    });
-  });
+const runLocalCommand = createWorkspaceCommandRunner(workspaceDir);
 
 const windows = new Set<ElectronBrowserWindow>();
 const processStartedAt = new Date().toISOString();
@@ -103,21 +85,7 @@ const buildStatus = () => createRuntimeBuildStatus({
   runtimeRpcUrls
 });
 
-const readGitStatus = async () => {
-  const status = await runLocalCommand("git", ["status", "--short"]);
-  return {
-    ok: status.exitCode === 0,
-    exitCode: status.exitCode,
-    files: status.stdout
-      .split(/\r?\n/)
-      .filter((line) => line.length > 0)
-      .map((line) => ({
-        status: line.slice(0, 2),
-        path: line.slice(3)
-      })),
-    stderr: status.stderr
-  };
-};
+const readGitStatus = createGitStatusReader({ runCommand: runLocalCommand });
 
 async function createWindow(title = "Plastic") {
   const window = new BrowserWindow({
