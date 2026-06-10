@@ -30,6 +30,7 @@ import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeBuildModule } from "./runtime-build-methods.js";
+import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
@@ -94,17 +95,7 @@ const getHostRpcUrls = () => {
 
 const runtimeRpcUrls = getHostRpcUrls();
 const preferredRuntimeRpcUrl = process.env.PLASTIC_RPC_URL ?? runtimeRpcUrls[1] ?? runtimeRpcUrls[0] ?? `http://127.0.0.1:${runtimePort}/rpc`;
-const runtimeCapabilities = [
-  { id: "runtime.capabilities", title: "Runtime capability registry", status: "available" as const },
-  { id: "window.projection", title: "Window projection", status: "available" as const },
-  { id: "electron.window", title: "Electron windows", status: "available" as const },
-  { id: "dom.refs", title: "DOM visible refs", status: "available" as const },
-  { id: "dom.eval", title: "DOM evaluation", status: "available" as const },
-  { id: "dom.input", title: "DOM input control", status: "available" as const },
-  { id: "screenshot", title: "Window screenshot capture", status: "available" as const },
-  { id: "event.projection", title: "Event projection", status: "available" as const },
-  { id: "agent.codex", title: "Codex agent backend", status: "available" as const }
-];
+const runtimeCapabilities = createElectronRuntimeCapabilities();
 logStartup("create runtime kernel");
 const runtime = await createPlasticRuntime({ workspaceDir, eventPath, capabilities: runtimeCapabilities });
 const { eventStore, methods, runPromise } = runtime;

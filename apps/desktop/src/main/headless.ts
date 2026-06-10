@@ -17,6 +17,7 @@ import { registerExtensionMethods } from "./extension-loader.js";
 import { panelMailboxModule } from "./panel-methods.js";
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
+import { createHeadlessRuntimeCapabilities } from "./runtime-capabilities.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
@@ -37,17 +38,7 @@ const runtimeRpcUrl = process.env.PLASTIC_RPC_URL ?? `http://127.0.0.1:${runtime
 const buildHost = process.env.PLASTIC_BUILD_HOST ?? "127.0.0.1";
 const buildPort = Number(process.env.PLASTIC_BUILD_PORT ?? 7332);
 const startedAt = new Date().toISOString();
-const runtimeCapabilities = [
-  { id: "runtime.capabilities", title: "Runtime capability registry", status: "available" as const },
-  { id: "window.projection", title: "Window projection", status: "available" as const },
-  { id: "event.projection", title: "Event projection", status: "available" as const },
-  { id: "electron.window", title: "Electron windows", status: "unavailable" as const, notes: "Headless mode has no Electron BrowserWindow host." },
-  { id: "dom.refs", title: "DOM visible refs", status: "unavailable" as const, notes: "Headless mode has no rendered DOM projection." },
-  { id: "dom.eval", title: "DOM evaluation", status: "unavailable" as const, notes: "Headless mode has no renderer DOM." },
-  { id: "dom.input", title: "DOM input control", status: "unavailable" as const, notes: "Headless mode has no rendered input elements." },
-  { id: "screenshot", title: "Window screenshot capture", status: "unavailable" as const, notes: "Headless mode has no screenshot provider." },
-  { id: "agent.codex", title: "Codex agent backend", status: "unavailable" as const, notes: "Headless mode has no Codex app-server adapter attached yet." }
-];
+const runtimeCapabilities = createHeadlessRuntimeCapabilities();
 
 const execFileAsync = promisify(execFile);
 const runtime = await createPlasticRuntime({ workspaceDir, eventPath, capabilities: runtimeCapabilities });
