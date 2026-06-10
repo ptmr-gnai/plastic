@@ -21,7 +21,7 @@ type CoreRuntimeStartupInput = RuntimeModulePlanInput & {
   onPhase?: (phase: string) => void;
 };
 
-type RuntimeStartupSequenceInput = CoreRuntimeStartupInput & {
+export type RuntimeStartupSequenceInput = CoreRuntimeStartupInput & {
   bundledExtensionsDir: string;
   startedPayload: Record<string, unknown>;
   beforeStarted?: () => Promise<void>;

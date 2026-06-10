@@ -24,10 +24,9 @@ import {
   createRuntimeBuildStatus,
   createRuntimeDiagnostics,
 } from "./runtime-host-status.js";
-import { startRuntimeHostTransports } from "./runtime-host-transports.js";
+import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { runRuntimeStartupSequence } from "./runtime-startup.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
@@ -229,7 +228,7 @@ const runtimeHealthModule = createRuntimeHealthModule({
     { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
   ]
 });
-await runRuntimeStartupSequence({
+const transports = await startRuntimeHostControlPlane({
   workspaceDir,
   bundledExtensionsDir,
   eventStore,
@@ -257,14 +256,8 @@ await runRuntimeStartupSequence({
   beforeStarted: async () => {
     logStartup("register codex methods");
     await codexAdapter.registerMethods();
-  }
-});
-
-logStartup("start sockets");
-const transports = await startRuntimeHostTransports({
-  eventStore,
-  methods,
-  runPromise,
+  },
+  onBeforeTransports: () => logStartup("start sockets"),
   runtimeHost,
   runtimePort,
   buildHost,

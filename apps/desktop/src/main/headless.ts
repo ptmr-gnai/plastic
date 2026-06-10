@@ -11,9 +11,8 @@ import {
   createRuntimeBuildStatus,
   createRuntimeDiagnostics,
 } from "./runtime-host-status.js";
-import { startRuntimeHostTransports } from "./runtime-host-transports.js";
+import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
-import { runRuntimeStartupSequence } from "./runtime-startup.js";
 
 const hostConfig = createRuntimeHostConfig();
 const {
@@ -86,7 +85,7 @@ const supportModules = createRuntimeHostSupportModules({
   })
 });
 const capabilityModules = createRuntimeHostCapabilityModules();
-await runRuntimeStartupSequence({
+const transports = await startRuntimeHostControlPlane({
   workspaceDir,
   bundledExtensionsDir,
   eventStore,
@@ -103,13 +102,7 @@ await runRuntimeStartupSequence({
   rendererControl: capabilityModules.rendererControl,
   windowCapability: capabilityModules.windowCapability,
   deixis: capabilityModules.deixis,
-  startedPayload: { mode: "headless" }
-});
-
-const transports = await startRuntimeHostTransports({
-  eventStore,
-  methods,
-  runPromise,
+  startedPayload: { mode: "headless" },
   runtimeHost,
   runtimePort,
   buildHost,
