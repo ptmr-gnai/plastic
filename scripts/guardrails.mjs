@@ -142,7 +142,7 @@ const checkMethodRegistration = (file, text) => {
   const registrationBlocks = text.match(/methods\.register\s*\(\s*\{[\s\S]*?\n\s*\}\s*\)/g) ?? [];
   for (const block of registrationBlocks) {
     const id = block.match(/\bid:\s*"([^"]+)"/)?.[1] ?? "unknown";
-    if (!/\btitle:\s*"[^"]+"/.test(block)) {
+    if (!/\btitle:\s*(?:"[^"]+"|[\w.]+)/.test(block)) {
       addWarning("method-metadata", repoPath, `${id} is missing a title.`);
     }
     if (!/\bowner:\s*\{/.test(block)) {

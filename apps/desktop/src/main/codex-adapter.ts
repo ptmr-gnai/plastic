@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { Effect } from "effect";
 import { createEvent, projectPanels, type EventStore, type MethodRegistry } from "@plastic/core";
+import {
+  codexBackendAvailability,
+  registerCodexAliasMethods
+} from "./codex-method-registration.js";
 
 interface CodexRpcMessage {
   id?: number;
@@ -606,36 +610,15 @@ export const createCodexAdapter = (input: {
       runtimeRpcUrl
     }
   });
-  const codexAvailability = {
-    status: "available" as const,
-    requiredCapabilities: ["agent.codex"]
-  };
-
   const registerMethods = async () => {
     await getCodexDefaults();
-
-    const registerCodexAlias = async (id: string, title: string, codexMethod: string) => {
-      await input.runPromise(
-        input.methods.register({
-          id,
-          title,
-          description: `Passthrough to Codex app-server ${codexMethod}.`,
-          owner: { kind: "runtime", id: "plastic.codex-adapter" },
-          handler: (methodInput) =>
-            Effect.promise(async () => {
-              await ensureInitialized();
-              return requestAlias(codexMethod, methodInput);
-            })
-        })
-      );
-    };
 
     await input.runPromise(
       input.methods.register({
         id: "codex/status",
         title: "Codex status",
         owner: { kind: "runtime", id: "plastic.codex-adapter" },
-        availability: codexAvailability,
+        availability: codexBackendAvailability,
         handler: () => Effect.sync(status)
       })
     );
@@ -848,18 +831,12 @@ export const createCodexAdapter = (input: {
       })
     );
 
-    await registerCodexAlias("codex/threadStart", "Start Codex thread", "thread/start");
-    await registerCodexAlias("codex/threadResume", "Resume Codex thread", "thread/resume");
-    await registerCodexAlias("codex/threadFork", "Fork Codex thread", "thread/fork");
-    await registerCodexAlias("codex/threadList", "List Codex threads", "thread/list");
-    await registerCodexAlias("codex/threadRead", "Read Codex thread", "thread/read");
-    await registerCodexAlias("codex/threadArchive", "Archive Codex thread", "thread/archive");
-    await registerCodexAlias("codex/threadNameSet", "Set Codex thread name", "thread/name/set");
-    await registerCodexAlias("codex/turnStart", "Start Codex turn", "turn/start");
-    await registerCodexAlias("codex/turnSteer", "Steer active Codex turn", "turn/steer");
-    await registerCodexAlias("codex/turnInterrupt", "Interrupt Codex turn", "turn/interrupt");
-    await registerCodexAlias("codex/modelList", "List Codex models", "model/list");
-    await registerCodexAlias("codex/configRead", "Read Codex config", "config/read");
+    await registerCodexAliasMethods({
+      methods: input.methods,
+      runPromise: input.runPromise,
+      ensureInitialized,
+      requestAlias
+    });
 
     await input.runPromise(
       input.methods.register({
@@ -867,7 +844,7 @@ export const createCodexAdapter = (input: {
         title: "Get chat backend binding",
         description: "Returns the current Codex thread binding and active turn state for a chat panel.",
         owner: { kind: "runtime", id: "plastic.codex-adapter" },
-        availability: codexAvailability,
+        availability: codexBackendAvailability,
         handler: (methodInput) =>
           Effect.promise(async () => {
             const chatId = (methodInput as { chatId?: string } | undefined)?.chatId ?? "chat-main";
@@ -938,7 +915,7 @@ export const createCodexAdapter = (input: {
         title: "Create Codex chat",
         description: "Creates a new chat panel, starts a fresh Codex thread, and binds them.",
         owner: { kind: "runtime", id: "plastic.codex-adapter" },
-        availability: codexAvailability,
+        availability: codexBackendAvailability,
         handler: (methodInput) =>
           Effect.promise(async () => {
             await ensureInitialized();
@@ -1117,7 +1094,7 @@ export const createCodexAdapter = (input: {
         title: "Send chat message to Codex",
         description: "Durably records a user message, binds the chat to a Codex thread, and starts a Codex turn.",
         owner: { kind: "runtime", id: "plastic.codex-adapter" },
-        availability: codexAvailability,
+        availability: codexBackendAvailability,
         handler: (methodInput) =>
           Effect.promise(async () => {
             await ensureInitialized();
