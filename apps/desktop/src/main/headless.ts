@@ -3,11 +3,9 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { Effect } from "effect";
 import {
-  projectExtensions,
-  projectPanels,
-  projectWindows,
   type EventStore
 } from "@plastic/core";
+import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createExtensionAuthoringModule } from "./extension-authoring-methods.js";
 import { activateExtensions } from "./extension-host.js";
@@ -49,12 +47,6 @@ const runtimeCapabilities = [
 const execFileAsync = promisify(execFile);
 const runtime = await createPlasticRuntime({ workspaceDir, eventPath, capabilities: runtimeCapabilities });
 const { eventStore, methods, runPromise } = runtime;
-
-const asRecord = (value: unknown): Record<string, unknown> =>
-  value && typeof value === "object" ? value as Record<string, unknown> : {};
-
-const asString = (value: unknown): string | undefined =>
-  typeof value === "string" && value.length > 0 ? value : undefined;
 
 const readGitStatus = async () => {
   try {
@@ -256,6 +248,7 @@ const agentWorkbenchModule = createAgentWorkbenchModule({
   getCodexStatus: () => ({ connected: false, initialized: false, pid: null, pendingRequests: 0 }),
   readGitStatus
 });
+const agentOrientModule = createAgentOrientModule({ workspaceDir });
 const runtimeBuildModule = createRuntimeBuildModule({
   getStatus: buildStatus,
   runCommand: runLocalCommand
@@ -279,6 +272,7 @@ await runtime.registerModules([
   runtimeStateModule,
   runtimeSnapshotModule,
   agentWorkbenchModule,
+  agentOrientModule,
   runtimeBuildModule,
   runtimeDiagnosticsModule,
   extensionAuthoringModule,

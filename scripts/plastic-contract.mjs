@@ -87,6 +87,7 @@ await check("plastic/methods", async () => {
     "plastic/state",
     "plastic/methods",
     "methods/describe",
+    "agent/orient",
     "panels/create",
     "extensions/list",
     "extensions/scaffold",
@@ -145,6 +146,20 @@ await check("agent/workbench", async () => {
     methods: workbench.control.methodCount,
     actions: workbench.control.recommendedActions.length,
     visibleRefs: workbench.observability.visibleRefs?.length ?? 0
+  };
+});
+
+await check("agent/orient", async () => {
+  const orientation = await rpc("agent/orient", { panelId: "chat-main" });
+  assert(orientation?.agent?.id, "agent/orient missing agent id");
+  assert(orientation.embodiment?.projectDir, "agent/orient missing projectDir");
+  assert(Array.isArray(orientation.capabilities?.recommendedActions), "agent/orient missing recommendedActions");
+  assert(orientation.memory?.eventCount >= 1, "agent/orient missing event memory");
+  return {
+    agentId: orientation.agent.id,
+    panelId: orientation.embodiment.panelId,
+    visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
+    recommendedActions: orientation.capabilities.recommendedActions.length
   };
 });
 
@@ -255,7 +270,7 @@ await check("extensions scan/list", async () => {
 });
 
 await check("events list/timeline", async () => {
-  events = await rpc("events/list", { limit: 20 });
+  events = await rpc("events/list", { limit: 100 });
   const eventItems = assertArray(events, "events/list is not an array");
   assert(eventItems.length > 0, "events/list returned no events");
   assert(eventItems.some((event) => event.id === createdPanelEvent.id), "panel create event missing from recent events");
