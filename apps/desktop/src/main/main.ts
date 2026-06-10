@@ -26,6 +26,7 @@ import {
 } from "@plastic/core";
 import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
+import { createElectronWindowModule } from "./electron-window-methods.js";
 import { activateExtensions } from "./extension-host.js";
 import { registerExtensionMethods, scanBundledExtensions, scanWorkspaceExtensions } from "./extension-loader.js";
 import { panelControlModule } from "./panel-control-methods.js";
@@ -869,97 +870,6 @@ const registerRuntimeMethods = async (store: EventStore) => {
 
   await runPromise(
     methods.register({
-      id: "windows/list",
-      title: "List windows",
-      description: "Returns known windows rebuilt from durable events.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["electron.window", "window.projection"]
-      },
-      handler: () => Effect.map(store.list(), (events) => projectWindows(events))
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "windows/create",
-      title: "Create window",
-      description: "Opens a new Electron window and appends window.created.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["electron.window"]
-      },
-      handler: (input) =>
-        Effect.promise(async () => {
-          const windowInput = input as { title?: string };
-          return createWindow(windowInput.title);
-        })
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "windows/focusPanel",
-      title: "Focus panel",
-      description: "Scrolls a visible panel into view and focuses its window.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["electron.window", "dom.refs"]
-      },
-      handler: (input) =>
-        Effect.promise(async () => {
-          const panelId = (input as { panelId?: string }).panelId;
-          if (!panelId) {
-            throw new Error("windows/focusPanel requires panelId");
-          }
-          const ref = `panel:${panelId}`;
-          const result = [];
-          for (const window of BrowserWindow.getAllWindows()) {
-            const found = await window.webContents.executeJavaScript(scrollRefIntoViewScript(ref)) as boolean;
-            if (found) {
-              window.focus();
-            }
-            result.push({ windowId: window.id, found });
-          }
-          return result;
-        })
-    })
-  );
-
-  await runPromise(
-    methods.register({
-      id: "windows/scrollToRef",
-      title: "Scroll to visible ref",
-      description: "Scrolls any visible data-plastic-ref into view.",
-      owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: {
-        status: "available",
-        requiredCapabilities: ["electron.window", "dom.refs"]
-      },
-      handler: (input) =>
-        Effect.promise(async () => {
-          const ref = (input as { ref?: string }).ref;
-          if (!ref) {
-            throw new Error("windows/scrollToRef requires ref");
-          }
-          const result = [];
-          for (const window of BrowserWindow.getAllWindows()) {
-            const found = await window.webContents.executeJavaScript(scrollRefIntoViewScript(ref)) as boolean;
-            if (found) {
-              window.focus();
-            }
-            result.push({ windowId: window.id, found });
-          }
-          return result;
-        })
-    })
-  );
-
-  await runPromise(
-    methods.register({
       id: "app/diagnostics",
       title: "App diagnostics",
       owner: { kind: "runtime", id: "plastic.runtime" },
@@ -1599,7 +1509,7 @@ const startBuildSocket = () => {
   return server;
 };
 
-const createWindow = async (title = "Plastic") => {
+async function createWindow(title = "Plastic") {
   const window = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -1640,7 +1550,7 @@ const createWindow = async (title = "Plastic") => {
   }
 
   return { id: `electron:${window.id}`, electronWindowId: window.id, title };
-};
+}
 
 ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise<RpcResponse> => {
   try {
@@ -1668,9 +1578,14 @@ const runtimeMethodContext = createRuntimeMethodContext({
   runPromise,
   capabilities: runtimeCapabilities
 });
+const electronWindowModule = createElectronWindowModule({
+  browserWindow: BrowserWindow,
+  createWindow,
+  scrollRefIntoViewScript
+});
 await registerRuntimeModules(
   runtimeMethodContext,
-  [runtimeControlModule, panelControlModule],
+  [runtimeControlModule, panelControlModule, electronWindowModule],
   (module) => logStartup(`register ${module.id} module`)
 );
 logStartup("register extension methods");
