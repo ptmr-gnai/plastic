@@ -65,6 +65,7 @@ export const createRuntimeSnapshotModule = (input: {
               links: [
                 { rel: "state", href: "plastic/state", method: "plastic/state" },
                 { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+                { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },
                 { rel: "events", href: "events/list", method: "events/list" },
                 { rel: "visible-refs", href: "deixis/listVisibleRefs", method: "deixis/listVisibleRefs" },
                 { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" }

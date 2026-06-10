@@ -100,11 +100,7 @@ await check("plastic/state", async () => {
       .filter((resource) => resource.id === "panels" || resource.kind === "panel");
   assert(panelResources.length > 0, "state does not expose panels");
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
-  return {
-    mode: state.app.mode,
-    panels: panelResources.length,
-    events: state.events?.count ?? null
-  };
+  return { mode: state.app.mode, panels: panelResources.length, events: state.events?.count ?? null };
 });
 
 await check("plastic/methods", async () => {
@@ -114,6 +110,7 @@ await check("plastic/methods", async () => {
     "plastic/state",
     "plastic/methods",
     "methods/describe",
+    "runtime/capabilities",
     "agent/orient",
     "codex/status",
     "chats/getBinding",
@@ -156,12 +153,10 @@ await check("plastic/snapshot", async () => {
   assertArray(snapshot.visibleRefs, "snapshot.visibleRefs is not an array");
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
+  assert(snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing capabilities link");
   return {
-    mode: snapshot.app.mode,
-    methods: snapshot.methods.count,
-    panels: snapshot.panels.length,
-    windows: snapshot.windows.length,
-    extensions: snapshot.extensions.length
+    mode: snapshot.app.mode, methods: snapshot.methods.count, panels: snapshot.panels.length,
+    windows: snapshot.windows.length, extensions: snapshot.extensions.length
   };
 });
 
@@ -169,11 +164,21 @@ await check("methods/describe", async () => {
   const description = await rpc("methods/describe", { id: "panels/create" });
   assert(description.id === "panels/create", "described wrong method");
   assert(description.owner?.id, "method owner missing");
-  return {
-    id: description.id,
-    owner: description.owner,
-    availability: description.availability?.status ?? "unspecified"
-  };
+  return { id: description.id, owner: description.owner, availability: description.availability?.status ?? "unspecified" };
+});
+
+await check("runtime/capabilities", async () => {
+  const capabilities = await rpc("runtime/capabilities");
+  const items = assertArray(capabilities.items, "runtime/capabilities.items is not an array");
+  const byId = Object.fromEntries(items.map((capability) => [capability.id, capability]));
+  const shared = ["runtime.capabilities", "window.projection", "event.projection"];
+  const host = ["electron.window", "dom.refs", "dom.eval", "dom.input", "screenshot", "agent.codex"];
+  for (const id of [...shared, ...host]) assert(byId[id], `runtime/capabilities missing ${id}`);
+  const expectedHostCapability = state.app.mode === "electron" ? "available" : "unavailable";
+  for (const id of host) assert(byId[id].status === expectedHostCapability, `${id} status mismatch`);
+  const description = await rpc("methods/describe", { id: "runtime/capabilities" });
+  assert(description.availability?.status === "available", "runtime/capabilities availability mismatch");
+  return { count: capabilities.count, hostCapabilityStatus: expectedHostCapability };
 });
 
 await check("agent/workbench", async () => {
