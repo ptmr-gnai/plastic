@@ -50,6 +50,7 @@ export const buildPlasticState = (
           links: [
             { rel: "self", href: "plastic/state", method: "plastic/state" },
             { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+            { rel: "describe-method", href: "methods/describe", method: "methods/describe" },
             { rel: "events", href: "events/list", method: "events/list" },
             { rel: "extensions", href: "extensions/list", method: "extensions/list" },
             { rel: "panels", href: "panels/list", method: "panels/list" },
@@ -75,6 +76,19 @@ export const buildPlasticState = (
               id: "scan-extensions",
               title: "Scan extensions",
               method: "extensions/scan"
+            },
+            {
+              id: "describe-method",
+              title: "Describe method",
+              method: "methods/describe",
+              inputSchema: {
+                type: "object",
+                required: ["id"],
+                properties: {
+                  id: { type: "string" }
+                }
+              },
+              description: "Read schema, examples, effects, and verification hints for one RPC method."
             }
           ]
         },
