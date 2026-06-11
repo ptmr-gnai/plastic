@@ -90,3 +90,21 @@ export function methodSurfaceDiff(actual, expected) {
   const extra = actual.filter((id) => !expectedSet.has(id));
   return `missing=[${missing.join(", ")}] extra=[${extra.join(", ")}]`;
 }
+
+export function assertMethodCatalogSurface({ assert, label, methods }) {
+  const methodIds = methods.map((method) => method.id).sort();
+  assert(
+    JSON.stringify(methodIds) === JSON.stringify(expectedMethodIds),
+    `${label} method id surface changed: ${methodSurfaceDiff(methodIds, expectedMethodIds)}`
+  );
+  for (const method of methods.slice(0, 12)) {
+    assert(
+      method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id),
+      `${label} ${method.id} missing describe link`
+    );
+    assert(
+      method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id),
+      `${label} ${method.id} missing invoke link`
+    );
+  }
+}

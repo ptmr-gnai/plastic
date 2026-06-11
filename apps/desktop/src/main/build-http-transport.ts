@@ -29,10 +29,11 @@ export const startBuildHttpTransport = (input: {
     }
 
     if (request.method === "GET" && request.url === "/status") {
-      sendJson(response, 200, {
-        ok: true,
-        value: input.getStatus()
-      });
+      try {
+        sendJson(response, 200, { ok: true, value: await input.runPromise(input.methods.call("build/status", {})) });
+      } catch (error) {
+        sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+      }
       return;
     }
 

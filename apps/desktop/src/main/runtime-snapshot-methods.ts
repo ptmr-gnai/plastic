@@ -46,7 +46,14 @@ export const createRuntimeSnapshotModule = (input: {
         handler: () =>
           Effect.promise(async () => {
             const events = await runPromise(eventStore.list());
-            const registeredMethods = await runPromise(methods.list());
+            const registeredMethods = await runPromise(methods.call("plastic/methods", {})) as Array<{
+              id: string;
+              title: string;
+              owner: unknown;
+              description?: string;
+              availability?: unknown;
+              links?: unknown[];
+            }>;
             const panels = projectPanels(events);
             const host = await input.getHostDetails();
 

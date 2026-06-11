@@ -5,7 +5,7 @@ import {
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
   assertMatchingModuleInventories, itemsFrom, rawRuntimeRequest, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
-import { expectedMethodIds, methodSurfaceDiff } from "./plastic-contract-method-surface.mjs";
+import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
@@ -49,22 +49,11 @@ await check("plastic/methods", async () => {
   const items = assertArray(methods, "plastic/methods is not an array");
   const runtimeItems = assertArray(runtimeMethods.value, "runtime /methods is not an array");
   assert(runtimeItems.length === items.length, "runtime /methods count mismatch");
-  const methodIds = items.map((method) => method.id).sort();
-  assert(
-    JSON.stringify(methodIds) === JSON.stringify(expectedMethodIds),
-    `method id surface changed: ${methodSurfaceDiff(methodIds, expectedMethodIds)}`
-  );
+  assertMethodCatalogSurface({ assert, label: "plastic/methods", methods: items });
   const runtimeMethodIds = runtimeItems.map((method) => method.id).sort();
-  assert(JSON.stringify(runtimeMethodIds) === JSON.stringify(methodIds), "runtime /methods ids diverged from plastic/methods");
-  for (const method of runtimeItems.slice(0, 12)) {
-    assert(method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id), `/methods ${method.id} missing describe link`);
-    assert(method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id), `/methods ${method.id} missing invoke link`);
-  }
+  assert(JSON.stringify(runtimeMethodIds) === JSON.stringify(items.map((method) => method.id).sort()), "runtime /methods ids diverged from plastic/methods");
+  assertMethodCatalogSurface({ assert, label: "/methods", methods: runtimeItems });
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
-  for (const method of items.slice(0, 12)) {
-    assert(method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id), `${method.id} missing describe link`);
-    assert(method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id), `${method.id} missing invoke link`);
-  }
   return { count: items.length };
 });
 
@@ -82,6 +71,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.controlPlane.build.rpcPath === "/rpc", "snapshot build control plane rpcPath mismatch");
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
+  assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
   assert(snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing capabilities link");
   assert(snapshot.links?.some((link) => link.rel === "control-plane" && link.method === "events/list"), "snapshot missing control plane link");
@@ -200,7 +190,10 @@ await check("headless agent backend fallback", async () => {
 
 await check("build/status", async () => {
   const build = await rpc("build/status");
+  const status = await buildGet("/status");
   assert(build?.status === "running", "build/status did not report running");
+  assert(status.value?.status === build.status, "build /status did not match build/status");
+  assert(status.value?.workspaceDir === build.workspaceDir, "build /status workspaceDir mismatch");
   assert(build.workspaceDir, "build/status missing workspaceDir");
   return {
     service: build.service,
