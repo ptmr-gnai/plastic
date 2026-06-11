@@ -37,6 +37,15 @@ export const startBuildHttpTransport = (input: {
       return;
     }
 
+    if (request.method === "GET" && request.url === "/state") {
+      try {
+        sendJson(response, 200, { ok: true, value: await input.runPromise(input.methods.call("plastic/state", {})) });
+      } catch (error) {
+        sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+      }
+      return;
+    }
+
     if (request.method === "GET" && request.url === "/methods") {
       try {
         sendJson(response, 200, { ok: true, value: await input.runPromise(input.methods.call("plastic/methods", {})) });

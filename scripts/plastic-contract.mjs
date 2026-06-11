@@ -26,17 +26,23 @@ let events;
 await check("plastic/state", async () => {
   state = await rpc("plastic/state");
   const runtimeState = await runtimeGet("/state");
+  const buildState = await buildGet("/state");
   assert(state && typeof state === "object", "plastic/state returned no object");
   assert(runtimeState.value?.app?.name === "Plastic", "runtime /state did not return Plastic state");
+  assert(buildState.value?.app?.name === "Plastic", "build /state did not return Plastic state");
   assert(state.app?.name === "Plastic", "state.app.name is not Plastic");
   assert(state.controlPlane?.runtime?.transport === "http", "state missing runtime control plane");
   assert(state.controlPlane.runtime.rpcPath === "/rpc", "state runtime control plane rpcPath mismatch");
+  assert(state.controlPlane.runtime.statePath === "/state", "state runtime control plane statePath mismatch");
   assert(state.controlPlane.runtime.methodsPath === "/methods", "state runtime control plane methodsPath mismatch");
   assert(state.controlPlane?.build?.transport === "http", "state missing build control plane");
   assert(state.controlPlane.build.rpcPath === "/rpc", "state build control plane rpcPath mismatch");
+  assert(state.controlPlane.build.statePath === "/state", "state build control plane statePath mismatch");
   assert(state.controlPlane.build.methodsPath === "/methods", "state build control plane methodsPath mismatch");
   assert(runtimeState.value?.controlPlane?.runtime?.transport === "http", "runtime /state missing runtime control plane");
   assert(runtimeState.value.controlPlane.runtime.rpcPath === state.controlPlane.runtime.rpcPath, "runtime /state control plane mismatch");
+  assert(buildState.value?.app?.mode === state.app.mode, "build /state mode mismatch");
+  assert(buildState.value?.controlPlane?.build?.statePath === state.controlPlane.build.statePath, "build /state control plane mismatch");
   const panelResources = Array.isArray(state.panels)
     ? state.panels
     : assertArray(state.resources, "state.resources is not an array")
@@ -76,9 +82,11 @@ await check("plastic/snapshot", async () => {
   assertArray(snapshot.visibleRefs, "snapshot.visibleRefs is not an array");
   assert(snapshot.controlPlane?.runtime?.transport === "http", "snapshot missing runtime control plane");
   assert(snapshot.controlPlane.runtime.rpcPath === "/rpc", "snapshot runtime control plane rpcPath mismatch");
+  assert(snapshot.controlPlane.runtime.statePath === "/state", "snapshot runtime control plane statePath mismatch");
   assert(snapshot.controlPlane.runtime.methodsPath === "/methods", "snapshot runtime control plane methodsPath mismatch");
   assert(snapshot.controlPlane?.build?.transport === "http", "snapshot missing build control plane");
   assert(snapshot.controlPlane.build.rpcPath === "/rpc", "snapshot build control plane rpcPath mismatch");
+  assert(snapshot.controlPlane.build.statePath === "/state", "snapshot build control plane statePath mismatch");
   assert(snapshot.controlPlane.build.methodsPath === "/methods", "snapshot build control plane methodsPath mismatch");
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
