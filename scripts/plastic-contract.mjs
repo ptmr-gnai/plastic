@@ -5,9 +5,9 @@ const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
 const backendMethodIds = [
   "codex/status", "codex/defaults", "codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList",
+  "bridge/configurePlasticMcp", "bridge/status", "bridge/test", "bridge/callPlasticRpcTool",
   "chats/getBinding", "chats/startCodexThread", "chats/createCodexChat", "chats/interrupt", "chats/sendToCodex"
 ];
-
 const results = [];
 
 const rpc = async (method, input) => {
