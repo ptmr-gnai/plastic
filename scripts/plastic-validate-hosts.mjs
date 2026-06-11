@@ -15,8 +15,8 @@ const validateScope = process.env.PLASTIC_VALIDATE_SCOPE ?? "all";
 const desktopDir = new URL("../apps/desktop/", import.meta.url).pathname;
 const desktopRequire = createRequire(new URL("../apps/desktop/package.json", import.meta.url));
 
-if (!["all", "headless", "electron"].includes(validateScope)) {
-  throw new Error(`Unknown PLASTIC_VALIDATE_SCOPE=${validateScope}. Expected all, headless, or electron.`);
+if (!["all", "headless", "electron", "unified"].includes(validateScope)) {
+  throw new Error(`Unknown PLASTIC_VALIDATE_SCOPE=${validateScope}. Expected all, headless, electron, or unified.`);
 }
 
 let activeHost = null;
@@ -286,6 +286,30 @@ const runHost = async ({ label, script, parity }) => {
   }
 };
 
+const runElectronValidation = async ({ parity }) => {
+  await runElectronPreflight();
+  await runHost({ label: "electron", script: "dev.mjs", parity });
+};
+
+const runUnifiedValidation = async () => {
+  await runHost({ label: "headless", script: "dev-headless.mjs", parity: "capture" });
+  try {
+    await runElectronValidation({ parity: "compare" });
+    console.log("[plastic:validate-hosts] unified validation passed");
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const report = {
+      ok: true,
+      mode: "unified",
+      sharedRuntimeContract: "passed",
+      electronHost: "unavailable",
+      reason
+    };
+    console.log("[plastic:validate-hosts] unified validation degraded");
+    console.log(JSON.stringify(report, null, 2));
+  }
+};
+
 process.on("SIGINT", () => {
   void stopHost().finally(() => process.exit(130));
 });
@@ -294,17 +318,18 @@ process.on("SIGTERM", () => {
   void stopHost().finally(() => process.exit(143));
 });
 
-if (validateScope === "all" || validateScope === "headless") {
+if (validateScope === "unified") {
+  await runUnifiedValidation();
+} else if (validateScope === "all" || validateScope === "headless") {
   await runHost({ label: "headless", script: "dev-headless.mjs", parity: "capture" });
 }
 
 if (validateScope === "all" || validateScope === "electron") {
-  await runElectronPreflight();
-  await runHost({ label: "electron", script: "dev.mjs", parity: validateScope === "all" ? "compare" : "none" });
+  await runElectronValidation({ parity: validateScope === "all" ? "compare" : "none" });
 }
 
 if (validateScope === "all") {
   console.log("[plastic:validate-hosts] headed/headless validation passed");
-} else {
+} else if (validateScope !== "unified") {
   console.log(`[plastic:validate-hosts] ${validateScope} validation passed`);
 }

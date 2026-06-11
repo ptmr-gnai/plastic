@@ -468,6 +468,16 @@ The first unification pass is substantially complete:
 
 The current validation blocker is below Plastic code: in this automation environment, the Electron binary can report its version, but a minimal Electron app-main preflight times out before the Plastic main process starts. Until that is fixed, headed validation cannot run the same contract even though the Electron host code uses the shared runtime assembly.
 
+`pnpm plastic:validate-unified` is the current automation-friendly validation command. It must:
+
+- run the shared headless runtime contract strictly;
+- capture the headless method baseline;
+- attempt Electron preflight and headed validation;
+- compare Electron methods to headless when Electron is available;
+- emit a structured degraded report when Electron cannot start in the current host environment.
+
+This command does not replace `pnpm plastic:validate-electron`. Strict Electron validation must continue to fail when headed Electron cannot start, because headed proof requires real Electron runtime/build ports and method parity.
+
 ## Practical Next Step
 
 Fix or route around the Electron app-main preflight so the same contract can run against Electron again.
