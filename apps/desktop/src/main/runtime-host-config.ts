@@ -1,5 +1,6 @@
 import { networkInterfaces } from "node:os";
 import { join } from "node:path";
+import { createRuntimeHostControlPlaneDescriptor } from "./runtime-host-control-plane-descriptor.js";
 import { resolvePlasticRuntimePaths } from "./runtime-paths.js";
 
 const unique = <A>(items: A[]): A[] => [...new Set(items)];
@@ -30,6 +31,12 @@ export const createRuntimeHostConfig = () => {
     ?? runtimeRpcUrls[1]
     ?? runtimeRpcUrls[0]
     ?? `http://127.0.0.1:${runtimePort}/rpc`;
+  const controlPlane = createRuntimeHostControlPlaneDescriptor({
+    runtimeHost,
+    runtimePort,
+    buildHost,
+    buildPort
+  });
 
   return {
     workspaceDir,
@@ -41,6 +48,7 @@ export const createRuntimeHostConfig = () => {
     runtimePort,
     buildHost,
     buildPort,
+    controlPlane,
     runtimeRpcUrl: process.env.PLASTIC_RPC_URL ?? `http://127.0.0.1:${runtimePort}/rpc`,
     runtimeRpcUrls,
     preferredRuntimeRpcUrl
