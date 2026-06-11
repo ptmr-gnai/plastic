@@ -28,9 +28,41 @@ const methodCapabilityRequirements = {
   "deixis/fillRef": ["dom.refs", "dom.input"]
 };
 
-export const capabilityBackedMethodExpectationsForMode = (mode) => {
+export const agentBackendMethodIds = [
+  "codex/status",
+  "chats/getBinding",
+  "chats/createCodexChat",
+  "chats/sendToCodex",
+  "codex/defaults",
+  "codex/setDefaults",
+  "codex/connect",
+  "codex/initialize",
+  "codex/request",
+  "codex/threadStart",
+  "codex/threadResume",
+  "codex/threadFork",
+  "codex/threadList",
+  "codex/threadRead",
+  "codex/threadArchive",
+  "codex/threadNameSet",
+  "codex/turnStart",
+  "codex/turnSteer",
+  "codex/turnInterrupt",
+  "codex/modelList",
+  "codex/configRead",
+  "bridge/configurePlasticMcp",
+  "bridge/status",
+  "bridge/test",
+  "bridge/callPlasticRpcTool",
+  "chats/bindCodexThread",
+  "chats/startCodexThread",
+  "chats/interrupt",
+  "chats/close"
+];
+
+const expectationsFromRequirements = (mode, requirements) => {
   const capabilities = capabilityExpectationsForMode(mode);
-  const entries = Object.entries(methodCapabilityRequirements).map(([methodId, requiredCapabilities]) => {
+  return Object.fromEntries(Object.entries(requirements).map(([methodId, requiredCapabilities]) => {
     const missingCapabilities = requiredCapabilities.filter((id) => capabilities[id] !== "available");
     return [
       methodId,
@@ -40,13 +72,22 @@ export const capabilityBackedMethodExpectationsForMode = (mode) => {
         missingCapabilities
       }
     ];
-  });
+  }));
+};
+
+export const capabilityBackedMethodExpectationsForMode = (mode) => {
   return {
     "windows/list": {
       status: mode === "electron" ? "available" : "degraded",
       requiredCapabilities: ["electron.window", "window.projection"],
       missingCapabilities: mode === "electron" ? [] : ["electron.window"]
     },
-    ...Object.fromEntries(entries)
+    ...expectationsFromRequirements(mode, methodCapabilityRequirements)
   };
 };
+
+export const agentBackendMethodExpectationsForMode = (mode) =>
+  expectationsFromRequirements(
+    mode,
+    Object.fromEntries(agentBackendMethodIds.map((id) => [id, ["agent.codex"]]))
+  );

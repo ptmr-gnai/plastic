@@ -8,15 +8,14 @@ import {
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
-import { capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
+import {
+  agentBackendMethodExpectationsForMode,
+  capabilityBackedMethodExpectationsForMode
+} from "./plastic-capability-expectations.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
-const backendMethodIds = [
-  "codex/status", "codex/defaults", "codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList",
-  "bridge/configurePlasticMcp", "bridge/status", "bridge/test", "bridge/callPlasticRpcTool", "chats/getBinding", "chats/startCodexThread", "chats/createCodexChat", "chats/interrupt", "chats/sendToCodex"
-];
 
 let state;
 let snapshot;
@@ -166,18 +165,21 @@ await check("agent/orient", async () => {
 });
 
 await check("agent backend metadata", async () => {
-  const expectedAvailability = state.app.mode === "electron" ? "available" : "unavailable";
+  const expectations = agentBackendMethodExpectationsForMode(state.app.mode);
   const descriptions = await Promise.all(
-    backendMethodIds.map((id) => rpc("methods/describe", { id }))
+    Object.keys(expectations).map((id) => rpc("methods/describe", { id }))
   );
   for (const description of descriptions) {
-    assert(description.availability?.status === expectedAvailability, `${description.id} availability mismatch`);
-    assert(description.availability.requiredCapabilities?.includes("agent.codex"), `${description.id} missing agent.codex capability`);
+    const expected = expectations[description.id];
+    const availability = description.availability;
+    assert(availability?.status === expected.status, `${description.id} availability mismatch`);
+    assert(JSON.stringify(availability.requiredCapabilities ?? []) === JSON.stringify(expected.requiredCapabilities), `${description.id} required capabilities mismatch`);
+    assert(JSON.stringify(availability.missingCapabilities ?? []) === JSON.stringify(expected.missingCapabilities), `${description.id} missing capabilities mismatch`);
   }
   const binding = await rpc("chats/getBinding", { chatId: "chat-main" });
   assert(binding.chatId === "chat-main", "chats/getBinding returned wrong chatId");
   return {
-    availability: expectedAvailability,
+    expectations,
     methods: descriptions.map((description) => description.id),
     bindingRuntime: binding.runtimeId ?? null
   };
