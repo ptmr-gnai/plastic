@@ -479,6 +479,8 @@ The previous validation blocker was below Plastic code: Electron could report it
 
 This command does not replace `pnpm plastic:validate-electron`. Strict Electron validation remains the proof that headed Electron can start real runtime/build ports and pass the shared contract.
 
+`pnpm plastic:audit-runtime-unification` is the full audit command for this workstream. It runs typecheck, guardrails, strict headless validation, strict Electron validation, and unified parity validation in sequence, then prints one JSON summary.
+
 ## Practical Next Step
 
 Keep shrinking host bootstraps and make Electron/headless drift harder to reintroduce.
