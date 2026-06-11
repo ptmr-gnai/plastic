@@ -261,7 +261,8 @@ export const assertRuntimeModuleInventory = async ({ rpc }) => {
     "runtime/modules missing an agent backend module"
   );
   assert(items.every((module, index) => module.order === index), "runtime/modules order is not stable");
-  return { count: modules.count, ids };
+  assertModuleMethodMap(items, "runtime/modules");
+  return { count: modules.count, ids, items };
 };
 
 export const assertMatchingModuleInventories = ({ live, durable }) => {
@@ -269,6 +270,10 @@ export const assertMatchingModuleInventories = ({ live, durable }) => {
   assert(
     JSON.stringify(live.ids) === JSON.stringify(durable.ids),
     "runtime/modules live and durable ids diverged"
+  );
+  assert(
+    JSON.stringify(moduleMethodPairs(live.items)) === JSON.stringify(moduleMethodPairs(durable.items)),
+    "runtime/modules live and durable method contributions diverged"
   );
 };
 
@@ -288,8 +293,26 @@ export const assertRuntimeStartedModuleInventory = async ({ rpc }) => {
     ids.some((id) => id === "agent-backend-codex" || id === "agent-backend-fallback"),
     "runtime.started module inventory missing an agent backend module"
   );
-  return { eventId: latest.id, count: modules.length, ids };
+  assertModuleMethodMap(modules, "runtime.started");
+  return { eventId: latest.id, count: modules.length, ids, items: modules };
 };
+
+const assertModuleMethodMap = (items, source) => {
+  for (const module of items) {
+    assert(Array.isArray(module.methodIds), `${source} ${module.id} missing methodIds`);
+  }
+  const byId = Object.fromEntries(items.map((module) => [module.id, module]));
+  assert(byId["runtime-control"]?.methodIds.includes("plastic/methods"), `${source} runtime-control missing plastic/methods`);
+  assert(byId["panel-control"]?.methodIds.includes("panels/create"), `${source} panel-control missing panels/create`);
+  assert(byId["runtime-modules"]?.methodIds.includes("runtime/modules"), `${source} runtime-modules missing runtime/modules`);
+};
+
+const moduleMethodPairs = (items) =>
+  items.map((module) => ({
+    id: module.id,
+    order: module.order,
+    methodIds: module.methodIds
+  }));
 
 export const itemsFrom = (value, message) => {
   if (Array.isArray(value)) return value;

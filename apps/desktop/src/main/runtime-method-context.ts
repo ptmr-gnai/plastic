@@ -35,6 +35,13 @@ export type RuntimeMethodContext = {
 export type RuntimeModule = {
   id: string;
   register: (context: RuntimeMethodContext) => Promise<void>;
+  registeredMethodIds?: string[];
+};
+
+export type RuntimeModuleRegistration = {
+  id: string;
+  order: number;
+  methodIds: string[];
 };
 
 export const createDirectAppendEvent = (eventStore: EventStore, runPromise: RunPromise): AppendEvent =>
@@ -58,11 +65,18 @@ export const registerRuntimeModules = async (
   context: RuntimeMethodContext,
   modules: RuntimeModule[],
   onRegister?: (module: RuntimeModule) => void
-) => {
-  for (const module of modules) {
+): Promise<RuntimeModuleRegistration[]> => {
+  const registrations: RuntimeModuleRegistration[] = [];
+  for (const [order, module] of modules.entries()) {
     onRegister?.(module);
+    const before = new Set((await context.runPromise(context.methods.list())).map((method) => method.id));
     await module.register(context);
+    const after = await context.runPromise(context.methods.list());
+    const methodIds = after.map((method) => method.id).filter((id) => !before.has(id));
+    module.registeredMethodIds = methodIds;
+    registrations.push({ id: module.id, order, methodIds });
   }
+  return registrations;
 };
 
 export const createCapabilityRegistry = (capabilities: RuntimeCapability[]): CapabilityRegistry => {

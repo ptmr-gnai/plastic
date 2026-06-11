@@ -5,6 +5,7 @@ import type { RuntimeModule } from "./runtime-method-context.js";
 type RuntimeModuleSummary = {
   id: string;
   order: number;
+  methodIds?: string[];
 };
 
 export const createRuntimeModulesModule = (getModules: () => RuntimeModuleSummary[]): RuntimeModule => ({

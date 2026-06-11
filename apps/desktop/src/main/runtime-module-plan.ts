@@ -46,7 +46,8 @@ export const createRuntimeModulePlan = (input: RuntimeModulePlanInput): RuntimeM
   const runtimeModulesModule = createRuntimeModulesModule(() =>
     allModules.map((module, index) => ({
       id: module.id,
-      order: index
+      order: index,
+      methodIds: module.registeredMethodIds ?? []
     }))
   );
   allModules = [

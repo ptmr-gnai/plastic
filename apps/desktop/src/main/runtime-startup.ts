@@ -79,7 +79,8 @@ export const runRuntimeStartupSequence = async (input: RuntimeStartupSequenceInp
     ...input.startedPayload,
     modules: modules.map((module, index) => ({
       id: module.id,
-      order: index
+      order: index,
+      methodIds: module.registeredMethodIds ?? []
     }))
   });
 };

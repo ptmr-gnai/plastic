@@ -17,6 +17,7 @@ import {
   type RuntimeCapability,
   type RuntimeMethodContext,
   type RuntimeModule,
+  type RuntimeModuleRegistration,
   type RunPromise
 } from "./runtime-method-context.js";
 
@@ -31,7 +32,7 @@ export type PlasticRuntime = {
   registerModules: (
     modules: RuntimeModule[],
     onRegister?: (module: RuntimeModule) => void
-  ) => Promise<void>;
+  ) => Promise<RuntimeModuleRegistration[]>;
 };
 
 export const createPlasticRuntime = async (input: {
