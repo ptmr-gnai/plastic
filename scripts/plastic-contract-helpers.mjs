@@ -119,6 +119,23 @@ export const assertArray = (value, message) => {
   return value;
 };
 
+export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) => {
+  const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
+  for (const id of sampleIds) {
+    const listed = byId[id];
+    assert(listed, `plastic/methods missing ${id}`);
+    const described = await rpc("methods/describe", { id });
+    assert(described.id === listed.id, `${id} describe id mismatch`);
+    assert(described.title === listed.title, `${id} describe title mismatch`);
+    assert(described.owner?.kind === listed.owner?.kind, `${id} describe owner kind mismatch`);
+    assert(described.owner?.id === listed.owner?.id, `${id} describe owner id mismatch`);
+    assert(
+      described.availability?.status === listed.availability?.status,
+      `${id} describe availability mismatch`
+    );
+  }
+};
+
 export const itemsFrom = (value, message) => {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.items)) return value.items;

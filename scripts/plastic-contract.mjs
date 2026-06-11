@@ -5,6 +5,7 @@ import {
   buildRpc,
   buildUrl,
   check,
+  assertMethodDiscoveryParity,
   itemsFrom,
   rawRuntimeRequest,
   results,
@@ -49,38 +50,20 @@ await check("plastic/methods", async () => {
   methods = await rpc("plastic/methods");
   const runtimeMethods = await runtimeGet("/methods");
   const items = assertArray(methods, "plastic/methods is not an array");
-  assertArray(runtimeMethods.value, "runtime /methods is not an array");
-  assert(runtimeMethods.value.length === items.length, "runtime /methods count mismatch");
+  const runtimeItems = assertArray(runtimeMethods.value, "runtime /methods is not an array");
+  assert(runtimeItems.length === items.length, "runtime /methods count mismatch");
   assert(items.length === expectedMethodCount, `expected ${expectedMethodCount} methods, got ${items.length}`);
+  const methodIds = items.map((method) => method.id).sort();
+  const runtimeMethodIds = runtimeItems.map((method) => method.id).sort();
+  assert(JSON.stringify(runtimeMethodIds) === JSON.stringify(methodIds), "runtime /methods ids diverged from plastic/methods");
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   for (const id of [
-    "plastic/state",
-    "plastic/methods",
-    "methods/describe",
-    "runtime/capabilities",
-    "agent/orient",
+    "plastic/state", "plastic/methods", "methods/describe", "runtime/capabilities", "agent/orient",
     ...backendMethodIds,
-    "panels/create",
-    "extensions/list",
-    "extensions/scaffold",
-    "build/status",
-    "app/diagnostics",
-    "renderer/reload",
-    "windows/list",
-    "windows/create",
-    "windows/focusPanel",
-    "windows/scrollToRef",
-    "windows/screenshot",
-    "deixis/listVisibleRefs",
-    "deixis/resolveRef",
-    "deixis/evalDom",
-    "deixis/clickRef",
-    "deixis/fillRef",
-    "deixis/verifyRefAction",
-    "events/append",
-    "events/list",
-    "events/timeline",
-    "plastic/selfTest"
+    "panels/create", "extensions/list", "extensions/scaffold", "build/status", "app/diagnostics",
+    "renderer/reload", "windows/list", "windows/create", "windows/focusPanel", "windows/scrollToRef",
+    "windows/screenshot", "deixis/listVisibleRefs", "deixis/resolveRef", "deixis/evalDom", "deixis/clickRef",
+    "deixis/fillRef", "deixis/verifyRefAction", "events/append", "events/list", "events/timeline", "plastic/selfTest"
   ]) {
     assert(items.some((method) => method.id === id), `missing method ${id}`);
   }
@@ -110,6 +93,19 @@ await check("methods/describe", async () => {
   assert(description.id === "panels/create", "described wrong method");
   assert(description.owner?.id, "method owner missing");
   return { id: description.id, owner: description.owner, availability: description.availability?.status ?? "unspecified" };
+});
+
+await check("method discovery parity", async () => {
+  const sampleIds = [
+    "plastic/state",
+    "panels/create",
+    "events/append",
+    "windows/screenshot",
+    "deixis/evalDom",
+    "chats/sendToCodex"
+  ];
+  await assertMethodDiscoveryParity({ methods, rpc, sampleIds });
+  return { sampled: sampleIds.length };
 });
 
 await check("runtime/capabilities", async () => {
