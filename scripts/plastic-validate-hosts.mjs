@@ -82,6 +82,30 @@ const runWithTimeout = (command, args, timeoutMs, options = {}) =>
     });
   });
 
+const runCaptured = (command, args, options = {}) =>
+  new Promise((resolve) => {
+    let stdout = "";
+    let stderr = "";
+    const child = spawn(command, args, {
+      cwd: new URL("..", import.meta.url).pathname,
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32",
+      ...options
+    });
+    child.stdout?.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", (error) => {
+      resolve({ command, args, code: null, signal: null, stdout, stderr: String(error) });
+    });
+    child.on("exit", (code, signal) => {
+      resolve({ command, args, code, signal, stdout, stderr });
+    });
+  });
+
 const runElectronPreflight = async () => {
   const electronExecutable = desktopRequire("electron");
   console.log(`[plastic:validate-hosts] electron preflight ${electronExecutable}`);
@@ -142,11 +166,51 @@ const waitForHost = async (label) => {
   ]);
 };
 
+const capturedText = (result) => {
+  const stdout = result.stdout.trim();
+  const stderr = result.stderr.trim();
+  return [
+    `$ ${result.command} ${result.args.join(" ")}`,
+    `exit: ${result.code ?? result.signal ?? "unknown"}`,
+    `stdout:\n${stdout || "<empty>"}`,
+    `stderr:\n${stderr || "<empty>"}`
+  ].join("\n");
+};
+
+const collectHostDiagnostics = async (label) => {
+  if (process.platform === "win32") {
+    return `No ${label} process diagnostics are configured for Windows yet.`;
+  }
+  const [processes, runtimePortState, buildPortState] = await Promise.all([
+    runCaptured("ps", ["-axo", "pid,ppid,state,command"]),
+    runCaptured("lsof", ["-nP", "-iTCP:7331", "-sTCP:LISTEN"]),
+    runCaptured("lsof", ["-nP", "-iTCP:7332", "-sTCP:LISTEN"])
+  ]);
+  const processLines = processes.stdout
+    .split("\n")
+    .filter((line) => /plastic-validate-hosts|apps\/desktop\/scripts\/dev|dev-headless|tsc -p tsconfig\.node|vite --host|Electron|electron/.test(line))
+    .join("\n");
+  return [
+    `[plastic:validate-hosts] ${label} diagnostics`,
+    `activeHostPid: ${activeHost?.pid ?? "none"}`,
+    `activeHostExit: ${activeHost?.exitCode ?? "running"}`,
+    "matching processes:",
+    processLines || "<none>",
+    capturedText(runtimePortState),
+    capturedText(buildPortState)
+  ].join("\n");
+};
+
 const runHost = async ({ label, script, parity }) => {
   console.log(`[plastic:validate-hosts] starting ${label}`);
   startHost(script);
   try {
-    await waitForHost(label);
+    try {
+      await waitForHost(label);
+    } catch (error) {
+      const diagnostics = await collectHostDiagnostics(label);
+      throw new Error(`${error instanceof Error ? error.message : String(error)}\n\n${diagnostics}`);
+    }
     console.log(`[plastic:validate-hosts] ${label} ready`);
     await run("pnpm", ["plastic:contract"], {
       env: { ...process.env, PLASTIC_RPC_URL: rpcUrl, PLASTIC_BUILD_URL: buildUrl }
