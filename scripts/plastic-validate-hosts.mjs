@@ -130,6 +130,7 @@ const electronPreflightFailureDetails = ({ child, electronExecutable, probeDir }
     `electronExecutable: ${electronExecutable}`,
     `electronChildPid: ${child.pid ?? "unknown"}`,
     `probeDir: ${probeDir}`,
+    "expectedProbeStdout: plastic-electron-app-probe:module, plastic-electron-app-probe:electron-required",
     `childProcess:\n${child.pid ? syncCommand("ps", ["-p", String(child.pid), "-o", "pid,ppid,state,etime,command"]) : "<no pid>"}`,
     `matchingElectronProcesses:\n${matchingProcessLines(/Electron|electron/)}`
   ];
@@ -152,8 +153,9 @@ const runElectronPreflight = async () => {
     await writeFile(
       join(probeDir, "main.js"),
       [
+        "console.log('plastic-electron-app-probe:module');",
         "const { app } = require('electron');",
-        "console.log('plastic-electron-app-probe:main');",
+        "console.log('plastic-electron-app-probe:electron-required');",
         "app.whenReady().then(() => app.quit());"
       ].join("\n"),
       "utf8"
