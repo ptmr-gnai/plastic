@@ -1,5 +1,17 @@
-const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
-const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
+import {
+  assert,
+  assertArray,
+  buildGet,
+  buildRpc,
+  buildUrl,
+  check,
+  itemsFrom,
+  results,
+  rpc,
+  rpcUrl,
+  runtimeGet
+} from "./plastic-contract-helpers.mjs";
+
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
@@ -7,84 +19,6 @@ const backendMethodIds = [
   "codex/status", "codex/defaults", "codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList",
   "bridge/configurePlasticMcp", "bridge/status", "bridge/test", "bridge/callPlasticRpcTool", "chats/getBinding", "chats/startCodexThread", "chats/createCodexChat", "chats/interrupt", "chats/sendToCodex"
 ];
-const results = [];
-
-const rpc = async (method, input) => {
-  const response = await fetch(rpcUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ method, input })
-  });
-  const payload = await response.json().catch(() => {
-    throw new Error(`${method}: response was not JSON`);
-  });
-  if (!response.ok || !payload.ok) {
-    throw new Error(`${method}: ${payload.error ?? response.statusText}`);
-  }
-  return payload.value;
-};
-
-const buildGet = async (path) => {
-  const response = await fetch(`${buildUrl}${path}`);
-  const payload = await response.json().catch(() => {
-    throw new Error(`build ${path}: response was not JSON`);
-  });
-  if (!response.ok || payload.ok === false) {
-    throw new Error(`build ${path}: ${payload.error ?? response.statusText}`);
-  }
-  return payload;
-};
-
-const buildRpc = async (method, input) => {
-  const response = await fetch(`${buildUrl}/rpc`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ method, input })
-  });
-  const payload = await response.json().catch(() => {
-    throw new Error(`build ${method}: response was not JSON`);
-  });
-  if (!response.ok || !payload.ok) {
-    throw new Error(`build ${method}: ${payload.error ?? response.statusText}`);
-  }
-  return payload.value;
-};
-
-const check = async (name, fn) => {
-  const startedAt = Date.now();
-  try {
-    const details = await fn();
-    results.push({ name, ok: true, ms: Date.now() - startedAt, details });
-  } catch (error) {
-    results.push({
-      name,
-      ok: false,
-      ms: Date.now() - startedAt,
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-};
-
-const assert = (condition, message) => {
-  if (!condition) {
-    throw new Error(message);
-  }
-};
-
-const assertArray = (value, message) => {
-  assert(Array.isArray(value), message);
-  return value;
-};
-
-const itemsFrom = (value, message) => {
-  if (Array.isArray(value)) {
-    return value;
-  }
-  if (Array.isArray(value?.items)) {
-    return value.items;
-  }
-  throw new Error(message);
-};
 
 let state;
 let snapshot;
@@ -95,7 +29,9 @@ let events;
 
 await check("plastic/state", async () => {
   state = await rpc("plastic/state");
+  const runtimeState = await runtimeGet("/state");
   assert(state && typeof state === "object", "plastic/state returned no object");
+  assert(runtimeState.value?.app?.name === "Plastic", "runtime /state did not return Plastic state");
   assert(state.app?.name === "Plastic", "state.app.name is not Plastic");
   const panelResources = Array.isArray(state.panels)
     ? state.panels
@@ -108,7 +44,10 @@ await check("plastic/state", async () => {
 
 await check("plastic/methods", async () => {
   methods = await rpc("plastic/methods");
+  const runtimeMethods = await runtimeGet("/methods");
   const items = assertArray(methods, "plastic/methods is not an array");
+  assertArray(runtimeMethods.value, "runtime /methods is not an array");
+  assert(runtimeMethods.value.length === items.length, "runtime /methods count mismatch");
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   for (const id of [
     "plastic/state",
@@ -272,10 +211,12 @@ await check("build/status", async () => {
 });
 
 await check("build HTTP transport", async () => {
+  const runtimeHealth = await runtimeGet("/healthz");
   const health = await buildGet("/healthz");
   const status = await buildGet("/status");
   const buildSnapshot = await buildGet("/snapshot");
   const diagnostics = await buildRpc("app/diagnostics", {});
+  assert(runtimeHealth.service === "plastic.runtime", "runtime /healthz returned wrong service");
   assert(health.service === "plastic.build", "build /healthz returned wrong service");
   assert(status.value?.status === "running", "build /status did not report running");
   assert(buildSnapshot.value?.app?.mode === state.app.mode, "build /snapshot mode mismatch");
