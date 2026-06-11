@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { access, rm } from "node:fs/promises";
 import {
   assert, assertArray, buildEventStream, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
   assertMethodDiscoveryParity, assertPanelLifecycleProjection,
@@ -440,6 +440,11 @@ await check("contract scaffold cleanup", async () => {
   assert(scaffoldedExtensionDir, "no scaffolded extension dir recorded");
   assert(scaffoldedExtensionId, "no scaffolded extension id recorded");
   await rm(scaffoldedExtensionDir, { recursive: true, force: true });
+  await access(scaffoldedExtensionDir)
+    .then(() => {
+      throw new Error("scaffolded extension dir still exists after cleanup");
+    })
+    .catch((error) => { if (error?.code !== "ENOENT") throw error; });
   const scan = await rpc("extensions/scan");
   const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
   assert(!discovered.some((extension) => extension.id === scaffoldedExtensionId), "scaffolded extension still discovered after cleanup");
