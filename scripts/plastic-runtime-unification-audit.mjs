@@ -50,11 +50,23 @@ for (const step of steps) {
   }
 }
 
+const byId = Object.fromEntries(results.map((result) => [result.id, result]));
+const failed = results.filter((result) => !result.ok);
+const blockingFailures = failed.filter((result) => result.id !== "electron").map((result) => result.id);
+const strictElectron = byId.electron?.ok ? "passed" : byId.electron ? "failed" : "not-run";
+const unified = byId.unified?.ok ? strictElectron === "passed" ? "passed" : "degraded" : byId.unified ? "failed" : "not-run";
+
 const summary = {
   ok: results.every((result) => result.ok) && results.length === steps.length,
   checks: results.length,
   expectedChecks: steps.length,
-  continuedAfterFailure: results.some((result) => !result.ok),
+  continuedAfterFailure: failed.length > 0,
+  runtimeUnification: {
+    usable: blockingFailures.length === 0 && byId.headless?.ok === true && byId.unified?.ok === true,
+    strictElectron,
+    unified,
+    blockingFailures
+  },
   results
 };
 
