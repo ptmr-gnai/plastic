@@ -16,6 +16,7 @@ import type {
 } from "./runtime-method-context.js";
 import { readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { runtimeHostBaseDescriptor } from "./runtime-host-status.js";
 
 type AgentOrientInput = {
   agentId?: string;
@@ -250,6 +251,7 @@ const buildCapabilities = async (input: {
   panelId: string | undefined;
   latestEventId: string | undefined;
 }) => ({
+  hostBase: runtimeHostBaseDescriptor,
   host: {
     count: input.capabilities.list().length,
     items: input.capabilities.list()

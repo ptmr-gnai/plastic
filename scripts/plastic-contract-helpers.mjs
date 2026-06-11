@@ -369,6 +369,7 @@ export const assertRuntimeStartedModuleInventory = async ({ rpc }) => {
 
 export const assertAgentWorkbenchPacket = ({ workbench, mode }) => {
   assert(workbench?.app?.mode === mode, "workbench app mode does not match state");
+  assert(workbench.app.hostBase?.id === "runtime-host-base" && workbench.app.hostBase?.version === 1, "workbench shared host base marker mismatch");
   assert(workbench.control?.methodCount >= 1, "workbench method count missing");
   assert(workbench.control.capabilities?.count >= 1, "workbench capabilities count missing");
   assertArray(workbench.control.capabilities.items, "workbench capabilities items missing");
@@ -413,10 +414,10 @@ export const assertAgentWorkbenchPacket = ({ workbench, mode }) => {
     visibleRefs: workbench.observability.visibleRefs?.length ?? 0
   };
 };
-
 export const assertAgentOrientationPacket = (orientation) => {
   assert(orientation?.agent?.id, "agent/orient missing agent id");
   assert(orientation.embodiment?.projectDir, "agent/orient missing projectDir");
+  assert(orientation.capabilities?.hostBase?.id === "runtime-host-base" && orientation.capabilities.hostBase?.version === 1, "agent/orient shared host base marker mismatch");
   assert(orientation.capabilities.host?.count >= 1, "agent/orient missing host capability count");
   assertArray(orientation.capabilities.host.items, "agent/orient host capabilities missing");
   assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
@@ -483,7 +484,6 @@ const moduleAvailabilityPairs = (items) =>
     id: module.id,
     availability: module.availability
   }));
-
 const capabilityPairs = (items) =>
   items.map((capability) => ({
     id: capability.id,

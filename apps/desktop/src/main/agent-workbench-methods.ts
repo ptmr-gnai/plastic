@@ -17,6 +17,7 @@ import type {
 } from "./runtime-method-context.js";
 import { readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { runtimeHostBaseDescriptor } from "./runtime-host-status.js";
 
 type AgentWorkbenchInput = {
   panelId?: string;
@@ -161,6 +162,7 @@ const buildApp = (host: AgentWorkbenchHost) => ({
   mode: host.mode,
   workspaceDir: host.workspaceDir,
   eventPath: host.eventPath,
+  hostBase: runtimeHostBaseDescriptor,
   runtime: host.getRuntimeStatus(),
   codex: host.getCodexStatus()
 });
