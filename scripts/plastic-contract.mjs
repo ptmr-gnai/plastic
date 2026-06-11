@@ -464,6 +464,8 @@ await check("events list/timeline", async () => {
 await check("plastic/selfTest", async () => {
   const selfTest = await rpc("plastic/selfTest");
   assert(selfTest.ok === true, "plastic/selfTest failed");
+  const methodCheck = selfTest.checks?.find((candidate) => candidate.id === "methods:list");
+  assert(methodCheck?.details?.missingAvailability?.length === 0, "plastic/selfTest method availability check failed");
   return {
     checks: selfTest.checks?.length ?? null
   };

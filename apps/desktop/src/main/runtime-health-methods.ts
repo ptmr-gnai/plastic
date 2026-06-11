@@ -45,8 +45,17 @@ export const createRuntimeHealthModule = (input: {
                 .catch((error) => checks.push({ id, ok: false, details: error instanceof Error ? error.message : String(error) }));
 
             const events = await runPromise(eventStore.list());
+            const methodList = await runPromise(methods.list());
             await record("event-store:list", () => ({ count: events.length }));
-            await record("methods:list", async () => ({ count: (await runPromise(methods.list())).length }));
+            await record("methods:list", () => {
+              const missingAvailability = methodList
+                .filter((method) => !method.availability?.status)
+                .map((method) => method.id);
+              if (missingAvailability.length > 0) {
+                throw new Error(`Methods missing availability: ${missingAvailability.join(", ")}`);
+              }
+              return { count: methodList.length, missingAvailability };
+            });
             await record("panels:project", () => ({ count: projectPanels(events).length }));
             await record("windows:project", () => ({ count: projectWindows(events).length }));
             await record("extensions:project", () => ({ count: projectExtensions(events).length }));
