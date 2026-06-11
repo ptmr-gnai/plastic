@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -67,6 +67,7 @@ const runWithTimeout = (command, args, timeoutMs, options = {}) =>
         `stdout: ${stdout.trim() || "<empty>"}`,
         `stderr: ${stderr.trim() || "<empty>"}`
       ];
+      details.push(...(options.failureDetails?.(child) ?? []));
       return new Error(details.join("\n"));
     };
     const timeout = setTimeout(() => {
@@ -107,6 +108,33 @@ const runCaptured = (command, args, options = {}) =>
     });
   });
 
+const syncCommand = (command, args) => {
+  try {
+    return execFileSync(command, args, { encoding: "utf8" }).trim() || "<empty>";
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+};
+
+const matchingProcessLines = (pattern) =>
+  syncCommand("ps", ["-axo", "pid,ppid,state,etime,command"])
+    .split("\n")
+    .filter((line) => pattern.test(line))
+    .join("\n") || "<none>";
+
+const electronPreflightFailureDetails = ({ child, electronExecutable, probeDir }) => {
+  if (process.platform === "win32") {
+    return [`electronExecutable: ${electronExecutable}`, `probeDir: ${probeDir}`];
+  }
+  return [
+    `electronExecutable: ${electronExecutable}`,
+    `electronChildPid: ${child.pid ?? "unknown"}`,
+    `probeDir: ${probeDir}`,
+    `childProcess:\n${child.pid ? syncCommand("ps", ["-p", String(child.pid), "-o", "pid,ppid,state,etime,command"]) : "<no pid>"}`,
+    `matchingElectronProcesses:\n${matchingProcessLines(/Electron|electron/)}`
+  ];
+};
+
 const runElectronPreflight = async () => {
   const electronExecutable = desktopRequire("electron");
   console.log(`[plastic:validate-hosts] electron preflight ${electronExecutable}`);
@@ -135,7 +163,8 @@ const runElectronPreflight = async () => {
       env: {
         ...process.env,
         ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1"
-      }
+      },
+      failureDetails: (child) => electronPreflightFailureDetails({ child, electronExecutable, probeDir })
     });
   } finally {
     await rm(probeDir, { force: true, recursive: true });
