@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import type { PlasticMethod } from "@plastic/core";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
@@ -6,6 +7,14 @@ type RuntimeModuleSummary = {
   id: string;
   order: number;
   methodIds?: string[];
+};
+
+type RuntimeModuleAvailabilitySummary = {
+  available: number;
+  degraded: number;
+  unavailable: number;
+  requiredCapabilities: string[];
+  missingCapabilities: string[];
 };
 
 export const createRuntimeModulesModule = (getModules: () => RuntimeModuleSummary[]): RuntimeModule => ({
@@ -31,11 +40,44 @@ export const createRuntimeModulesModule = (getModules: () => RuntimeModuleSummar
         ],
         effects: readOnlyEffects,
         reversibility: readOnlyReversibility,
-        handler: () => Effect.succeed({
-          count: getModules().length,
-          items: getModules()
-        })
+        handler: () =>
+          Effect.promise(async () => {
+            const registeredMethods = await runPromise(methods.list());
+            const items = getModules().map((module) => ({
+              ...module,
+              availability: summarizeModuleAvailability(module, registeredMethods)
+            }));
+            return {
+              count: items.length,
+              items
+            };
+          })
       })
     );
   }
 });
+
+const summarizeModuleAvailability = (
+  module: RuntimeModuleSummary,
+  methods: PlasticMethod[]
+): RuntimeModuleAvailabilitySummary => {
+  const moduleMethods = methods.filter((method) => module.methodIds?.includes(method.id));
+  const requiredCapabilities = new Set<string>();
+  const missingCapabilities = new Set<string>();
+  const counts = { available: 0, degraded: 0, unavailable: 0 };
+  for (const method of moduleMethods) {
+    const status = method.availability?.status ?? "unavailable";
+    counts[status] += 1;
+    for (const capability of method.availability?.requiredCapabilities ?? []) {
+      requiredCapabilities.add(capability);
+    }
+    for (const capability of method.availability?.missingCapabilities ?? []) {
+      missingCapabilities.add(capability);
+    }
+  }
+  return {
+    ...counts,
+    requiredCapabilities: [...requiredCapabilities].sort(),
+    missingCapabilities: [...missingCapabilities].sort()
+  };
+};

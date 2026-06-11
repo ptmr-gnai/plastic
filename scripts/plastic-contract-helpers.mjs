@@ -275,6 +275,10 @@ export const assertMatchingModuleInventories = ({ live, durable }) => {
     JSON.stringify(moduleMethodPairs(live.items)) === JSON.stringify(moduleMethodPairs(durable.items)),
     "runtime/modules live and durable method contributions diverged"
   );
+  assert(
+    JSON.stringify(moduleAvailabilityPairs(live.items)) === JSON.stringify(moduleAvailabilityPairs(durable.items)),
+    "runtime/modules live and durable availability summaries diverged"
+  );
 };
 
 export const assertRuntimeStartedModuleInventory = async ({ rpc }) => {
@@ -305,6 +309,13 @@ const assertModuleMethodMap = (items, source) => {
   assert(byId["runtime-control"]?.methodIds.includes("plastic/methods"), `${source} runtime-control missing plastic/methods`);
   assert(byId["panel-control"]?.methodIds.includes("panels/create"), `${source} panel-control missing panels/create`);
   assert(byId["runtime-modules"]?.methodIds.includes("runtime/modules"), `${source} runtime-modules missing runtime/modules`);
+  for (const module of items) {
+    assert(typeof module.availability?.available === "number", `${source} ${module.id} missing available count`);
+    assert(typeof module.availability?.degraded === "number", `${source} ${module.id} missing degraded count`);
+    assert(typeof module.availability?.unavailable === "number", `${source} ${module.id} missing unavailable count`);
+    assert(Array.isArray(module.availability.requiredCapabilities), `${source} ${module.id} missing required capabilities`);
+    assert(Array.isArray(module.availability.missingCapabilities), `${source} ${module.id} missing missing capabilities`);
+  }
 };
 
 const moduleMethodPairs = (items) =>
@@ -312,6 +323,12 @@ const moduleMethodPairs = (items) =>
     id: module.id,
     order: module.order,
     methodIds: module.methodIds
+  }));
+
+const moduleAvailabilityPairs = (items) =>
+  items.map((module) => ({
+    id: module.id,
+    availability: module.availability
   }));
 
 export const itemsFrom = (value, message) => {
