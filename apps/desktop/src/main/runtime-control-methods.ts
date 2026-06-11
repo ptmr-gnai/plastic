@@ -176,6 +176,45 @@ const registerEventAppend = async (input: {
       description: "Appends a durable event to the Plastic event stream.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: runtimeControlAvailability,
+      inputSchema: {
+        type: "object",
+        properties: {
+          type: { type: "string", description: "Durable event type. Defaults to event.appended." },
+          payload: { type: "object", description: "JSON payload to store with the event." },
+          scope: {
+            type: "object",
+            description: "Optional workspace, window, panel, extension, agent, or project scope for the event.",
+            properties: {
+              workspaceId: { type: "string" },
+              windowId: { type: "string" },
+              panelId: { type: "string" },
+              extensionId: { type: "string" },
+              agentId: { type: "string" },
+              projectDir: { type: "string" }
+            }
+          }
+        }
+      },
+      examples: [
+        {
+          title: "Record a durable agent note",
+          input: {
+            type: "agent.note.created",
+            payload: { body: "Remember this observation." },
+            scope: { agentId: "agent:chat-main" }
+          },
+          expectedEvents: ["agent.note.created"],
+          verifyWith: { method: "events/list", input: { type: "agent.note.created", limit: 1 } }
+        }
+      ],
+      effects: {
+        durableEvents: ["<input.type>"],
+        mutatesProjection: ["events"]
+      },
+      reversibility: {
+        reversible: false,
+        notes: "The event log is append-only; compensate by appending another event."
+      },
       handler: (methodInput) =>
         Effect.promise(async () => {
           const eventInput = methodInput as {
