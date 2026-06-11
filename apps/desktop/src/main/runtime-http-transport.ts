@@ -93,6 +93,30 @@ export const handleHttpRpc = async (input: {
   }
 };
 
+export const handleHttpMethodGet = async (input: {
+  corsOrigin: string;
+  methodByPath: Record<string, string>;
+  methods: MethodRegistry;
+  request: IncomingMessage;
+  response: ServerResponse;
+  runPromise: RunPromise;
+}) => {
+  const method = input.request.method === "GET" ? input.methodByPath[input.request.url ?? ""] : undefined;
+  if (!method) {
+    return false;
+  }
+  try {
+    const value = await input.runPromise(input.methods.call(method, {}));
+    sendJson(input.response, 200, { ok: true, value }, input.corsOrigin);
+  } catch (error) {
+    sendJson(input.response, 500, {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    }, input.corsOrigin);
+  }
+  return true;
+};
+
 export const startRuntimeHttpTransport = async (input: {
   eventStore: EventStore;
   methods: MethodRegistry;
@@ -182,19 +206,17 @@ const handleRuntimeGet = async (context: {
     sendJson(response, 200, { ok: true, service: "plastic.runtime" }, corsOrigin);
     return true;
   }
-  if (request.url === "/state") {
-    const state = await input.runPromise(input.methods.call("plastic/state", {}));
-    sendJson(response, 200, { ok: true, value: state }, corsOrigin);
-    return true;
-  }
-  if (request.url === "/methods") {
-    const value = await input.runPromise(input.methods.call("plastic/methods", {}));
-    sendJson(response, 200, { ok: true, value }, corsOrigin);
-    return true;
+  if (runtimeMethodByPath[request.url ?? ""]) {
+    return handleHttpMethodGet({ corsOrigin, methodByPath: runtimeMethodByPath, methods: input.methods, request, response, runPromise: input.runPromise });
   }
   if (request.url === "/events/stream") {
     handleHttpEventStream({ corsOrigin, eventStreamClients, request, response });
     return true;
   }
   return false;
+};
+
+const runtimeMethodByPath: Record<string, string> = {
+  "/methods": "plastic/methods",
+  "/state": "plastic/state"
 };
