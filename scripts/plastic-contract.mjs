@@ -7,6 +7,7 @@ import {
 } from "./plastic-contract-helpers.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
+import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
 import {
   agentBackendMethodExpectationsForMode,
@@ -158,6 +159,10 @@ await check("runtime/capabilities", async () => {
   const description = await rpc("methods/describe", { id: "runtime/capabilities" });
   assert(description.availability?.status === "available", "runtime/capabilities availability mismatch");
   return { live, durable, expectedStatuses: expectations };
+});
+
+await check("runtime/host", async () => {
+  return assertRuntimeHostSurface({ assert, assertArray, rpc, mode: state.app.mode, runtimeStartedControlPlane, assertMatchingControlPlaneDescriptors });
 });
 
 await check("runtime/modules", async () => {

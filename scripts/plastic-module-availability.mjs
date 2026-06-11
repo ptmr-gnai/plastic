@@ -15,6 +15,7 @@ export const expectedRuntimeModuleIds = [
   "runtime-health",
   "extension-runtime",
   "panel-mailbox",
+  "runtime-host",
   "runtime-modules"
 ];
 

@@ -75,6 +75,7 @@ const headlessDiagnostics = hostStatus.diagnostics;
 const supportModules = createRuntimeHostSupportModules({
   plasticDir,
   getBuildStatus: buildStatus,
+  getHost: hostStatus.host,
   runCommand: runLocalCommand,
   getDiagnostics: () => headlessDiagnostics()
 });

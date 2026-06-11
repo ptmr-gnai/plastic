@@ -75,6 +75,7 @@ export const expectedMethodIds = [
   "renderer/reload",
   "rpc/call",
   "runtime/capabilities",
+  "runtime/host",
   "runtime/modules",
   "windows/create",
   "windows/focusPanel",

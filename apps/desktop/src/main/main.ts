@@ -201,6 +201,7 @@ const agentModules = createRuntimeHostAgentModules({
 const supportModules = createRuntimeHostSupportModules({
   plasticDir,
   getBuildStatus: buildStatus,
+  getHost: hostStatus.host,
   runCommand: runLocalCommand,
   getDiagnostics: hostStatus.diagnostics
 });

@@ -7,6 +7,7 @@ import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-b
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createSnapshotAppDetails, decorateRuntimeState } from "./runtime-host-status.js";
 import type { createRuntimeHostConfig } from "./runtime-host-config.js";
+import { createRuntimeHostModule } from "./runtime-host-methods.js";
 import type { RuntimeModulePlanInput } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
@@ -80,9 +81,14 @@ export const createRuntimeHostCapabilityModules = (input: {
 export const createRuntimeHostSupportModules = (input: {
   plasticDir: string;
   getBuildStatus: () => unknown;
+  getHost: () => Record<string, unknown>;
   runCommand: (command: string, args: string[]) => Promise<RuntimeCommandResult>;
   getDiagnostics: () => unknown;
 }) => ({
+  host: createRuntimeHostModule({
+    getHost: input.getHost,
+    getDiagnostics: input.getDiagnostics
+  }),
   build: createRuntimeBuildModule({
     getStatus: input.getBuildStatus,
     runCommand: input.runCommand
@@ -112,5 +118,6 @@ export const createRuntimeHostStartupModules = (input: {
   windowCapability: input.capability.windowCapability,
   deixis: input.capability.deixis,
   ...(input.agentBackend !== undefined ? { agentBackend: input.agentBackend } : {}),
-  health: input.health
+  health: input.health,
+  tailModules: [input.support.host]
 });

@@ -53,7 +53,8 @@ export const registerCoreRuntimeModulesAtStartup = async (input: CoreRuntimeStar
         await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });
       }
     },
-    panelMailboxModule
+    panelMailboxModule,
+    ...(planInput.tailModules ?? [])
   ];
 
   return registerRuntimeModulePlan({

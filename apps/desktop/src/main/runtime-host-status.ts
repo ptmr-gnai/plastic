@@ -37,6 +37,33 @@ export const createRuntimeBuildStatus = (
   };
 };
 
+export const createRuntimeHostDescriptor = (
+  input: {
+    config: RuntimeHostConfig;
+    mode: RuntimeMode;
+    service: string;
+    startedAt: string;
+    runtimeRpcUrl: string;
+  } & Record<string, unknown>
+) => {
+  const { config, mode, service, startedAt, runtimeRpcUrl, ...extra } = input;
+  return {
+    service,
+    mode,
+    status: "running",
+    workspaceDir: config.workspaceDir,
+    plasticDir: config.plasticDir,
+    dataDir: config.runtimePaths.dataDir,
+    eventPath: config.eventPath,
+    runtimeRpcUrl,
+    controlPlane: config.controlPlane,
+    hostBase: runtimeHostBaseDescriptor,
+    pid: process.pid,
+    startedAt,
+    ...extra
+  };
+};
+
 export const createRuntimeDiagnostics = (
   input: {
     config: RuntimeHostConfig;
@@ -63,6 +90,14 @@ export const createRuntimeHostStatusAccessors = (input: {
   getBuildStatusExtra?: () => Record<string, unknown>;
   getDiagnosticsExtra?: () => Record<string, unknown>;
 }) => ({
+  host: () =>
+    createRuntimeHostDescriptor({
+      config: input.config,
+      mode: input.mode,
+      service: input.service,
+      startedAt: input.startedAt,
+      runtimeRpcUrl: input.runtimeRpcUrl
+    }),
   buildStatus: () =>
     createRuntimeBuildStatus({
       config: input.config,

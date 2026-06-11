@@ -463,7 +463,7 @@ The first unification pass is substantially complete:
 - `createRuntimeHostBase` creates shared host config/status, workspace command helpers, git status, runtime construction, and durable `runtime.started` base payload.
 - Electron and headless both use shared runtime modules for state, snapshot, agent workbench/orientation, build, diagnostics, extension authoring/runtime, renderer/window/deixis capability-backed methods, runtime control, panel control, panel mailbox, runtime modules, and health.
 - The runtime/build HTTP transports share request helpers, RPC dispatch, method GET dispatch, SSE event streams, CORS behavior, and error envelopes.
-- `runtime/capabilities`, `methods/describe`, `runtime/modules`, `agent/workbench`, `agent/orient`, `plastic/state`, and `plastic/snapshot` expose enough host/capability metadata for agents to learn which methods are available, degraded, or unavailable.
+- `runtime/host`, `runtime/capabilities`, `methods/describe`, `runtime/modules`, `agent/workbench`, `agent/orient`, `plastic/state`, and `plastic/snapshot` expose enough host/capability metadata for agents to learn which methods are available, degraded, or unavailable.
 - The shared contract harness validates headless end to end, including state, methods, snapshot, capabilities, modules, panel lifecycle, extension scan/list, event streams, HTTP error contracts, build HTTP surfaces, and self-test.
 
 The current validation blocker is below Plastic code: in this automation environment, the Electron binary can report its version, but a minimal Electron app-main preflight times out before the Plastic main process starts. Until that is fixed, headed validation cannot run the same contract even though the Electron host code uses the shared runtime assembly.
