@@ -47,6 +47,7 @@ export const createRuntimeHostBase = async (input: {
     startedPayload: (extra: Record<string, unknown> = {}) => ({
       hostBase: runtimeHostBaseDescriptor,
       mode: input.mode,
+      host: hostStatus.host(),
       ...extra
     })
   };

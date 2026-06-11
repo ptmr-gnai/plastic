@@ -247,7 +247,7 @@ export const assertRuntimeModuleInventory = async ({ rpc }) => {
     "runtime-state", "runtime-snapshot", "agent-workbench", "agent-orient", "runtime-build",
     "runtime-diagnostics", "extension-authoring", "renderer-control", "runtime-control",
     "panel-control", "window-capability", "deixis", "runtime-health", "extension-runtime", "panel-mailbox",
-    "runtime-modules"
+    "runtime-host", "runtime-modules"
   ]) {
     assert(ids.includes(id), `runtime/modules missing ${id}`);
   }
@@ -359,7 +359,7 @@ export const assertRuntimeStartedModuleInventory = async ({ rpc }) => {
   assert(Array.isArray(modules), "runtime.started missing module inventory");
   assert(latest.payload?.beforeStarted === undefined, "runtime.started should not expose beforeStarted side-channel state");
   const ids = modules.map((module) => module.id);
-  for (const id of ["runtime-state", "runtime-control", "extension-runtime", "panel-mailbox", "runtime-modules"]) {
+  for (const id of ["runtime-state", "runtime-control", "extension-runtime", "panel-mailbox", "runtime-host", "runtime-modules"]) {
     assert(ids.includes(id), `runtime.started module inventory missing ${id}`);
   }
   assert(ids.includes("agent-backend"), "runtime.started module inventory missing agent-backend");
