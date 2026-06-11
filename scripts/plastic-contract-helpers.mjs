@@ -251,7 +251,8 @@ export const assertRuntimeModuleInventory = async ({ rpc }) => {
   for (const id of [
     "runtime-state", "runtime-snapshot", "agent-workbench", "agent-orient", "runtime-build",
     "runtime-diagnostics", "extension-authoring", "renderer-control", "runtime-control",
-    "panel-control", "window-capability", "deixis", "runtime-health", "extension-runtime", "panel-mailbox"
+    "panel-control", "window-capability", "deixis", "runtime-health", "extension-runtime", "panel-mailbox",
+    "runtime-modules"
   ]) {
     assert(ids.includes(id), `runtime/modules missing ${id}`);
   }
@@ -261,6 +262,14 @@ export const assertRuntimeModuleInventory = async ({ rpc }) => {
   );
   assert(items.every((module, index) => module.order === index), "runtime/modules order is not stable");
   return { count: modules.count, ids };
+};
+
+export const assertMatchingModuleInventories = ({ live, durable }) => {
+  assert(live.count === durable.count, "runtime/modules live and durable counts diverged");
+  assert(
+    JSON.stringify(live.ids) === JSON.stringify(durable.ids),
+    "runtime/modules live and durable ids diverged"
+  );
 };
 
 export const assertRuntimeStartedModuleInventory = async ({ rpc }) => {

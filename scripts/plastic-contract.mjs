@@ -1,7 +1,8 @@
 import {
   assert, assertArray, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
   assertMethodDiscoveryParity, assertPanelLifecycleProjection, assertRpcCallDispatch, assertRuntimeModuleInventory,
-  assertRuntimeStartedModuleInventory, itemsFrom, rawRuntimeRequest, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
+  assertRuntimeStartedModuleInventory, assertMatchingModuleInventories, itemsFrom, rawRuntimeRequest, results, rpc, rpcUrl,
+  runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 
 const runId = `contract-${Date.now()}`;
@@ -122,6 +123,7 @@ await check("runtime/capabilities", async () => {
 await check("runtime/modules", async () => {
   const live = await assertRuntimeModuleInventory({ rpc });
   const durable = await assertRuntimeStartedModuleInventory({ rpc });
+  assertMatchingModuleInventories({ live, durable });
   return { live, durable };
 });
 

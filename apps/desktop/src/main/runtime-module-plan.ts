@@ -42,15 +42,18 @@ export const createRuntimeModulePlan = (input: RuntimeModulePlanInput): RuntimeM
     health,
     ...(input.tailModules ?? [])
   ].filter((module): module is RuntimeModule => Boolean(module));
-  return [
+  let allModules: RuntimeModule[] = [];
+  const runtimeModulesModule = createRuntimeModulesModule(() =>
+    allModules.map((module, index) => ({
+      id: module.id,
+      order: index
+    }))
+  );
+  allModules = [
     ...modules,
-    createRuntimeModulesModule(() =>
-      modules.map((module, index) => ({
-        id: module.id,
-        order: index
-      }))
-    )
+    runtimeModulesModule
   ];
+  return allModules;
 };
 
 export const registerRuntimeModulePlan = (
