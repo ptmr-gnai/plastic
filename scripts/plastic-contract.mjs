@@ -5,11 +5,11 @@ import {
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
   assertMatchingModuleInventories, itemsFrom, rawRuntimeRequest, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
+import { expectedMethodIds, methodSurfaceDiff } from "./plastic-contract-method-surface.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
-const expectedMethodCount = Number(process.env.PLASTIC_EXPECTED_METHOD_COUNT ?? 82);
 const backendMethodIds = [
   "codex/status", "codex/defaults", "codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList",
   "bridge/configurePlasticMcp", "bridge/status", "bridge/test", "bridge/callPlasticRpcTool", "chats/getBinding", "chats/startCodexThread", "chats/createCodexChat", "chats/interrupt", "chats/sendToCodex"
@@ -47,24 +47,17 @@ await check("plastic/methods", async () => {
   const items = assertArray(methods, "plastic/methods is not an array");
   const runtimeItems = assertArray(runtimeMethods.value, "runtime /methods is not an array");
   assert(runtimeItems.length === items.length, "runtime /methods count mismatch");
-  assert(items.length === expectedMethodCount, `expected ${expectedMethodCount} methods, got ${items.length}`);
   const methodIds = items.map((method) => method.id).sort();
+  assert(
+    JSON.stringify(methodIds) === JSON.stringify(expectedMethodIds),
+    `method id surface changed: ${methodSurfaceDiff(methodIds, expectedMethodIds)}`
+  );
   const runtimeMethodIds = runtimeItems.map((method) => method.id).sort();
   assert(JSON.stringify(runtimeMethodIds) === JSON.stringify(methodIds), "runtime /methods ids diverged from plastic/methods");
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   for (const method of items.slice(0, 12)) {
     assert(method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id), `${method.id} missing describe link`);
     assert(method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id), `${method.id} missing invoke link`);
-  }
-  for (const id of [
-    "plastic/state", "plastic/methods", "methods/describe", "rpc/call", "runtime/capabilities", "runtime/modules", "agent/orient",
-    ...backendMethodIds,
-    "panels/create", "extensions/list", "extensions/scaffold", "build/status", "app/diagnostics",
-    "renderer/reload", "windows/list", "windows/create", "windows/focusPanel", "windows/scrollToRef",
-    "windows/screenshot", "deixis/listVisibleRefs", "deixis/resolveRef", "deixis/evalDom", "deixis/clickRef",
-    "deixis/fillRef", "deixis/verifyRefAction", "events/append", "events/list", "events/timeline", "plastic/selfTest"
-  ]) {
-    assert(items.some((method) => method.id === id), `missing method ${id}`);
   }
   return { count: items.length };
 });
