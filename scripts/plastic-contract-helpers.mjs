@@ -166,10 +166,24 @@ export const assertReadMethodLegibility = ({ methods, ids }) => {
   }
 };
 
+export const assertPassthroughMethodLegibility = ({ methods, ids }) => {
+  const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
+  for (const id of ids) {
+    const method = byId[id];
+    assert(method, `plastic/methods missing ${id}`);
+    assert(method.description, `${id} missing description`);
+    assert(method.inputSchema, `${id} missing inputSchema`);
+    assert(Array.isArray(method.examples) && method.examples.length > 0, `${id} missing examples`);
+    assert(Array.isArray(method.effects?.durableEvents), `${id} missing durable event effects`);
+    assert(Array.isArray(method.effects?.mutatesProjection), `${id} missing projection effects`);
+    assert(method.reversibility?.reversible === false, `${id} should describe delegated reversibility`);
+  }
+};
+
 export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }) => {
   assertMethodLegibility({
     methods,
-    ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append", "plastic/selfTest", "build/typecheck", "extensions/scan", "extensions/scaffold", "extensions/activate", "extensions/verify", "extensions/verifyAll", "extensions/registerPanel", "extensions/forkBundled", "panels/sendMessage", "panels/markMessageRead", "chats/createCodexChat", "chats/sendToCodex"]
+    ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append", "plastic/selfTest", "build/typecheck", "extensions/scan", "extensions/scaffold", "extensions/activate", "extensions/verify", "extensions/verifyAll", "extensions/registerPanel", "extensions/forkBundled", "panels/sendMessage", "panels/markMessageRead", "chats/createCodexChat", "chats/sendToCodex", "codex/setDefaults"]
   });
   assertReadMethodLegibility({ methods, ids: ["events/list", "events/timeline"] });
   assertReadMethodLegibility({ methods, ids: ["plastic/methods", "methods/describe", "runtime/capabilities"] });
@@ -180,6 +194,8 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["extensions/verificationStatus"] });
   assertReadMethodLegibility({ methods, ids: ["panels/listMessages", "panels/mailboxes"] });
   assertReadMethodLegibility({ methods, ids: ["chats/getBinding"] });
+  assertReadMethodLegibility({ methods, ids: ["codex/status", "codex/defaults"] });
+  assertPassthroughMethodLegibility({ methods, ids: ["codex/request"] });
   const darkEvent = await rpc("app/setTheme", { theme: "dark" });
   assert(darkEvent?.type === "theme.changed", "app/setTheme did not append theme.changed");
   const darkState = await rpc("plastic/state");

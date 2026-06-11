@@ -10,6 +10,12 @@ import {
   fallbackCreateCodexChatMetadata,
   fallbackSendToCodexMetadata
 } from "./chat-method-metadata.js";
+import {
+  codexDefaultsMetadata,
+  codexRequestMetadata,
+  codexSetDefaultsMetadata,
+  codexStatusMetadata
+} from "./codex-backend-method-metadata.js";
 
 type ChatInput = {
   chatId?: string;
@@ -26,14 +32,15 @@ type UnavailableMethodDefinition = {
   id: string;
   title: string;
   description?: string;
+  metadata?: Record<string, unknown>;
 };
 
 const unavailableCodexMethods: UnavailableMethodDefinition[] = [
-  { id: "codex/defaults", title: "Get Codex defaults" },
-  { id: "codex/setDefaults", title: "Set Codex defaults" },
+  { id: "codex/defaults", title: "Get Codex defaults", metadata: codexDefaultsMetadata },
+  { id: "codex/setDefaults", title: "Set Codex defaults", metadata: codexSetDefaultsMetadata },
   { id: "codex/connect", title: "Connect Codex app-server" },
   { id: "codex/initialize", title: "Initialize Codex app-server" },
-  { id: "codex/request", title: "Raw Codex request" },
+  { id: "codex/request", title: "Raw Codex request", metadata: codexRequestMetadata },
   { id: "codex/threadStart", title: "Start Codex thread" },
   { id: "codex/threadResume", title: "Resume Codex thread" },
   { id: "codex/threadFork", title: "Fork Codex thread" },
@@ -79,9 +86,9 @@ const registerCodexStatus = async (context: RuntimeMethodContext, availability: 
     context.methods.register({
       id: "codex/status",
       title: "Codex status",
-      description: "Returns Codex backend availability for this Plastic host.",
       owner: { kind: "runtime", id: "plastic.agent-backend" },
       availability,
+      ...codexStatusMetadata,
       handler: () => Effect.succeed({
         connected: false,
         initialized: false,
@@ -186,6 +193,7 @@ const registerUnavailableCodexMethods = async (context: RuntimeMethodContext, av
         description: definition.description ?? "Codex app-server passthrough is unavailable in this host.",
         owner: { kind: "runtime", id: "plastic.agent-backend" },
         availability,
+        ...(definition.metadata ?? {}),
         handler: () => Effect.promise(async () => {
           throw new Error(`${definition.id} is unavailable: missing agent.codex capability`);
         })

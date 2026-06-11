@@ -1,6 +1,12 @@
 import { Effect } from "effect";
 import type { MethodRegistry } from "@plastic/core";
 import type { RunPromise } from "./runtime-method-context.js";
+import {
+  codexDefaultsMetadata,
+  codexRequestMetadata,
+  codexSetDefaultsMetadata,
+  codexStatusMetadata
+} from "./codex-backend-method-metadata.js";
 
 export const codexBackendAvailability = {
   status: "available" as const,
@@ -77,6 +83,7 @@ const registerCodexStatus = async (input: CodexCoreRegistrationInput) => {
       title: "Codex status",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
       availability: codexBackendAvailability,
+      ...codexStatusMetadata,
       handler: () => Effect.sync(input.status)
     })
   );
@@ -90,6 +97,7 @@ const registerCodexDefaults = async (input: CodexCoreRegistrationInput) => {
       description: "Returns Plastic's durable Codex adapter defaults used for new chat threads and turns.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
       availability: codexBackendAvailability,
+      ...codexDefaultsMetadata,
       handler: () => Effect.promise(input.getCodexDefaults)
     })
   );
@@ -103,6 +111,7 @@ const registerCodexSetDefaults = async (input: CodexCoreRegistrationInput) => {
       description: "Durably updates Plastic's Codex adapter defaults.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
       availability: codexBackendAvailability,
+      ...codexSetDefaultsMetadata,
       handler: (methodInput) =>
         Effect.promise(async () => {
           const payload = methodInput as { model?: string };
@@ -156,6 +165,7 @@ const registerCodexRequest = async (input: CodexCoreRegistrationInput) => {
       description: "Passthrough to any Codex app-server method. Params and result are preserved as-is.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
       availability: codexBackendAvailability,
+      ...codexRequestMetadata,
       handler: (methodInput) =>
         Effect.promise(async () => {
           await input.ensureInitialized();
