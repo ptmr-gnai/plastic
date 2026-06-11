@@ -19,6 +19,17 @@ if (!["all", "headless", "electron", "unified"].includes(validateScope)) {
 }
 
 let activeHost = null;
+let activeHostOutput = [];
+
+const rememberHostOutput = (source, chunk) => {
+  for (const line of chunk.toString().split(/\r?\n/)) {
+    if (!line) {
+      continue;
+    }
+    activeHostOutput.push(`[${source}] ${line}`);
+  }
+  activeHostOutput = activeHostOutput.slice(-120);
+};
 
 const run = (command, args, options = {}) =>
   new Promise((resolve, reject) => {
@@ -123,12 +134,21 @@ const runElectronPreflight = async () => {
 const startHost = (script) => {
   const child = spawn("node", [`scripts/${script}`], {
     cwd: desktopDir,
-    stdio: "inherit",
+    stdio: ["ignore", "pipe", "pipe"],
     shell: process.platform === "win32",
     env: {
       ...process.env,
       ...(script === "dev.mjs" ? { PLASTIC_DEV_EXIT_ON_ELECTRON_EXIT: "1" } : {})
     }
+  });
+  activeHostOutput = [];
+  child.stdout?.on("data", (chunk) => {
+    process.stdout.write(chunk);
+    rememberHostOutput("stdout", chunk);
+  });
+  child.stderr?.on("data", (chunk) => {
+    process.stderr.write(chunk);
+    rememberHostOutput("stderr", chunk);
   });
   activeHost = child;
   return child;
@@ -191,12 +211,18 @@ const collectHostDiagnostics = async (label) => {
     .split("\n")
     .filter((line) => /plastic-validate-hosts|apps\/desktop\/scripts\/dev|dev-headless|tsc -p tsconfig\.node|vite --host|Electron|electron/.test(line))
     .join("\n");
+  const startupHint = label === "electron" && !activeHostOutput.some((line) => line.includes("[plastic:startup]"))
+    ? "electronStartupHint: Electron process launched, but no Plastic main-process startup logs were observed."
+    : null;
   return [
     `[plastic:validate-hosts] ${label} diagnostics`,
     `activeHostPid: ${activeHost?.pid ?? "none"}`,
     `activeHostExit: ${activeHost?.exitCode ?? "running"}`,
+    startupHint,
     "matching processes:",
     processLines || "<none>",
+    "recent host output:",
+    activeHostOutput.join("\n") || "<empty>",
     capturedText(runtimePortState),
     capturedText(buildPortState)
   ].join("\n");
