@@ -4,6 +4,7 @@ import {
   selectEvents,
   type EventListInput,
   type EventStore,
+  type PlasticMethod,
   type MethodRegistry,
   type TimelineInput
 } from "@plastic/core";
@@ -109,7 +110,7 @@ const registerMethodDiscovery = async (input: {
       ],
       effects: readOnlyEffects,
       reversibility: readOnlyReversibility,
-      handler: () => methods.list()
+      handler: () => Effect.map(methods.list(), (items) => items.map(enrichDiscoveredMethod))
     })
   );
 
@@ -145,11 +146,20 @@ const registerMethodDiscovery = async (input: {
           if (!method) {
             throw new Error(`Method not found: ${id}`);
           }
-          return method;
+          return enrichDiscoveredMethod(method);
         })
     })
   );
 };
+
+const enrichDiscoveredMethod = (method: PlasticMethod): PlasticMethod => ({
+  ...method,
+  links: [
+    ...(method.links ?? []),
+    { rel: "describe", href: "methods/describe", method: "methods/describe", target: method.id },
+    { rel: "invoke", href: "rpc/call", method: "rpc/call", target: method.id }
+  ]
+});
 
 const registerRpcCall = async (input: {
   methods: MethodRegistry;

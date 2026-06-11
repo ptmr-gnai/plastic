@@ -52,6 +52,10 @@ await check("plastic/methods", async () => {
   const runtimeMethodIds = runtimeItems.map((method) => method.id).sort();
   assert(JSON.stringify(runtimeMethodIds) === JSON.stringify(methodIds), "runtime /methods ids diverged from plastic/methods");
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
+  for (const method of items.slice(0, 12)) {
+    assert(method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id), `${method.id} missing describe link`);
+    assert(method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id), `${method.id} missing invoke link`);
+  }
   for (const id of [
     "plastic/state", "plastic/methods", "methods/describe", "rpc/call", "runtime/capabilities", "runtime/modules", "agent/orient",
     ...backendMethodIds,
@@ -93,6 +97,8 @@ await check("methods/describe", async () => {
   const description = await rpc("methods/describe", { id: "panels/create" });
   assert(description.id === "panels/create", "described wrong method");
   assert(description.owner?.id, "method owner missing");
+  assert(description.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === description.id), "described method missing describe link");
+  assert(description.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === description.id), "described method missing invoke link");
   return { id: description.id, owner: description.owner, availability: description.availability?.status ?? "unspecified" };
 });
 
