@@ -5,8 +5,8 @@ import {
   buildRpc,
   buildUrl,
   check,
+  assertControlLegibilityAndThemeProjection,
   assertMethodDiscoveryParity,
-  assertMethodLegibility,
   itemsFrom,
   rawRuntimeRequest,
   results,
@@ -109,9 +109,8 @@ await check("method discovery parity", async () => {
   return { sampled: sampleIds.length };
 });
 
-await check("method legibility metadata", async () => {
-  assertMethodLegibility({ methods, ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme"] });
-  return { methods: 5 };
+await check("control method legibility and theme projection", async () => {
+  return assertControlLegibilityAndThemeProjection({ methods, rpc });
 });
 
 await check("runtime/capabilities", async () => {

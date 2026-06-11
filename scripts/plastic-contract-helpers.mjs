@@ -150,6 +150,19 @@ export const assertMethodLegibility = ({ methods, ids }) => {
   }
 };
 
+export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }) => {
+  assertMethodLegibility({ methods, ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme"] });
+  const darkEvent = await rpc("app/setTheme", { theme: "dark" });
+  assert(darkEvent?.type === "theme.changed", "app/setTheme did not append theme.changed");
+  const darkState = await rpc("plastic/state");
+  assert(darkState.app?.theme === "dark", "dark theme did not project into plastic/state");
+  const lightEvent = await rpc("app/setTheme", { theme: "light" });
+  assert(lightEvent?.type === "theme.changed", "app/setTheme light did not append theme.changed");
+  const lightState = await rpc("plastic/state");
+  assert(lightState.app?.theme === "light", "light theme did not project into plastic/state");
+  return { methods: 5, events: [darkEvent.id, lightEvent.id], theme: lightState.app.theme };
+};
+
 export const itemsFrom = (value, message) => {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.items)) return value.items;
