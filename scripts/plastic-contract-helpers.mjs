@@ -1,4 +1,5 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
+import { capabilityExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
 export const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
@@ -272,6 +273,16 @@ export const assertRuntimeCapabilityInventory = async ({ rpc }) => {
   }
   assert(items.every((capability) => ["available", "degraded", "unavailable"].includes(capability.status)), "runtime/capabilities has invalid status");
   return { count: capabilities.count, ids, items };
+};
+
+export const assertCapabilityStatuses = ({ items, mode }) => {
+  const byId = Object.fromEntries(items.map((capability) => [capability.id, capability]));
+  const expectations = capabilityExpectationsForMode(mode);
+  for (const [id, expectedStatus] of Object.entries(expectations)) {
+    assert(byId[id], `runtime/capabilities missing ${id}`);
+    assert(byId[id].status === expectedStatus, `${id} status mismatch: expected ${expectedStatus}, saw ${byId[id].status}`);
+  }
+  return expectations;
 };
 
 export const assertRuntimeStartedCapabilityInventory = async ({ rpc }) => {

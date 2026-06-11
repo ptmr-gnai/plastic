@@ -1,7 +1,7 @@
 import {
   assert, assertArray, buildEventStream, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
   assertAgentOrientationPacket, assertAgentWorkbenchPacket, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
-  assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
+  assertCapabilityStatuses, assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
   assertMatchingModuleInventories, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
@@ -140,13 +140,11 @@ await check("runtime/capabilities", async () => {
   const live = await assertRuntimeCapabilityInventory({ rpc });
   const durable = await assertRuntimeStartedCapabilityInventory({ rpc });
   assertMatchingCapabilityInventories({ live, durable });
-  const byId = Object.fromEntries(live.items.map((capability) => [capability.id, capability]));
-  const host = ["electron.window", "dom.refs", "dom.eval", "dom.input", "screenshot", "agent.codex"];
-  const expectedHostCapability = state.app.mode === "electron" ? "available" : "unavailable";
-  for (const id of host) assert(byId[id].status === expectedHostCapability, `${id} status mismatch`);
+  const expectations = assertCapabilityStatuses({ items: live.items, mode: state.app.mode });
+  assertCapabilityStatuses({ items: durable.items, mode: state.app.mode });
   const description = await rpc("methods/describe", { id: "runtime/capabilities" });
   assert(description.availability?.status === "available", "runtime/capabilities availability mismatch");
-  return { live, durable, hostCapabilityStatus: expectedHostCapability };
+  return { live, durable, expectedStatuses: expectations };
 });
 
 await check("runtime/modules", async () => {
