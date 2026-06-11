@@ -15,7 +15,7 @@ import type {
   RuntimeModule,
   RunPromise
 } from "./runtime-method-context.js";
-import { readRuntimeModules } from "./agent-runtime-modules.js";
+import { readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 
 type AgentWorkbenchInput = {
@@ -131,7 +131,17 @@ const buildWorkbench = async (input: {
       window: findFocusWindow(windowsModel, panelId, host.getFocusedElectronWindowId?.())
     },
     observability: buildObservability({ host, workbenchInput, events, panelId, extensionId: extension?.id, visibleRefs }),
-    control: await buildControl({ capabilities, host, methods, methodList, runPromise, workbenchInput, panelId, latestEventId: events.at(-1)?.id }),
+    control: await buildControl({
+      capabilities,
+      controlPlane: readRuntimeControlPlane(events),
+      host,
+      methods,
+      methodList,
+      runPromise,
+      workbenchInput,
+      panelId,
+      latestEventId: events.at(-1)?.id
+    }),
     workspace: { git: await host.readGitStatus() },
     obligations: {
       orientBeforeMutation: true,
@@ -189,6 +199,7 @@ const buildObservability = (input: {
 
 const buildControl = async (input: {
   capabilities: CapabilityRegistry;
+  controlPlane: Record<string, unknown> | null;
   host: AgentWorkbenchHost;
   methods: MethodRegistry;
   methodList: Parameters<typeof groupMethodsByOwner>[0];
@@ -197,13 +208,14 @@ const buildControl = async (input: {
   panelId: string | undefined;
   latestEventId: string | undefined;
 }) => {
-  const { capabilities, host, methods, methodList, runPromise, workbenchInput, panelId, latestEventId } = input;
+  const { capabilities, controlPlane, host, methods, methodList, runPromise, workbenchInput, panelId, latestEventId } = input;
   const capabilityItems = capabilities.list();
   return {
     capabilities: {
       count: capabilityItems.length,
       items: capabilityItems
     },
+    controlPlane,
     modules: await readRuntimeModules({ methods, runPromise }),
     methodCount: methodList.length,
     methodGroups: groupMethodsByOwner(methodList),
@@ -212,6 +224,7 @@ const buildControl = async (input: {
       { id: "read-state", title: "Read state", method: "plastic/state" },
       { id: "read-methods", title: "Read methods", method: "plastic/methods" },
       { id: "read-modules", title: "Read runtime modules", method: "runtime/modules" },
+      { id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
       { id: "read-timeline", title: "Read timeline", method: host.mode === "electron" ? "events/timeline" : "events/list", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } },
       ...(host.visualActions?.({
         ...(workbenchInput?.ref ? { ref: workbenchInput.ref } : {}),

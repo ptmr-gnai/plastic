@@ -365,10 +365,20 @@ export const assertAgentWorkbenchPacket = ({ workbench, mode }) => {
   assertArray(workbench.control.capabilities.items, "workbench capabilities items missing");
   assert(workbench.control.modules?.count >= 1, "workbench runtime module count missing");
   assertArray(workbench.control.modules.items, "workbench runtime modules items missing");
+  assert(workbench.control.controlPlane?.runtime?.transport === "http", "workbench missing runtime control plane");
+  assert(workbench.control.controlPlane.runtime.rpcPath === "/rpc", "workbench runtime control plane rpcPath mismatch");
+  assert(workbench.control.controlPlane?.build?.transport === "http", "workbench missing build control plane");
+  assert(workbench.control.controlPlane.build.rpcPath === "/rpc", "workbench build control plane rpcPath mismatch");
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assert(
     workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"),
     "workbench missing runtime/modules recommended action"
+  );
+  assert(
+    workbench.control.recommendedActions.some((action) =>
+      action.method === "events/list" && action.input?.types?.includes("runtime.started")
+    ),
+    "workbench missing control plane recommended action"
   );
   assert(workbench.observability?.timeline, "workbench timeline missing");
   assert(workbench.workspace?.git, "workbench git status missing");
@@ -377,6 +387,7 @@ export const assertAgentWorkbenchPacket = ({ workbench, mode }) => {
     methods: workbench.control.methodCount,
     capabilities: workbench.control.capabilities.count,
     modules: workbench.control.modules.count,
+    controlPlane: workbench.control.controlPlane.runtime.transport,
     actions: workbench.control.recommendedActions.length,
     visibleRefs: workbench.observability.visibleRefs?.length ?? 0
   };
@@ -390,9 +401,19 @@ export const assertAgentOrientationPacket = (orientation) => {
   assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
   assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
   assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
+  assert(orientation.capabilities.controlPlane?.runtime?.transport === "http", "agent/orient missing runtime control plane");
+  assert(orientation.capabilities.controlPlane.runtime.rpcPath === "/rpc", "agent/orient runtime control plane rpcPath mismatch");
+  assert(orientation.capabilities.controlPlane?.build?.transport === "http", "agent/orient missing build control plane");
+  assert(orientation.capabilities.controlPlane.build.rpcPath === "/rpc", "agent/orient build control plane rpcPath mismatch");
   assert(
     orientation.capabilities.links?.some((link) => link.method === "runtime/modules"),
     "agent/orient missing runtime/modules link"
+  );
+  assert(
+    orientation.capabilities.links?.some((link) =>
+      link.rel === "control-plane" && link.method === "events/list"
+    ),
+    "agent/orient missing control plane link"
   );
   assert(orientation.memory?.eventCount >= 1, "agent/orient missing event memory");
   return {
@@ -400,6 +421,7 @@ export const assertAgentOrientationPacket = (orientation) => {
     panelId: orientation.embodiment.panelId,
     capabilities: orientation.capabilities.host.count,
     modules: orientation.capabilities.modules.count,
+    controlPlane: orientation.capabilities.controlPlane.runtime.transport,
     visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
     recommendedActions: orientation.capabilities.recommendedActions.length
   };

@@ -14,7 +14,7 @@ import type {
   RuntimeModule,
   RunPromise
 } from "./runtime-method-context.js";
-import { readRuntimeModules } from "./agent-runtime-modules.js";
+import { readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 
 type AgentOrientInput = {
@@ -127,6 +127,7 @@ const buildOrientation = async (input: {
     memory: buildMemory(events, globalTimeline),
     capabilities: await buildCapabilities({
       capabilities: input.capabilities,
+      controlPlane: readRuntimeControlPlane(events),
       methods: input.methods,
       methodList,
       runPromise: input.runPromise,
@@ -242,6 +243,7 @@ const buildMemory = (
 
 const buildCapabilities = async (input: {
   capabilities: CapabilityRegistry;
+  controlPlane: Record<string, unknown> | null;
   methods: MethodRegistry;
   methodList: PlasticMethod[];
   runPromise: RunPromise;
@@ -253,10 +255,12 @@ const buildCapabilities = async (input: {
     items: input.capabilities.list()
   },
   modules: await readRuntimeModules(input),
+  controlPlane: input.controlPlane,
   methods: recommendedMethods(input.methodList),
   recommendedActions: [
     { id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId: input.panelId, eventCursor: input.latestEventId } },
     { id: "read-state", title: "Read full Plastic state", method: "plastic/state" },
+    { id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
     { id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: input.latestEventId } },
     ...(input.panelId ? [{ id: "send-chat", title: "Send a message through this chat", method: "chats/sendToCodex", input: { chatId: input.panelId } }] : []),
     { id: "inspect-visible-refs", title: "Inspect visible refs", method: "deixis/listVisibleRefs" },
@@ -268,6 +272,7 @@ const buildCapabilities = async (input: {
     { rel: "timeline", href: "events/timeline", method: "events/timeline" },
     { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
     { rel: "modules", href: "runtime/modules", method: "runtime/modules" },
+    { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
     { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },
     { rel: "visible-refs", href: "deixis/listVisibleRefs", method: "deixis/listVisibleRefs" }
   ]

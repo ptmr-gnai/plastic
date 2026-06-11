@@ -1,4 +1,4 @@
-import type { MethodRegistry } from "@plastic/core";
+import type { MethodRegistry, PlasticEvent } from "@plastic/core";
 import type { RunPromise } from "./runtime-method-context.js";
 
 export const readRuntimeModules = async (input: {
@@ -19,3 +19,13 @@ export const readRuntimeModules = async (input: {
     }))
   };
 };
+
+export const readRuntimeControlPlane = (events: PlasticEvent[]): Record<string, unknown> | null => {
+  const latestStarted = [...events].reverse().find((event: PlasticEvent) => event.type === "runtime.started");
+  const payload = asRecord(latestStarted?.payload);
+  const controlPlane = asRecord(payload.controlPlane);
+  return Object.keys(controlPlane).length > 0 ? controlPlane : null;
+};
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? value as Record<string, unknown> : {};
