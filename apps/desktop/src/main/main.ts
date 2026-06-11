@@ -34,7 +34,7 @@ const {
   readGitStatus,
   runLocalCommand,
   runtime,
-  startedPayloadBase
+  startedPayload
 } = await createRuntimeHostBase({
   capabilities: createElectronRuntimeCapabilities(),
   mode: "electron",
@@ -236,11 +236,7 @@ const transports = await startRuntimeHostControlPlane({
   ...startupModules,
   onRegister: (module) => logStartup(`register ${module.id} module`),
   onPhase: logStartup,
-  startedPayload: {
-    ...startedPayloadBase,
-    mode: "electron",
-    version: app.getVersion()
-  },
+  startedPayload: startedPayload({ version: app.getVersion() }),
   controlPlane,
   getBuildStatus: buildStatus,
   runtimeCorsOrigin: "http://127.0.0.1:5173"

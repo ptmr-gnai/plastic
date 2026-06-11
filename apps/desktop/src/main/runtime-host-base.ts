@@ -44,8 +44,10 @@ export const createRuntimeHostBase = async (input: {
     readGitStatus,
     runLocalCommand,
     runtime,
-    startedPayloadBase: {
-      hostBase: runtimeHostBaseDescriptor
-    }
+    startedPayload: (extra: Record<string, unknown> = {}) => ({
+      hostBase: runtimeHostBaseDescriptor,
+      mode: input.mode,
+      ...extra
+    })
   };
 };

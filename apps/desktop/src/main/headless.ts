@@ -16,7 +16,7 @@ const {
   readGitStatus,
   runLocalCommand,
   runtime,
-  startedPayloadBase
+  startedPayload
 } = await createRuntimeHostBase({
   capabilities: createHeadlessRuntimeCapabilities(),
   mode: "headless",
@@ -101,7 +101,7 @@ const transports = await startRuntimeHostControlPlane({
   runPromise,
   runtime,
   ...startupModules,
-  startedPayload: { ...startedPayloadBase, mode: "headless" },
+  startedPayload: startedPayload(),
   controlPlane,
   getBuildStatus: buildStatus,
   onRuntimeListening: () => console.log(`[plastic:headless] RPC listening at ${runtimeRpcUrl}`),

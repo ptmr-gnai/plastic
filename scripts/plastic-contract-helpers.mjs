@@ -2,9 +2,7 @@ import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane
 import { capabilityExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
-export const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc", runtimeUrl = rpcUrl.replace(/\/rpc$/, "");
-export const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
-export const results = [];
+export const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc", runtimeUrl = rpcUrl.replace(/\/rpc$/, ""), buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332", results = [];
 
 export const rpc = async (method, input) => {
   const response = await fetch(rpcUrl, {
@@ -321,6 +319,7 @@ export const assertRuntimeStartedControlPlane = async ({ rpc }) => {
   assertControlPlaneEndpointUrls({ assert, controlPlane, source: "runtime.started" });
   return {
     eventId: latest.id,
+    mode: latest.payload?.mode,
     runtime: controlPlane.runtime,
     build: controlPlane.build
   };

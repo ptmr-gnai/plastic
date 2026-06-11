@@ -59,6 +59,7 @@ await check("plastic/state", async () => {
       .filter((resource) => resource.id === "panels" || resource.kind === "panel");
   assert(panelResources.length > 0, "state does not expose panels");
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
+  assert(runtimeStartedControlPlane.mode === state.app.mode, "runtime.started mode mismatch");
   return { mode: state.app.mode, panels: panelResources.length, events: state.events?.count ?? null, controlPlane: state.controlPlane.runtime.transport };
 });
 
