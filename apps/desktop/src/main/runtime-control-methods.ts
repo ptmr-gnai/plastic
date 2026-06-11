@@ -5,6 +5,7 @@ import {
   type EventListInput,
   type EventStore,
   type PlasticMethod,
+  type PlasticEventMeta,
   type MethodRegistry,
   type TimelineInput
 } from "@plastic/core";
@@ -284,6 +285,13 @@ const registerEventAppend = async (input: {
               agentId: { type: "string" },
               projectDir: { type: "string" }
             }
+          },
+          meta: {
+            type: "object",
+            description: "Optional event metadata such as validation tags.",
+            properties: {
+              tags: { type: "array", items: { type: "string" } }
+            }
           }
         }
       },
@@ -313,11 +321,13 @@ const registerEventAppend = async (input: {
             type?: string;
             payload?: unknown;
             scope?: { workspaceId?: string; windowId?: string; panelId?: string; extensionId?: string; agentId?: string; projectDir?: string };
+            meta?: PlasticEventMeta;
           };
           return appendEvent({
             type: eventInput.type ?? "event.appended",
             payload: eventInput.payload ?? {},
-            ...(eventInput.scope ? { scope: eventInput.scope } : {})
+            ...(eventInput.scope ? { scope: eventInput.scope } : {}),
+            ...(eventInput.meta ? { meta: eventInput.meta } : {})
           });
         })
     })

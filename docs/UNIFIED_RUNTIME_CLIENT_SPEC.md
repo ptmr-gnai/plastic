@@ -472,7 +472,7 @@ The first unification pass is substantially complete:
 - `runtime/host`, `runtime/capabilities`, `methods/describe`, `runtime/modules`, `agent/workbench`, `agent/orient`, `plastic/state`, and `plastic/snapshot` expose enough host/capability metadata for agents to learn which methods are available, degraded, or unavailable.
 - `runtime.started` durably records the shared host descriptor, capability inventory, module inventory, and control plane, so agents can compare live runtime state with the event log.
 - The shared contract harness validates headless end to end, including state, methods, snapshot, capabilities, modules, panel lifecycle, extension scan/list, event streams, HTTP error contracts, build HTTP surfaces, and self-test.
-- The shared contract harness removes generated scaffold extension directories and closes scaffold extension panels after proving discovery/projection.
+- The shared contract harness cleans up generated extension/panel fixtures and tags raw validation events with `validation:contract`.
 - `pnpm plastic:method-parity` runs `plastic/selfTest` in both hosts and verifies shared runtime health checks are green while permitting host-specific checks to differ.
 
 `pnpm plastic:validate-unified` is the current automation-friendly validation command. It must:

@@ -22,7 +22,8 @@ import { stableJson } from "./plastic-stable-json.mjs";
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
-
+const validationTags = ["validation", "validation:contract"];
+const validationMeta = { tags: validationTags };
 let state;
 let snapshot;
 let methods;
@@ -373,12 +374,14 @@ await check("events/append", async () => {
   const appended = await rpc("events/append", {
     type: "contract.event.appended",
     payload: { runId },
-    scope: { workspaceId: "default" }
+    scope: { workspaceId: "default" },
+    meta: validationMeta
   });
   assert(appended?.id, "events/append returned no event id");
   const appendedEvents = await rpc("events/list", { type: "contract.event.appended", limit: 10 });
   assertArray(appendedEvents, "events/list after append is not an array");
-  assert(appendedEvents.some((event) => event.id === appended.id), "appended event not readable");
+  const appendedEvent = appendedEvents.find((event) => event.id === appended.id); assert(appendedEvent, "appended event not readable");
+  assert(validationTags.every((tag) => appendedEvent.meta?.tags?.includes(tag)), "appended validation tags not readable");
   return { eventId: appended.id };
 });
 
@@ -387,7 +390,8 @@ await check("runtime event stream", async () => {
     trigger: () => rpc("events/append", {
       type: "contract.event_stream.appended",
       payload: { runId },
-      scope: { workspaceId: "default" }
+      scope: { workspaceId: "default" },
+      meta: validationMeta
     })
   });
   assert(runtimeStream.ready, "runtime event stream did not emit ready");
@@ -396,7 +400,8 @@ await check("runtime event stream", async () => {
     trigger: () => rpc("events/append", {
       type: "contract.build_event_stream.appended",
       payload: { runId },
-      scope: { workspaceId: "default" }
+      scope: { workspaceId: "default" },
+      meta: validationMeta
     })
   });
   assert(buildStream.ready, "build event stream did not emit ready");
@@ -487,7 +492,6 @@ await check("events list/timeline", async () => {
 });
 
 await check("plastic/selfTest", async () => assertSelfTestSurface({ assert, selfTest: await rpc("plastic/selfTest") }));
-
 const failed = results.filter((result) => !result.ok);
 const summary = { ok: failed.length === 0, rpcUrl, checks: results.length, failed: failed.length, results };
 console.log(JSON.stringify(summary, null, 2));
