@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Effect } from "effect";
+import type { PlasticEventMeta } from "@plastic/core";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
 type ScaffoldExtensionInput = {
@@ -10,11 +11,20 @@ type ScaffoldExtensionInput = {
   panelTitle?: string;
   body?: string;
   kind?: string;
+  meta?: PlasticEventMeta;
 };
 
 const extensionAuthoringAvailability = {
   status: "available" as const,
   notes: "Extension authoring writes workspace files and durable events through the shared runtime."
+};
+
+const eventMetaSchema = {
+  type: "object",
+  description: "Optional event metadata, such as tags for validation or agent-scoped actions.",
+  properties: {
+    tags: { type: "array", items: { type: "string" } }
+  }
 };
 
 export const createExtensionAuthoringModule = (input: {
@@ -37,7 +47,8 @@ export const createExtensionAuthoringModule = (input: {
             panelId: { type: "string", description: "Panel id declared by the generated extension." },
             panelTitle: { type: "string", description: "Panel title declared by the generated extension." },
             body: { type: "string", description: "Initial generated panel body." },
-            kind: { type: "string", description: "Panel kind. Defaults to extension." }
+            kind: { type: "string", description: "Panel kind. Defaults to extension." },
+            meta: eventMetaSchema
           }
         },
         examples: [
@@ -69,7 +80,6 @@ export const createExtensionAuthoringModule = (input: {
             if (!safeId) {
               throw new Error("extensions/scaffold requires a usable id");
             }
-
             const extensionId = `workspace.${safeId}`;
             const panelId = extensionInput.panelId ?? `${safeId}.panel`;
             const title = extensionInput.title ?? extensionInput.panelTitle ?? safeId;
@@ -91,18 +101,11 @@ export const createExtensionAuthoringModule = (input: {
               ],
               methods: []
             };
-
             await mkdir(extensionDir, { recursive: true });
             await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
             await writeFile(
               entryPath,
-              [
-                "export default {",
-                `  id: ${JSON.stringify(extensionId)},`,
-                `  title: ${JSON.stringify(title)}`,
-                "};",
-                ""
-              ].join("\n"),
+              ["export default {", `  id: ${JSON.stringify(extensionId)},`, `  title: ${JSON.stringify(title)}`, "};", ""].join("\n"),
               "utf8"
             );
             const event = await appendEvent({
@@ -115,7 +118,8 @@ export const createExtensionAuthoringModule = (input: {
                 manifestPath,
                 entryPath
               },
-              scope: { extensionId }
+              scope: { extensionId },
+              ...(extensionInput.meta ? { meta: extensionInput.meta } : {})
             });
             return { extensionId, panelId, extensionDir, manifestPath, entryPath, manifest, eventId: event.id };
           })

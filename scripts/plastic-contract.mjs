@@ -414,13 +414,13 @@ await check("panel lifecycle", async () => {
   assertEventsTagged(assertArray(panelEvents, "panel lifecycle events/list is not an array"), validationTags, "panel lifecycle validation tags not readable");
   return createdPanelEvent;
 });
-
 await check("extensions/scaffold", async () => {
   const scaffold = await rpc("extensions/scaffold", {
     id: extensionId,
     title: "Contract Extension",
     panelTitle: "Contract Extension Panel",
-    body: "Created by scripts/plastic-contract.mjs"
+    body: "Created by scripts/plastic-contract.mjs",
+    meta: validationMeta
   });
   assert(scaffold?.extensionId === `workspace.${extensionId}`, "scaffold returned wrong extension id");
   assert(scaffold.manifestPath, "scaffold missing manifestPath");
@@ -428,6 +428,7 @@ await check("extensions/scaffold", async () => {
   const scan = await rpc("extensions/scan");
   const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
   assert(discovered.some((extension) => extension.id === scaffold.extensionId), "scaffolded extension not discovered");
+  assertEventsTagged(assertArray(await rpc("events/list", { types: ["extension.scaffolded"], scope: { extensionId: scaffold.extensionId }, limit: 10 }), "extension scaffold events/list is not an array"), validationTags, "extension scaffold validation tags not readable");
   scaffoldedExtensionDir = scaffold.extensionDir;
   scaffoldedExtensionId = scaffold.extensionId;
   scaffoldedExtensionPanelId = scaffold.panelId;
