@@ -29,7 +29,8 @@ export const startRuntimeHostTransports = async (input: {
     ...(input.runtimeCorsOrigin ? { corsOrigin: input.runtimeCorsOrigin } : {}),
     ...(input.onRuntimeListening ? { onListening: input.onRuntimeListening } : {})
   });
-  const buildTransport = startBuildHttpTransport({
+  const buildTransport = await startBuildHttpTransport({
+    eventStore: input.eventStore,
     methods: input.methods,
     runPromise: input.runPromise,
     host: input.buildHost,

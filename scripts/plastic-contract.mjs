@@ -1,5 +1,5 @@
 import {
-  assert, assertArray, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
+  assert, assertArray, buildEventStream, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
   assertAgentOrientationPacket, assertAgentWorkbenchPacket, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
   assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
@@ -39,6 +39,7 @@ await check("plastic/state", async () => {
   assert(state.controlPlane.build.rpcPath === "/rpc", "state build control plane rpcPath mismatch");
   assert(state.controlPlane.build.statePath === "/state", "state build control plane statePath mismatch");
   assert(state.controlPlane.build.methodsPath === "/methods", "state build control plane methodsPath mismatch");
+  assert(state.controlPlane.build.eventStreamPath === "/events/stream", "state build control plane eventStreamPath mismatch");
   assert(runtimeState.value?.controlPlane?.runtime?.transport === "http", "runtime /state missing runtime control plane");
   assert(runtimeState.value.controlPlane.runtime.rpcPath === state.controlPlane.runtime.rpcPath, "runtime /state control plane mismatch");
   assert(buildState.value?.app?.mode === state.app.mode, "build /state mode mismatch");
@@ -88,6 +89,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.controlPlane.build.rpcPath === "/rpc", "snapshot build control plane rpcPath mismatch");
   assert(snapshot.controlPlane.build.statePath === "/state", "snapshot build control plane statePath mismatch");
   assert(snapshot.controlPlane.build.methodsPath === "/methods", "snapshot build control plane methodsPath mismatch");
+  assert(snapshot.controlPlane.build.eventStreamPath === "/events/stream", "snapshot build control plane eventStreamPath mismatch");
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });
@@ -361,16 +363,25 @@ await check("events/append", async () => {
 });
 
 await check("runtime event stream", async () => {
-  const streamed = await runtimeEventStream({
+  const runtimeStream = await runtimeEventStream({
     trigger: () => rpc("events/append", {
       type: "contract.event_stream.appended",
       payload: { runId },
       scope: { workspaceId: "default" }
     })
   });
-  assert(streamed.ready, "runtime event stream did not emit ready");
-  assert(streamed.event, "runtime event stream did not emit appended event");
-  return streamed;
+  assert(runtimeStream.ready, "runtime event stream did not emit ready");
+  assert(runtimeStream.event, "runtime event stream did not emit appended event");
+  const buildStream = await buildEventStream({
+    trigger: () => rpc("events/append", {
+      type: "contract.build_event_stream.appended",
+      payload: { runId },
+      scope: { workspaceId: "default" }
+    })
+  });
+  assert(buildStream.ready, "build event stream did not emit ready");
+  assert(buildStream.event, "build event stream did not emit appended event");
+  return { runtime: runtimeStream, build: buildStream };
 });
 
 await check("panel lifecycle", async () => {

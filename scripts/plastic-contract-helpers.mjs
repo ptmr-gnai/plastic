@@ -47,13 +47,13 @@ export const buildRpc = async (method, input) => {
   return payload.value;
 };
 
-export const runtimeEventStream = async ({ trigger, timeoutMs = 5000 }) => {
+const eventStream = async ({ baseUrl, label, trigger, timeoutMs = 5000 }) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  const response = await fetch(`${runtimeUrl}/events/stream`, { signal: controller.signal });
+  const response = await fetch(`${baseUrl}/events/stream`, { signal: controller.signal });
   if (!response.ok || !response.body) {
     clearTimeout(timeout);
-    throw new Error(`runtime /events/stream failed: ${response.statusText}`);
+    throw new Error(`${label} /events/stream failed: ${response.statusText}`);
   }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -78,6 +78,9 @@ export const runtimeEventStream = async ({ trigger, timeoutMs = 5000 }) => {
   }
   return { ready, event };
 };
+
+export const runtimeEventStream = (input) => eventStream({ ...input, baseUrl: runtimeUrl, label: "runtime" });
+export const buildEventStream = (input) => eventStream({ ...input, baseUrl: buildUrl, label: "build" });
 
 export const check = async (name, fn) => {
   const startedAt = Date.now();
@@ -295,6 +298,7 @@ export const assertRuntimeStartedControlPlane = async ({ rpc }) => {
   assert(controlPlane.build.rpcPath === "/rpc", "runtime.started build rpcPath mismatch");
   assert(controlPlane.build.statePath === "/state", "runtime.started build statePath mismatch");
   assert(controlPlane.build.methodsPath === "/methods", "runtime.started build methodsPath mismatch");
+  assert(controlPlane.build.eventStreamPath === "/events/stream", "runtime.started build event stream path mismatch");
   assert(controlPlane.build.statusPath === "/status", "runtime.started build status path mismatch");
   assert(controlPlane.build.snapshotPath === "/snapshot", "runtime.started build snapshot path mismatch");
   return {
@@ -363,6 +367,7 @@ export const assertAgentWorkbenchPacket = ({ workbench, mode }) => {
   assert(workbench.control.controlPlane.build.rpcPath === "/rpc", "workbench build control plane rpcPath mismatch");
   assert(workbench.control.controlPlane.build.statePath === "/state", "workbench build control plane statePath mismatch");
   assert(workbench.control.controlPlane.build.methodsPath === "/methods", "workbench build control plane methodsPath mismatch");
+  assert(workbench.control.controlPlane.build.eventStreamPath === "/events/stream", "workbench build control plane eventStreamPath mismatch");
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assert(
     workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"),
@@ -403,6 +408,7 @@ export const assertAgentOrientationPacket = (orientation) => {
   assert(orientation.capabilities.controlPlane.build.rpcPath === "/rpc", "agent/orient build control plane rpcPath mismatch");
   assert(orientation.capabilities.controlPlane.build.statePath === "/state", "agent/orient build control plane statePath mismatch");
   assert(orientation.capabilities.controlPlane.build.methodsPath === "/methods", "agent/orient build control plane methodsPath mismatch");
+  assert(orientation.capabilities.controlPlane.build.eventStreamPath === "/events/stream", "agent/orient build control plane eventStreamPath mismatch");
   assert(
     orientation.capabilities.links?.some((link) => link.method === "runtime/modules"),
     "agent/orient missing runtime/modules link"

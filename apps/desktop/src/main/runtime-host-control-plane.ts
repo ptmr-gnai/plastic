@@ -42,6 +42,7 @@ export const startRuntimeHostControlPlane = async (
           healthPath: "/healthz",
           statePath: "/state",
           methodsPath: "/methods",
+          eventStreamPath: "/events/stream",
           statusPath: "/status",
           snapshotPath: "/snapshot"
         }
