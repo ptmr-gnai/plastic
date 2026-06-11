@@ -1,5 +1,6 @@
 import type { EventStore, MethodRegistry } from "@plastic/core";
 import { startBuildHttpTransport } from "./build-http-transport.js";
+import type { RuntimeHostControlPlaneDescriptor } from "./runtime-host-control-plane-descriptor.js";
 import { startRuntimeHttpTransport } from "./runtime-http-transport.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
@@ -11,10 +12,7 @@ export const startRuntimeHostTransports = async (input: {
   eventStore: EventStore;
   methods: MethodRegistry;
   runPromise: RunPromise;
-  runtimeHost: string;
-  runtimePort: number;
-  buildHost: string;
-  buildPort: number;
+  controlPlane: RuntimeHostControlPlaneDescriptor;
   getBuildStatus: () => unknown;
   runtimeCorsOrigin?: string;
   onRuntimeListening?: () => void;
@@ -24,8 +22,8 @@ export const startRuntimeHostTransports = async (input: {
     eventStore: input.eventStore,
     methods: input.methods,
     runPromise: input.runPromise,
-    host: input.runtimeHost,
-    port: input.runtimePort,
+    host: input.controlPlane.runtime.host,
+    port: input.controlPlane.runtime.port,
     ...(input.runtimeCorsOrigin ? { corsOrigin: input.runtimeCorsOrigin } : {}),
     ...(input.onRuntimeListening ? { onListening: input.onRuntimeListening } : {})
   });
@@ -33,8 +31,8 @@ export const startRuntimeHostTransports = async (input: {
     eventStore: input.eventStore,
     methods: input.methods,
     runPromise: input.runPromise,
-    host: input.buildHost,
-    port: input.buildPort,
+    host: input.controlPlane.build.host,
+    port: input.controlPlane.build.port,
     getStatus: input.getBuildStatus,
     ...(input.onBuildListening ? { onListening: input.onBuildListening } : {})
   });
