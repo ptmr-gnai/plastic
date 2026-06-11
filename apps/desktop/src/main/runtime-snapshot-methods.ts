@@ -4,6 +4,7 @@ import {
   projectPanels,
   projectWindows
 } from "@plastic/core";
+import { readRuntimeControlPlane } from "./agent-runtime-modules.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
@@ -54,6 +55,7 @@ export const createRuntimeSnapshotModule = (input: {
               build: host.build,
               runtime: host.runtime,
               codex: host.codex,
+              controlPlane: readRuntimeControlPlane(events),
               methods: {
                 count: registeredMethods.length,
                 items: registeredMethods.map((method) => ({
@@ -78,6 +80,7 @@ export const createRuntimeSnapshotModule = (input: {
                 { rel: "state", href: "plastic/state", method: "plastic/state" },
                 { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
                 { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },
+                { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
                 { rel: "events", href: "events/list", method: "events/list" },
                 { rel: "visible-refs", href: "deixis/listVisibleRefs", method: "deixis/listVisibleRefs" },
                 { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" }

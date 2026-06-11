@@ -28,13 +28,17 @@ await check("plastic/state", async () => {
   assert(state && typeof state === "object", "plastic/state returned no object");
   assert(runtimeState.value?.app?.name === "Plastic", "runtime /state did not return Plastic state");
   assert(state.app?.name === "Plastic", "state.app.name is not Plastic");
+  assert(state.controlPlane?.runtime?.transport === "http", "state missing runtime control plane");
+  assert(state.controlPlane.runtime.rpcPath === "/rpc", "state runtime control plane rpcPath mismatch");
+  assert(state.controlPlane?.build?.transport === "http", "state missing build control plane");
+  assert(state.controlPlane.build.rpcPath === "/rpc", "state build control plane rpcPath mismatch");
   const panelResources = Array.isArray(state.panels)
     ? state.panels
     : assertArray(state.resources, "state.resources is not an array")
       .filter((resource) => resource.id === "panels" || resource.kind === "panel");
   assert(panelResources.length > 0, "state does not expose panels");
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
-  return { mode: state.app.mode, panels: panelResources.length, events: state.events?.count ?? null };
+  return { mode: state.app.mode, panels: panelResources.length, events: state.events?.count ?? null, controlPlane: state.controlPlane.runtime.transport };
 });
 
 await check("plastic/methods", async () => {
@@ -69,13 +73,19 @@ await check("plastic/snapshot", async () => {
   assertArray(snapshot.windows, "snapshot.windows is not an array");
   assertArray(snapshot.extensions, "snapshot.extensions is not an array");
   assertArray(snapshot.visibleRefs, "snapshot.visibleRefs is not an array");
+  assert(snapshot.controlPlane?.runtime?.transport === "http", "snapshot missing runtime control plane");
+  assert(snapshot.controlPlane.runtime.rpcPath === "/rpc", "snapshot runtime control plane rpcPath mismatch");
+  assert(snapshot.controlPlane?.build?.transport === "http", "snapshot missing build control plane");
+  assert(snapshot.controlPlane.build.rpcPath === "/rpc", "snapshot build control plane rpcPath mismatch");
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
-  assert(snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing capabilities link"); assert(snapshot.methods.items?.every((method) => method.availability?.status), "snapshot methods missing availability");
+  assert(snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing capabilities link");
+  assert(snapshot.links?.some((link) => link.rel === "control-plane" && link.method === "events/list"), "snapshot missing control plane link");
+  assert(snapshot.methods.items?.every((method) => method.availability?.status), "snapshot methods missing availability");
   return {
     mode: snapshot.app.mode, methods: snapshot.methods.count, panels: snapshot.panels.length,
-    windows: snapshot.windows.length, extensions: snapshot.extensions.length
+    windows: snapshot.windows.length, extensions: snapshot.extensions.length, controlPlane: snapshot.controlPlane.runtime.transport
   };
 });
 

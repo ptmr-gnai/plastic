@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { buildPlasticState, type PlasticState } from "@plastic/core";
+import { readRuntimeControlPlane } from "./agent-runtime-modules.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
@@ -33,7 +34,12 @@ export const createRuntimeStateModule = (input: {
         handler: () =>
           Effect.promise(async () => {
             const state = await runPromise(buildPlasticState(eventStore, methods));
-            return input.decorateState ? input.decorateState(state) : state;
+            const events = await runPromise(eventStore.list());
+            const stateWithControlPlane = {
+              ...state,
+              controlPlane: readRuntimeControlPlane(events)
+            };
+            return input.decorateState ? input.decorateState(stateWithControlPlane) : stateWithControlPlane;
           })
       })
     );
