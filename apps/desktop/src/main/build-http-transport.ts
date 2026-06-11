@@ -1,7 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { EventStore, MethodRegistry } from "@plastic/core";
-import type { RpcRequest } from "../shared/ipc.js";
-import { handleHttpEventStream, readJsonBody, sendJson, writeSse } from "./runtime-http-transport.js";
+import { handleHttpEventStream, handleHttpRpc, sendJson, writeSse } from "./runtime-http-transport.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 export type BuildHttpTransport = {
@@ -79,7 +78,7 @@ const handleBuildRequest = async (context: {
     return;
   }
   if (request.method === "POST" && request.url === "/rpc") {
-    await handleBuildRpc({ corsOrigin, input, request, response });
+    await handleHttpRpc({ corsOrigin, methods: input.methods, request, response, runPromise: input.runPromise });
     return;
   }
   sendJson(response, 404, { ok: false, error: "Not found" }, corsOrigin);
@@ -108,22 +107,4 @@ const handleBuildMethodGet = async (context: {
     sendJson(context.response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) }, context.corsOrigin);
   }
   return true;
-};
-
-const handleBuildRpc = async (context: {
-  corsOrigin: string;
-  input: BuildHttpTransportInput;
-  request: IncomingMessage;
-  response: ServerResponse;
-}) => {
-  try {
-    const body = await readJsonBody(context.request) as RpcRequest;
-    if (!body.method) {
-      throw new Error("RPC request requires method");
-    }
-    const value = await context.input.runPromise(context.input.methods.call(body.method, body.input));
-    sendJson(context.response, 200, { ok: true, value }, context.corsOrigin);
-  } catch (error) {
-    sendJson(context.response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) }, context.corsOrigin);
-  }
 };

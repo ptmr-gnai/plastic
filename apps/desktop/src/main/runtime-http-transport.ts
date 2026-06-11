@@ -71,6 +71,28 @@ export const handleHttpEventStream = (input: {
   });
 };
 
+export const handleHttpRpc = async (input: {
+  corsOrigin: string;
+  methods: MethodRegistry;
+  request: IncomingMessage;
+  response: ServerResponse;
+  runPromise: RunPromise;
+}) => {
+  try {
+    const body = await readJsonBody(input.request) as { method?: string; input?: unknown };
+    if (!body.method) {
+      throw new Error("RPC request requires method");
+    }
+    const value = await input.runPromise(input.methods.call(body.method, body.input));
+    sendJson(input.response, 200, { ok: true, value }, input.corsOrigin);
+  } catch (error) {
+    sendJson(input.response, 500, {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    }, input.corsOrigin);
+  }
+};
+
 export const startRuntimeHttpTransport = async (input: {
   eventStore: EventStore;
   methods: MethodRegistry;
@@ -133,12 +155,7 @@ const handleRuntimeRequest = async (context: {
       return;
     }
     if (request.method === "POST" && request.url === "/rpc") {
-      const body = await readJsonBody(request) as { method?: string; input?: unknown };
-      if (!body.method) {
-        throw new Error("RPC request requires method");
-      }
-      const value = await input.runPromise(input.methods.call(body.method, body.input));
-      sendJson(response, 200, { ok: true, value }, corsOrigin);
+      await handleHttpRpc({ corsOrigin, methods: input.methods, request, response, runPromise: input.runPromise });
       return;
     }
     sendJson(response, 404, { ok: false, error: "Not found" }, corsOrigin);
