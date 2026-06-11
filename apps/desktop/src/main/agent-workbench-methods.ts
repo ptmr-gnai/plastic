@@ -225,6 +225,7 @@ const buildControl = async (input: {
       { id: "refresh-workbench", title: "Refresh workbench", method: "agent/workbench", input: { panelId, eventCursor: latestEventId } },
       { id: "read-state", title: "Read state", method: "plastic/state" },
       { id: "read-methods", title: "Read methods", method: "plastic/methods" },
+      { id: "read-host", title: "Read runtime host", method: "runtime/host" },
       { id: "read-modules", title: "Read runtime modules", method: "runtime/modules" },
       { id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
       { id: "read-timeline", title: "Read timeline", method: "events/timeline", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } },

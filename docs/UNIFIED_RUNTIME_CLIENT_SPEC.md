@@ -467,7 +467,7 @@ The first unification pass is substantially complete:
 - `runtime.started` durably records the shared host descriptor, capability inventory, module inventory, and control plane, so agents can compare live runtime state with the event log.
 - The shared contract harness validates headless end to end, including state, methods, snapshot, capabilities, modules, panel lifecycle, extension scan/list, event streams, HTTP error contracts, build HTTP surfaces, and self-test.
 
-The current validation blocker is below Plastic code: in this automation environment, the Electron binary can report its version, but a minimal Electron app-main preflight times out before the Plastic main process starts. Until that is fixed, headed validation cannot run the same contract even though the Electron host code uses the shared runtime assembly.
+The previous validation blocker was below Plastic code: Electron could report its version, but a minimal Electron app-main preflight timed out before the Plastic main process started. The current validation run now reaches Electron startup, opens the runtime/build HTTP ports, runs the shared contract, and passes method parity against the headless baseline.
 
 `pnpm plastic:validate-unified` is the current automation-friendly validation command. It must:
 
@@ -477,18 +477,18 @@ The current validation blocker is below Plastic code: in this automation environ
 - compare Electron methods to headless when Electron is available;
 - emit a structured degraded report when Electron cannot start in the current host environment.
 
-This command does not replace `pnpm plastic:validate-electron`. Strict Electron validation must continue to fail when headed Electron cannot start, because headed proof requires real Electron runtime/build ports and method parity.
+This command does not replace `pnpm plastic:validate-electron`. Strict Electron validation remains the proof that headed Electron can start real runtime/build ports and pass the shared contract.
 
 ## Practical Next Step
 
-Fix or route around the Electron app-main preflight so the same contract can run against Electron again.
+Keep shrinking host bootstraps and make Electron/headless drift harder to reintroduce.
 
 Proof:
 
-1. `PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS=3000 pnpm plastic:validate-electron` reaches Plastic startup logs instead of timing out in the minimal Electron probe.
+1. `PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS=3000 pnpm plastic:validate-electron` reaches Plastic startup logs.
 2. Electron starts the runtime and build HTTP ports.
 3. `pnpm plastic:contract` passes against Electron's runtime/build URLs.
 4. `pnpm plastic:method-parity` compares Electron against the captured headless baseline.
-5. Any differences are explained only by capability status, not missing shared methods.
+5. Any differences are explained only by capability status, not missing shared methods or discovery affordances.
 
 After Electron validation is unblocked, the next architecture slice should shrink the remaining host bootstraps by extracting shared host descriptors for projection resources, agent host inputs, and health checks. That would further reduce the amount of parallel assembly in `main.ts` and `headless.ts`.

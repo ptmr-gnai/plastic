@@ -1,10 +1,11 @@
 import {
   assert, assertArray, buildEventStream, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
-  assertAgentOrientationPacket, assertAgentWorkbenchPacket, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
+  assertMethodDiscoveryParity, assertPanelLifecycleProjection,
   assertCapabilityStatuses, assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
   assertMatchingModuleInventories, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
+import { assertAgentOrientationPacket, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
@@ -180,12 +181,12 @@ await check("runtime/modules", async () => {
 
 await check("agent/workbench", async () => {
   const workbench = await rpc("agent/workbench", { limit: 5 });
-  return assertAgentWorkbenchPacket({ workbench, mode: state.app.mode });
+  return assertAgentWorkbenchPacket({ assert, assertArray, workbench, mode: state.app.mode });
 });
 
 await check("agent/orient", async () => {
   const orientation = await rpc("agent/orient", { panelId: "chat-main" });
-  return assertAgentOrientationPacket(orientation);
+  return assertAgentOrientationPacket({ assert, assertArray, orientation });
 });
 
 await check("agent backend metadata", async () => {

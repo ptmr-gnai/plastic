@@ -262,6 +262,7 @@ const buildCapabilities = async (input: {
   recommendedActions: [
     { id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId: input.panelId, eventCursor: input.latestEventId } },
     { id: "read-state", title: "Read full Plastic state", method: "plastic/state" },
+    { id: "read-host", title: "Read runtime host", method: "runtime/host" },
     { id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
     { id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: input.latestEventId } },
     ...(input.panelId ? [{ id: "send-chat", title: "Send a message through this chat", method: "chats/sendToCodex", input: { chatId: input.panelId } }] : []),
@@ -273,6 +274,7 @@ const buildCapabilities = async (input: {
     { rel: "state", href: "plastic/state", method: "plastic/state" },
     { rel: "timeline", href: "events/timeline", method: "events/timeline" },
     { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+    { rel: "host", href: "runtime/host", method: "runtime/host" },
     { rel: "modules", href: "runtime/modules", method: "runtime/modules" },
     { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
     { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },
