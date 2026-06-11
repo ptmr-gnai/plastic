@@ -1,5 +1,6 @@
 import type { createRuntimeHostConfig } from "./runtime-host-config.js";
 import type { PlasticState } from "@plastic/core";
+import { createRuntimeHostControlPlaneDescriptor } from "./runtime-host-control-plane-descriptor.js";
 
 type RuntimeHostConfig = ReturnType<typeof createRuntimeHostConfig>;
 type RuntimeMode = "electron" | "headless";
@@ -14,6 +15,7 @@ export const createRuntimeBuildStatus = (
   } & Record<string, unknown>
 ) => {
   const { config, mode, service, startedAt, runtimeRpcUrl, ...extra } = input;
+  const controlPlane = createRuntimeHostControlPlaneDescriptor(config);
   return {
     service,
     mode,
@@ -23,7 +25,7 @@ export const createRuntimeBuildStatus = (
     dataDir: config.runtimePaths.dataDir,
     eventPath: config.eventPath,
     runtimeRpcUrl,
-    buildSocket: `http://${config.buildHost}:${config.buildPort}`,
+    buildSocket: controlPlane.build.baseUrl,
     pid: process.pid,
     startedAt,
     ...extra
