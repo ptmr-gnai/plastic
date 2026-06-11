@@ -16,6 +16,7 @@ import {
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
+const expectedMethodCount = Number(process.env.PLASTIC_EXPECTED_METHOD_COUNT ?? 81);
 const backendMethodIds = [
   "codex/status", "codex/defaults", "codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList",
   "bridge/configurePlasticMcp", "bridge/status", "bridge/test", "bridge/callPlasticRpcTool", "chats/getBinding", "chats/startCodexThread", "chats/createCodexChat", "chats/interrupt", "chats/sendToCodex"
@@ -49,6 +50,7 @@ await check("plastic/methods", async () => {
   const items = assertArray(methods, "plastic/methods is not an array");
   assertArray(runtimeMethods.value, "runtime /methods is not an array");
   assert(runtimeMethods.value.length === items.length, "runtime /methods count mismatch");
+  assert(items.length === expectedMethodCount, `expected ${expectedMethodCount} methods, got ${items.length}`);
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   for (const id of [
     "plastic/state",
@@ -93,6 +95,7 @@ await check("plastic/snapshot", async () => {
   assertArray(snapshot.extensions, "snapshot.extensions is not an array");
   assertArray(snapshot.visibleRefs, "snapshot.visibleRefs is not an array");
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
+  assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
   assert(snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing capabilities link"); assert(snapshot.methods.items?.every((method) => method.availability?.status), "snapshot methods missing availability");
   return {
