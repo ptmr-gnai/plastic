@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import {
   assert, assertArray, buildEventStream, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
   assertMethodDiscoveryParity, assertPanelLifecycleProjection,
@@ -29,6 +30,8 @@ let createdPanelEvent;
 let extensions;
 let events;
 let runtimeStartedControlPlane;
+let scaffoldedExtensionDir;
+let scaffoldedExtensionId;
 
 await check("plastic/state", async () => {
   state = await rpc("plastic/state");
@@ -420,11 +423,9 @@ await check("extensions/scaffold", async () => {
   const scan = await rpc("extensions/scan");
   const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
   assert(discovered.some((extension) => extension.id === scaffold.extensionId), "scaffolded extension not discovered");
-  return {
-    extensionId: scaffold.extensionId,
-    panelId: scaffold.panelId,
-    eventId: scaffold.eventId
-  };
+  scaffoldedExtensionDir = scaffold.extensionDir;
+  scaffoldedExtensionId = scaffold.extensionId;
+  return { extensionId: scaffold.extensionId, panelId: scaffold.panelId, extensionDir: scaffold.extensionDir, eventId: scaffold.eventId };
 });
 
 await check("extensions scan/list", async () => {
@@ -432,10 +433,18 @@ await check("extensions scan/list", async () => {
   extensions = await rpc("extensions/list");
   const items = assertArray(extensions, "extensions/list is not an array");
   assert(items.some((extension) => extension.id === "plastic.chat"), "bundled chat extension missing");
-  return {
-    scanDiscovered: scan.discovered?.length ?? scan.count ?? null,
-    count: items.length
-  };
+  return { scanDiscovered: scan.discovered?.length ?? scan.count ?? null, count: items.length };
+});
+
+await check("contract scaffold cleanup", async () => {
+  assert(scaffoldedExtensionDir, "no scaffolded extension dir recorded");
+  assert(scaffoldedExtensionId, "no scaffolded extension id recorded");
+  await rm(scaffoldedExtensionDir, { recursive: true, force: true });
+  const scan = await rpc("extensions/scan");
+  const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
+  assert(!discovered.some((extension) => extension.id === scaffoldedExtensionId), "scaffolded extension still discovered after cleanup");
+  extensions = await rpc("extensions/list");
+  return { extensionId: scaffoldedExtensionId, removed: true, scanDiscovered: scan.discovered?.length ?? scan.count ?? null };
 });
 
 await check("bundled extension projections", async () => {
@@ -471,10 +480,7 @@ await check("events list/timeline", async () => {
   };
 });
 
-await check("plastic/selfTest", async () => {
-  const selfTest = await rpc("plastic/selfTest");
-  return assertSelfTestSurface({ assert, selfTest });
-});
+await check("plastic/selfTest", async () => assertSelfTestSurface({ assert, selfTest: await rpc("plastic/selfTest") }));
 
 const failed = results.filter((result) => !result.ok);
 const summary = { ok: failed.length === 0, rpcUrl, checks: results.length, failed: failed.length, results };
