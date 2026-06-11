@@ -60,5 +60,6 @@ export const registerRuntimeModulePlan = (
   }
 ) => {
   const { runtime, onRegister, ...planInput } = input;
-  return runtime.registerModules(createRuntimeModulePlan(planInput), onRegister);
+  const modules = createRuntimeModulePlan(planInput);
+  return runtime.registerModules(modules, onRegister).then(() => modules);
 };

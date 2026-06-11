@@ -57,7 +57,7 @@ export const registerCoreRuntimeModulesAtStartup = async (input: CoreRuntimeStar
     panelMailboxModule
   ];
 
-  await registerRuntimeModulePlan({
+  return registerRuntimeModulePlan({
     runtime,
     ...planInput,
     tailModules,
@@ -75,7 +75,13 @@ export const runRuntimeStartupSequence = async (input: RuntimeStartupSequenceInp
   });
 
   input.onPhase?.("register runtime methods");
-  await registerCoreRuntimeModulesAtStartup(input);
+  const modules = await registerCoreRuntimeModulesAtStartup(input);
   await input.beforeStarted?.();
-  await appendRuntimeStartedEvent(input.runtime, input.startedPayload);
+  await appendRuntimeStartedEvent(input.runtime, {
+    ...input.startedPayload,
+    modules: modules.map((module, index) => ({
+      id: module.id,
+      order: index
+    }))
+  });
 };

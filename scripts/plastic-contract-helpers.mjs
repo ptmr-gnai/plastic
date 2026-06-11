@@ -263,6 +263,24 @@ export const assertRuntimeModuleInventory = async ({ rpc }) => {
   return { count: modules.count, ids };
 };
 
+export const assertRuntimeStartedModuleInventory = async ({ rpc }) => {
+  const events = await rpc("events/list", { types: ["runtime.started"], limit: 5 });
+  const items = itemsFrom(events, "runtime.started events/list returned no items");
+  const latest = items.at(-1);
+  assert(latest, "runtime.started event missing");
+  const modules = latest.payload?.modules;
+  assert(Array.isArray(modules), "runtime.started missing module inventory");
+  const ids = modules.map((module) => module.id);
+  for (const id of ["runtime-state", "runtime-control", "extension-runtime", "panel-mailbox", "runtime-modules"]) {
+    assert(ids.includes(id), `runtime.started module inventory missing ${id}`);
+  }
+  assert(
+    ids.some((id) => id === "agent-backend-codex" || id === "agent-backend-fallback"),
+    "runtime.started module inventory missing an agent backend module"
+  );
+  return { eventId: latest.id, count: modules.length, ids };
+};
+
 export const itemsFrom = (value, message) => {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.items)) return value.items;
