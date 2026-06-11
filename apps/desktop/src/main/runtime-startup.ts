@@ -39,26 +39,30 @@ export const appendRuntimeStartedEvent = (
 export const registerCoreRuntimeModulesAtStartup = async (input: CoreRuntimeStartupInput) => {
   const {
     workspaceDir,
-    eventStore,
-    methods,
-    runPromise,
+    eventStore: _eventStore,
+    methods: _methods,
+    runPromise: _runPromise,
     runtime,
     onRegister,
-    onPhase,
+    onPhase: _onPhase,
     ...planInput
   } = input;
+  const tailModules: RuntimeModule[] = [
+    {
+      id: "extension-runtime",
+      register: async ({ eventStore, methods, runPromise }) => {
+        await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });
+      }
+    },
+    panelMailboxModule
+  ];
 
   await registerRuntimeModulePlan({
     runtime,
     ...planInput,
+    tailModules,
     ...(onRegister ? { onRegister } : {})
   });
-
-  onPhase?.("register extension methods");
-  await registerAndActivateExtensionsAtStartup({ workspaceDir, eventStore, methods, runPromise });
-
-  onPhase?.("register panel mailbox methods");
-  await runtime.registerModules([panelMailboxModule], onRegister);
 };
 
 export const runRuntimeStartupSequence = async (input: RuntimeStartupSequenceInput) => {

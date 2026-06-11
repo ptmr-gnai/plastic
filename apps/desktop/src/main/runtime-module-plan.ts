@@ -19,6 +19,7 @@ export type RuntimeModulePlanInput = {
   deixis: RuntimeModule;
   agentBackend?: RuntimeModule | null;
   health?: RuntimeModule | null;
+  tailModules?: RuntimeModule[];
 };
 
 export const createRuntimeModulePlan = (input: RuntimeModulePlanInput): RuntimeModule[] => {
@@ -38,7 +39,8 @@ export const createRuntimeModulePlan = (input: RuntimeModulePlanInput): RuntimeM
     panelControlModule,
     input.windowCapability,
     input.deixis,
-    health
+    health,
+    ...(input.tailModules ?? [])
   ].filter((module): module is RuntimeModule => Boolean(module));
   return [
     ...modules,

@@ -251,7 +251,7 @@ export const assertRuntimeModuleInventory = async ({ rpc }) => {
   for (const id of [
     "runtime-state", "runtime-snapshot", "agent-workbench", "agent-orient", "runtime-build",
     "runtime-diagnostics", "extension-authoring", "renderer-control", "runtime-control",
-    "panel-control", "window-capability", "deixis", "runtime-health"
+    "panel-control", "window-capability", "deixis", "runtime-health", "extension-runtime", "panel-mailbox"
   ]) {
     assert(ids.includes(id), `runtime/modules missing ${id}`);
   }
