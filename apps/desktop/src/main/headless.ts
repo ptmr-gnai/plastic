@@ -37,6 +37,7 @@ const readGitStatus = createGitStatusReader({ runCommand: runLocalCommand });
 
 const buildStatus = () => createRuntimeBuildStatus({
   config: hostConfig,
+  mode: "headless",
   service: "plastic.headless",
   startedAt,
   runtimeRpcUrl,
@@ -73,6 +74,7 @@ const agentModules = createRuntimeHostAgentModules({
 });
 const headlessDiagnostics = () => createRuntimeDiagnostics({
   config: hostConfig,
+  mode: "headless",
   appReady: false,
   windowCount: 0,
   retainedWindowCount: 0,

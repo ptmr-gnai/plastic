@@ -193,10 +193,13 @@ await check("build/status", async () => {
   const build = await rpc("build/status");
   const status = await buildGet("/status");
   assert(build?.status === "running", "build/status did not report running");
+  assert(build.mode === state.app.mode, "build/status mode mismatch");
   assert(status.value?.status === build.status, "build /status did not match build/status");
+  assert(status.value?.mode === state.app.mode, "build /status mode mismatch");
   assert(status.value?.workspaceDir === build.workspaceDir, "build /status workspaceDir mismatch");
   assert(build.workspaceDir, "build/status missing workspaceDir");
   return {
+    mode: build.mode,
     service: build.service,
     runtimeRpcUrl: build.runtimeRpcUrl ?? null,
     runtimePort: build.runtimePort ?? null
@@ -213,15 +216,19 @@ await check("build HTTP transport", async () => {
   assert(runtimeHealth.service === "plastic.runtime", "runtime /healthz returned wrong service");
   assert(health.service === "plastic.build", "build /healthz returned wrong service");
   assert(status.value?.status === "running", "build /status did not report running");
+  assert(status.value?.mode === state.app.mode, "build /status mode mismatch");
   assert(status.value.buildSocket?.endsWith(`:${controlPlane.build.port}`), "build status socket does not match startup control plane");
   assert(buildSnapshot.value?.app?.mode === state.app.mode, "build /snapshot mode mismatch");
   assert(diagnostics?.workspaceDir, "build /rpc app/diagnostics missing workspaceDir");
+  assert(diagnostics.mode === state.app.mode, "build /rpc app/diagnostics mode mismatch");
   return {
     buildUrl,
     runtimePort: controlPlane.runtime.port,
     buildPort: controlPlane.build.port,
     service: status.value.service,
+    statusMode: status.value.mode,
     snapshotMode: buildSnapshot.value.app.mode,
+    diagnosticsMode: diagnostics.mode,
     diagnosticsWindowCount: diagnostics.windowCount
   };
 });
@@ -237,8 +244,10 @@ await check("build HTTP error contract", async () => {
 await check("app/diagnostics", async () => {
   const diagnostics = await rpc("app/diagnostics");
   assert(diagnostics?.workspaceDir, "app/diagnostics missing workspaceDir");
+  assert(diagnostics.mode === state.app.mode, "app/diagnostics mode mismatch");
   assert(typeof diagnostics.windowCount === "number", "app/diagnostics missing windowCount");
   return {
+    mode: diagnostics.mode,
     workspaceDir: diagnostics.workspaceDir,
     windowCount: diagnostics.windowCount,
     appReady: diagnostics.appReady

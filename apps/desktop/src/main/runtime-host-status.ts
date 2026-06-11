@@ -7,14 +7,16 @@ type RuntimeMode = "electron" | "headless";
 export const createRuntimeBuildStatus = (
   input: {
     config: RuntimeHostConfig;
+    mode: RuntimeMode;
     service: string;
     startedAt: string;
     runtimeRpcUrl: string;
   } & Record<string, unknown>
 ) => {
-  const { config, service, startedAt, runtimeRpcUrl, ...extra } = input;
+  const { config, mode, service, startedAt, runtimeRpcUrl, ...extra } = input;
   return {
     service,
+    mode,
     status: "running",
     workspaceDir: config.workspaceDir,
     plasticDir: config.plasticDir,
@@ -31,10 +33,12 @@ export const createRuntimeBuildStatus = (
 export const createRuntimeDiagnostics = (
   input: {
     config: RuntimeHostConfig;
+    mode: RuntimeMode;
   } & Record<string, unknown>
 ) => {
-  const { config, ...extra } = input;
+  const { config, mode, ...extra } = input;
   return {
+    mode,
     cwd: process.cwd(),
     workspaceDir: config.workspaceDir,
     eventPath: config.eventPath,

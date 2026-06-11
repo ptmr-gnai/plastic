@@ -70,6 +70,7 @@ const codexAdapter = createCodexAdapter({
 
 const buildStatus = () => createRuntimeBuildStatus({
   config: hostConfig,
+  mode: "electron",
   service: "plastic.build",
   startedAt: processStartedAt,
   runtimeRpcUrl: preferredRuntimeRpcUrl,
@@ -214,6 +215,7 @@ const supportModules = createRuntimeHostSupportModules({
   runCommand: runLocalCommand,
   getDiagnostics: () => createRuntimeDiagnostics({
     config: hostConfig,
+    mode: "electron",
     appReady: app.isReady(),
     windowCount: BrowserWindow.getAllWindows().length,
     retainedWindowCount: windows.size,
