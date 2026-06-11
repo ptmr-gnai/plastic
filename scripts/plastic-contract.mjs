@@ -31,8 +31,10 @@ await check("plastic/state", async () => {
   assert(state.app?.name === "Plastic", "state.app.name is not Plastic");
   assert(state.controlPlane?.runtime?.transport === "http", "state missing runtime control plane");
   assert(state.controlPlane.runtime.rpcPath === "/rpc", "state runtime control plane rpcPath mismatch");
+  assert(state.controlPlane.runtime.methodsPath === "/methods", "state runtime control plane methodsPath mismatch");
   assert(state.controlPlane?.build?.transport === "http", "state missing build control plane");
   assert(state.controlPlane.build.rpcPath === "/rpc", "state build control plane rpcPath mismatch");
+  assert(state.controlPlane.build.methodsPath === "/methods", "state build control plane methodsPath mismatch");
   assert(runtimeState.value?.controlPlane?.runtime?.transport === "http", "runtime /state missing runtime control plane");
   assert(runtimeState.value.controlPlane.runtime.rpcPath === state.controlPlane.runtime.rpcPath, "runtime /state control plane mismatch");
   const panelResources = Array.isArray(state.panels)
@@ -47,13 +49,19 @@ await check("plastic/state", async () => {
 await check("plastic/methods", async () => {
   methods = await rpc("plastic/methods");
   const runtimeMethods = await runtimeGet("/methods");
+  const buildMethods = await buildGet("/methods");
   const items = assertArray(methods, "plastic/methods is not an array");
   const runtimeItems = assertArray(runtimeMethods.value, "runtime /methods is not an array");
+  const buildItems = assertArray(buildMethods.value, "build /methods is not an array");
   assert(runtimeItems.length === items.length, "runtime /methods count mismatch");
+  assert(buildItems.length === items.length, "build /methods count mismatch");
   assertMethodCatalogSurface({ assert, label: "plastic/methods", methods: items });
   const runtimeMethodIds = runtimeItems.map((method) => method.id).sort();
+  const buildMethodIds = buildItems.map((method) => method.id).sort();
   assert(JSON.stringify(runtimeMethodIds) === JSON.stringify(items.map((method) => method.id).sort()), "runtime /methods ids diverged from plastic/methods");
+  assert(JSON.stringify(buildMethodIds) === JSON.stringify(items.map((method) => method.id).sort()), "build /methods ids diverged from plastic/methods");
   assertMethodCatalogSurface({ assert, label: "/methods", methods: runtimeItems });
+  assertMethodCatalogSurface({ assert, label: "build /methods", methods: buildItems });
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   return { count: items.length };
 });
@@ -68,8 +76,10 @@ await check("plastic/snapshot", async () => {
   assertArray(snapshot.visibleRefs, "snapshot.visibleRefs is not an array");
   assert(snapshot.controlPlane?.runtime?.transport === "http", "snapshot missing runtime control plane");
   assert(snapshot.controlPlane.runtime.rpcPath === "/rpc", "snapshot runtime control plane rpcPath mismatch");
+  assert(snapshot.controlPlane.runtime.methodsPath === "/methods", "snapshot runtime control plane methodsPath mismatch");
   assert(snapshot.controlPlane?.build?.transport === "http", "snapshot missing build control plane");
   assert(snapshot.controlPlane.build.rpcPath === "/rpc", "snapshot build control plane rpcPath mismatch");
+  assert(snapshot.controlPlane.build.methodsPath === "/methods", "snapshot build control plane methodsPath mismatch");
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });

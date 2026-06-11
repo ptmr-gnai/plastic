@@ -29,6 +29,7 @@ export const startRuntimeHostControlPlane = async (
           host: input.runtimeHost,
           port: input.runtimePort,
           rpcPath: "/rpc",
+          methodsPath: "/methods",
           eventStreamPath: "/events/stream",
           healthPath: "/healthz"
         },
@@ -38,6 +39,7 @@ export const startRuntimeHostControlPlane = async (
           port: input.buildPort,
           rpcPath: "/rpc",
           healthPath: "/healthz",
+          methodsPath: "/methods",
           statusPath: "/status",
           snapshotPath: "/snapshot"
         }

@@ -287,10 +287,12 @@ export const assertRuntimeStartedControlPlane = async ({ rpc }) => {
   const controlPlane = latest.payload?.controlPlane;
   assert(controlPlane?.runtime?.transport === "http", "runtime.started missing runtime HTTP transport");
   assert(controlPlane.runtime.rpcPath === "/rpc", "runtime.started runtime rpcPath mismatch");
+  assert(controlPlane.runtime.methodsPath === "/methods", "runtime.started runtime methodsPath mismatch");
   assert(controlPlane.runtime.eventStreamPath === "/events/stream", "runtime.started runtime event stream path mismatch");
   assert(controlPlane.runtime.healthPath === "/healthz", "runtime.started runtime health path mismatch");
   assert(controlPlane?.build?.transport === "http", "runtime.started missing build HTTP transport");
   assert(controlPlane.build.rpcPath === "/rpc", "runtime.started build rpcPath mismatch");
+  assert(controlPlane.build.methodsPath === "/methods", "runtime.started build methodsPath mismatch");
   assert(controlPlane.build.statusPath === "/status", "runtime.started build status path mismatch");
   assert(controlPlane.build.snapshotPath === "/snapshot", "runtime.started build snapshot path mismatch");
   return {
@@ -353,8 +355,10 @@ export const assertAgentWorkbenchPacket = ({ workbench, mode }) => {
   assertArray(workbench.control.modules.items, "workbench runtime modules items missing");
   assert(workbench.control.controlPlane?.runtime?.transport === "http", "workbench missing runtime control plane");
   assert(workbench.control.controlPlane.runtime.rpcPath === "/rpc", "workbench runtime control plane rpcPath mismatch");
+  assert(workbench.control.controlPlane.runtime.methodsPath === "/methods", "workbench runtime control plane methodsPath mismatch");
   assert(workbench.control.controlPlane?.build?.transport === "http", "workbench missing build control plane");
   assert(workbench.control.controlPlane.build.rpcPath === "/rpc", "workbench build control plane rpcPath mismatch");
+  assert(workbench.control.controlPlane.build.methodsPath === "/methods", "workbench build control plane methodsPath mismatch");
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assert(
     workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"),
@@ -389,8 +393,10 @@ export const assertAgentOrientationPacket = (orientation) => {
   assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
   assert(orientation.capabilities.controlPlane?.runtime?.transport === "http", "agent/orient missing runtime control plane");
   assert(orientation.capabilities.controlPlane.runtime.rpcPath === "/rpc", "agent/orient runtime control plane rpcPath mismatch");
+  assert(orientation.capabilities.controlPlane.runtime.methodsPath === "/methods", "agent/orient runtime control plane methodsPath mismatch");
   assert(orientation.capabilities.controlPlane?.build?.transport === "http", "agent/orient missing build control plane");
   assert(orientation.capabilities.controlPlane.build.rpcPath === "/rpc", "agent/orient build control plane rpcPath mismatch");
+  assert(orientation.capabilities.controlPlane.build.methodsPath === "/methods", "agent/orient build control plane methodsPath mismatch");
   assert(
     orientation.capabilities.links?.some((link) => link.method === "runtime/modules"),
     "agent/orient missing runtime/modules link"
