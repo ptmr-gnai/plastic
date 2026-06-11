@@ -29,6 +29,12 @@ const requiredRuntimeMethods = [
   "plastic/selfTest"
 ];
 
+const requiredRuntimeCapabilities = [
+  "runtime.capabilities",
+  "window.projection",
+  "event.projection"
+];
+
 const runtimeHealthAvailability = {
   status: "available" as const,
   notes: "Self-test is a shared runtime health primitive in headed and headless modes."
@@ -39,7 +45,7 @@ export const createRuntimeHealthModule = (input: {
   hostChecks?: HostHealthCheck[];
 } = {}): RuntimeModule => ({
   id: "runtime-health",
-  register: async ({ eventStore, methods, appendEvent, runPromise }: RuntimeMethodContext) => {
+  register: async ({ eventStore, methods, appendEvent, runPromise, capabilities }: RuntimeMethodContext) => {
     await runPromise(
       methods.register({
         id: "plastic/selfTest",
@@ -72,6 +78,21 @@ export const createRuntimeHealthModule = (input: {
                 throw new Error(`Required methods missing: ${missingRequiredMethods.join(", ")}`);
               }
               return { count: methodList.length, missingAvailability, missingRequiredMethods };
+            });
+            await record("capabilities:list", () => {
+              const capabilityList = capabilities.list();
+              const capabilityIds = new Set(capabilityList.map((capability) => capability.id));
+              const invalidStatuses = capabilityList
+                .filter((capability) => !["available", "degraded", "unavailable"].includes(capability.status))
+                .map((capability) => capability.id);
+              const missingRequiredCapabilities = requiredRuntimeCapabilities.filter((id) => !capabilityIds.has(id));
+              if (invalidStatuses.length > 0) {
+                throw new Error(`Capabilities with invalid status: ${invalidStatuses.join(", ")}`);
+              }
+              if (missingRequiredCapabilities.length > 0) {
+                throw new Error(`Required capabilities missing: ${missingRequiredCapabilities.join(", ")}`);
+              }
+              return { count: capabilityList.length, invalidStatuses, missingRequiredCapabilities };
             });
             await record("panels:project", () => ({ count: projectPanels(events).length }));
             await record("windows:project", () => ({ count: projectWindows(events).length }));
