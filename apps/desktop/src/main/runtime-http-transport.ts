@@ -10,6 +10,24 @@ export type RuntimeHttpTransport = {
   close: () => void;
 };
 
+export type HttpTransportServer = {
+  server: Server;
+  close: () => void;
+};
+
+type HttpTransportServerInput = {
+  eventStore: EventStore;
+  handleRequest: (input: {
+    eventStreamClients: Set<ServerResponse>;
+    request: IncomingMessage;
+    response: ServerResponse;
+  }) => void | Promise<void>;
+  host: string;
+  onListening?: () => void;
+  port: number;
+  runPromise: RunPromise;
+};
+
 export const readJsonBody = async (request: IncomingMessage | NodeJS.ReadableStream): Promise<unknown> =>
   new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -117,17 +135,8 @@ export const handleHttpMethodGet = async (input: {
   return true;
 };
 
-export const startRuntimeHttpTransport = async (input: {
-  eventStore: EventStore;
-  methods: MethodRegistry;
-  runPromise: RunPromise;
-  host: string;
-  port: number;
-  corsOrigin?: string;
-  onListening?: () => void;
-}): Promise<RuntimeHttpTransport> => {
+export const startHttpTransportServer = async (input: HttpTransportServerInput): Promise<HttpTransportServer> => {
   const eventStreamClients = new Set<ServerResponse>();
-  const corsOrigin = input.corsOrigin ?? "*";
   const unsubscribe = await input.runPromise(
     input.eventStore.subscribe((event) => {
       for (const response of eventStreamClients) {
@@ -137,13 +146,7 @@ export const startRuntimeHttpTransport = async (input: {
   );
 
   const server = createServer((request, response) => {
-    void handleRuntimeRequest({
-      eventStreamClients,
-      input,
-      request,
-      response,
-      corsOrigin
-    });
+    void input.handleRequest({ eventStreamClients, request, response });
   });
 
   server.listen(input.port, input.host, input.onListening);
@@ -159,6 +162,27 @@ export const startRuntimeHttpTransport = async (input: {
       server.close();
     }
   };
+};
+
+export const startRuntimeHttpTransport = async (input: {
+  eventStore: EventStore;
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+  host: string;
+  port: number;
+  corsOrigin?: string;
+  onListening?: () => void;
+}): Promise<RuntimeHttpTransport> => {
+  const corsOrigin = input.corsOrigin ?? "*";
+  return startHttpTransportServer({
+    eventStore: input.eventStore,
+    host: input.host,
+    port: input.port,
+    runPromise: input.runPromise,
+    ...(input.onListening ? { onListening: input.onListening } : {}),
+    handleRequest: ({ eventStreamClients, request, response }) =>
+      handleRuntimeRequest({ eventStreamClients, input, request, response, corsOrigin })
+  });
 };
 
 const handleRuntimeRequest = async (context: {

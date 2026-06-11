@@ -1,6 +1,6 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import type { EventStore, MethodRegistry } from "@plastic/core";
-import { handleHttpEventStream, handleHttpMethodGet, handleHttpRpc, sendJson, writeSse } from "./runtime-http-transport.js";
+import { handleHttpEventStream, handleHttpMethodGet, handleHttpRpc, sendJson, startHttpTransportServer } from "./runtime-http-transport.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 export type BuildHttpTransport = {
@@ -20,38 +20,16 @@ type BuildHttpTransportInput = {
 };
 
 export const startBuildHttpTransport = async (input: BuildHttpTransportInput): Promise<BuildHttpTransport> => {
-  const eventStreamClients = new Set<ServerResponse>();
-  const unsubscribe = await input.runPromise(
-    input.eventStore.subscribe((event) => {
-      for (const response of eventStreamClients) {
-        writeSse(response, "plastic.event", event);
-      }
-    })
-  );
-
-  const server = createServer(async (request, response) => {
-    await handleBuildRequest({
-      eventStreamClients,
-      input,
-      request,
-      response,
-      corsOrigin: input.corsOrigin ?? "*"
-    });
+  const corsOrigin = input.corsOrigin ?? "*";
+  return startHttpTransportServer({
+    eventStore: input.eventStore,
+    host: input.host,
+    port: input.port,
+    runPromise: input.runPromise,
+    ...(input.onListening ? { onListening: input.onListening } : {}),
+    handleRequest: ({ eventStreamClients, request, response }) =>
+      handleBuildRequest({ corsOrigin, eventStreamClients, input, request, response })
   });
-
-  server.listen(input.port, input.host, input.onListening);
-
-  return {
-    server,
-    close: () => {
-      unsubscribe();
-      for (const response of eventStreamClients) {
-        response.end();
-      }
-      eventStreamClients.clear();
-      server.close();
-    }
-  };
 };
 
 const handleBuildRequest = async (context: {
