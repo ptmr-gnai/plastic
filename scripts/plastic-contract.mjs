@@ -12,6 +12,7 @@ import {
   agentBackendMethodExpectationsForMode,
   capabilityBackedMethodExpectationsForMode
 } from "./plastic-capability-expectations.mjs";
+import { assertModuleAvailabilitySummaries } from "./plastic-module-availability.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
@@ -151,6 +152,8 @@ await check("runtime/modules", async () => {
   const live = await assertRuntimeModuleInventory({ rpc });
   const durable = await assertRuntimeStartedModuleInventory({ rpc });
   assertMatchingModuleInventories({ live, durable });
+  assertModuleAvailabilitySummaries({ assert, modules: live, methods, source: "runtime/modules" });
+  assertModuleAvailabilitySummaries({ assert, modules: durable, methods, source: "runtime.started modules" });
   return { live, durable };
 });
 
