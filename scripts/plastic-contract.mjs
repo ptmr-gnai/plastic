@@ -5,7 +5,7 @@ import {
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
   assertMatchingModuleInventories, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
-import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
+import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
 import {
@@ -25,9 +25,11 @@ let methods;
 let createdPanelEvent;
 let extensions;
 let events;
+let runtimeStartedControlPlane;
 
 await check("plastic/state", async () => {
   state = await rpc("plastic/state");
+  runtimeStartedControlPlane = await assertRuntimeStartedControlPlane({ rpc });
   const runtimeState = await runtimeGet("/state");
   const buildState = await buildGet("/state");
   assert(state && typeof state === "object", "plastic/state returned no object");
@@ -44,10 +46,13 @@ await check("plastic/state", async () => {
   assert(state.controlPlane.build.methodsPath === "/methods", "state build control plane methodsPath mismatch");
   assert(state.controlPlane.build.eventStreamPath === "/events/stream", "state build control plane eventStreamPath mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: state.controlPlane, source: "state" });
+  assertMatchingControlPlaneDescriptors({ assert, actual: state.controlPlane, expected: runtimeStartedControlPlane, source: "plastic/state" });
   assert(runtimeState.value?.controlPlane?.runtime?.transport === "http", "runtime /state missing runtime control plane");
   assert(runtimeState.value.controlPlane.runtime.rpcPath === state.controlPlane.runtime.rpcPath, "runtime /state control plane mismatch");
+  assertMatchingControlPlaneDescriptors({ assert, actual: runtimeState.value.controlPlane, expected: runtimeStartedControlPlane, source: "runtime /state" });
   assert(buildState.value?.app?.mode === state.app.mode, "build /state mode mismatch");
   assert(buildState.value?.controlPlane?.build?.statePath === state.controlPlane.build.statePath, "build /state control plane mismatch");
+  assertMatchingControlPlaneDescriptors({ assert, actual: buildState.value.controlPlane, expected: runtimeStartedControlPlane, source: "build /state" });
   const panelResources = Array.isArray(state.panels)
     ? state.panels
     : assertArray(state.resources, "state.resources is not an array")
@@ -95,6 +100,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.controlPlane.build.methodsPath === "/methods", "snapshot build control plane methodsPath mismatch");
   assert(snapshot.controlPlane.build.eventStreamPath === "/events/stream", "snapshot build control plane eventStreamPath mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: snapshot.controlPlane, source: "snapshot" });
+  assertMatchingControlPlaneDescriptors({ assert, actual: snapshot.controlPlane, expected: runtimeStartedControlPlane, source: "snapshot" });
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });
@@ -229,6 +235,7 @@ await check("build/status", async () => {
   assert(build.controlPlane?.runtime?.transport === "http", "build/status missing runtime control plane");
   assert(stableJson(status.value.controlPlane) === stableJson(build.controlPlane), "build /status control plane mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: build.controlPlane, source: "build/status" });
+  assertMatchingControlPlaneDescriptors({ assert, actual: build.controlPlane, expected: runtimeStartedControlPlane, source: "build/status" });
   return {
     mode: build.mode,
     service: build.service,

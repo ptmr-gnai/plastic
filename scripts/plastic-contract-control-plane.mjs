@@ -1,3 +1,5 @@
+import { stableJson } from "./plastic-stable-json.mjs";
+
 export const assertControlPlaneEndpointUrls = ({ assert, controlPlane, source }) => {
   assert(controlPlane?.runtime?.baseUrl?.startsWith("http://"), `${source} runtime baseUrl missing`);
   assert(controlPlane.runtime.rpcUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.rpcPath}`, `${source} runtime rpcUrl mismatch`);
@@ -13,4 +15,16 @@ export const assertControlPlaneEndpointUrls = ({ assert, controlPlane, source })
   assert(controlPlane.build.healthUrl === `${controlPlane.build.baseUrl}${controlPlane.build.healthPath}`, `${source} build healthUrl mismatch`);
   assert(controlPlane.build.statusUrl === `${controlPlane.build.baseUrl}${controlPlane.build.statusPath}`, `${source} build statusUrl mismatch`);
   assert(controlPlane.build.snapshotUrl === `${controlPlane.build.baseUrl}${controlPlane.build.snapshotPath}`, `${source} build snapshotUrl mismatch`);
+};
+
+export const controlPlaneDescriptor = (controlPlane) => ({
+  runtime: controlPlane?.runtime ?? null,
+  build: controlPlane?.build ?? null
+});
+
+export const assertMatchingControlPlaneDescriptors = ({ assert, actual, expected, source }) => {
+  assert(
+    stableJson(controlPlaneDescriptor(actual)) === stableJson(controlPlaneDescriptor(expected)),
+    `${source} control plane does not match runtime.started`
+  );
 };
