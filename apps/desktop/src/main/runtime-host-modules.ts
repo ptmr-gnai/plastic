@@ -18,7 +18,7 @@ type RuntimeHostConfig = ReturnType<typeof createRuntimeHostConfig>;
 type RuntimeMode = "electron" | "headless";
 type RuntimeHostProjectionInput = Parameters<typeof createRuntimeHostProjectionModules>[0];
 type RuntimeHostAgentInput = Parameters<typeof createRuntimeHostAgentModules>[0];
-type RuntimeHostCapabilityInput = Parameters<typeof createRuntimeHostCapabilityModules>[0];
+type RuntimeHostCapabilityInput = NonNullable<Parameters<typeof createRuntimeHostCapabilityModules>[0]>;
 type RuntimeHostSupportInput = Parameters<typeof createRuntimeHostSupportBundle>[0];
 type HeadlessRuntimeHostStandardInput = {
   config: RuntimeHostConfig;
@@ -31,6 +31,33 @@ type HeadlessRuntimeHostStandardInput = {
   getDiagnostics: RuntimeHostSupportInput["getDiagnostics"];
   readGitStatus: RuntimeHostAgentInput["workbench"]["readGitStatus"];
   callCodexStatus: () => Promise<unknown>;
+};
+type ElectronRuntimeHostStandardInput = {
+  config: RuntimeHostConfig;
+  workspaceDir: string;
+  eventPath: string;
+  plasticDir: string;
+  getBuildStatus: () => unknown;
+  getHost: () => Record<string, unknown>;
+  runCommand: RuntimeHostSupportInput["runCommand"];
+  getDiagnostics: RuntimeHostSupportInput["getDiagnostics"];
+  readGitStatus: RuntimeHostAgentInput["workbench"]["readGitStatus"];
+  getAppVersion: () => string;
+  isAppReady: () => boolean;
+  getWindowCount: () => number;
+  getRetainedWindowCount: () => number;
+  getCodexStatus: () => unknown;
+  callBridgeStatus: () => Promise<unknown>;
+  findFocusedWindowId: NonNullable<RuntimeHostAgentInput["orient"]["findFocusedWindowId"]>;
+  listVisibleRefs: NonNullable<RuntimeHostAgentInput["workbench"]["listVisibleRefs"]>;
+  panelIdFromRef: NonNullable<RuntimeHostAgentInput["workbench"]["panelIdFromRef"]>;
+  sourceHintsFor: NonNullable<RuntimeHostAgentInput["workbench"]["sourceHintsFor"]>;
+  reloadRenderers: NonNullable<NonNullable<RuntimeHostCapabilityInput["rendererControl"]>["reloadRenderers"]>;
+  browserWindow: NonNullable<NonNullable<RuntimeHostCapabilityInput["windowCapability"]>["browserWindow"]>;
+  createWindow: NonNullable<NonNullable<RuntimeHostCapabilityInput["windowCapability"]>["createWindow"]>;
+  scrollRefIntoViewScript: NonNullable<NonNullable<RuntimeHostCapabilityInput["windowCapability"]>["scrollRefIntoViewScript"]>;
+  deixis: NonNullable<RuntimeHostCapabilityInput["deixis"]>;
+  agentBackend: NonNullable<RuntimeModulePlanInput["agentBackend"]>;
 };
 
 const unavailableCodexStatus = () => ({
@@ -244,4 +271,70 @@ export const createHeadlessRuntimeHostStandardModules = (input: HeadlessRuntimeH
         { id: "agent-backend:fallback", run: input.callCodexStatus }
       ]
     }
+  });
+
+export const createElectronRuntimeHostStandardModules = (input: ElectronRuntimeHostStandardInput) =>
+  createRuntimeHostStandardModules({
+    config: input.config,
+    mode: "electron",
+    getHostDetails: async () => ({
+      app: { version: input.getAppVersion(), ready: input.isAppReady() },
+      build: input.getBuildStatus(),
+      runtime: {
+        windowCount: input.getWindowCount(),
+        retainedWindowCount: input.getRetainedWindowCount(),
+        eventStream: "runtime-http-transport"
+      },
+      codex: input.getCodexStatus(),
+      visibleRefs: await input.listVisibleRefs()
+    }),
+    agent: {
+      workbench: {
+        mode: "electron",
+        workspaceDir: input.workspaceDir,
+        eventPath: input.eventPath,
+        getRuntimeStatus: input.getBuildStatus,
+        getCodexStatus: input.getCodexStatus,
+        readGitStatus: input.readGitStatus,
+        getFocusedElectronWindowId: () => input.findFocusedWindowId?.(),
+        listVisibleRefs: input.listVisibleRefs,
+        panelIdFromRef: input.panelIdFromRef,
+        sourceHintsFor: input.sourceHintsFor,
+        visualActions: ({ ref, panelId }) => [
+          { id: "list-refs", title: "List visible refs", method: "deixis/listVisibleRefs" },
+          { id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: ref ? { ref } : {} },
+          ...(panelId ? [{ id: "focus-panel", title: "Focus panel", method: "windows/focusPanel", input: { panelId } }] : [])
+        ]
+      },
+      orient: {
+        workspaceDir: input.workspaceDir,
+        findFocusedWindowId: input.findFocusedWindowId,
+        listVisibleRefs: input.listVisibleRefs
+      }
+    },
+    support: {
+      plasticDir: input.plasticDir,
+      getBuildStatus: input.getBuildStatus,
+      getHost: input.getHost,
+      runCommand: input.runCommand,
+      getDiagnostics: input.getDiagnostics,
+      healthChecks: [
+        { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await input.listVisibleRefs()).length }) },
+        { id: "build:status", run: input.getBuildStatus },
+        { id: "codex:status", run: input.getCodexStatus },
+        { id: "bridge:status", run: input.callBridgeStatus }
+      ]
+    },
+    capability: {
+      rendererControl: {
+        reloadRenderers: input.reloadRenderers
+      },
+      windowCapability: {
+        browserWindow: input.browserWindow,
+        createWindow: input.createWindow,
+        scrollRefIntoViewScript: input.scrollRefIntoViewScript
+      },
+      deixis: input.deixis
+    },
+    agentBackend: input.agentBackend
   });

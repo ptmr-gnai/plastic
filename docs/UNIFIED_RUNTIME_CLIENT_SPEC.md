@@ -465,14 +465,13 @@ The first unification pass is substantially complete:
 - `createRuntimeHostSupportBundle` creates shared host, build, diagnostics, extension-authoring, and health modules while preserving host-specific health checks.
 - `createRuntimeHostStandardModules` assembles projection, agent, capability, support, health, and startup module plans for both Electron and headless hosts.
 - `createHeadlessRuntimeHostStandardModules` keeps headless unavailable-Codex, no-window, and no-visible-ref policy out of the entrypoint.
+- `createElectronRuntimeHostStandardModules` keeps Electron Codex, window, renderer, visible-ref, and health callback policy out of the entrypoint.
 - Electron and headless both use shared runtime modules for state, snapshot, agent workbench/orientation, build, diagnostics, extension authoring/runtime, renderer/window/deixis capability-backed methods, runtime control, panel control, panel mailbox, runtime modules, and health.
 - The runtime/build HTTP transports share request helpers, RPC dispatch, method GET dispatch, `/host`, `/state`, `/methods`, `/capabilities`, `/snapshot`, SSE event streams, CORS behavior, and error envelopes.
 - `runtime/host`, `runtime/capabilities`, `methods/describe`, `runtime/modules`, `agent/workbench`, `agent/orient`, `plastic/state`, and `plastic/snapshot` expose enough host/capability metadata for agents to learn which methods are available, degraded, or unavailable.
 - `runtime.started` durably records the shared host descriptor, capability inventory, module inventory, and control plane, so agents can compare live runtime state with the event log.
 - The shared contract harness validates headless end to end, including state, methods, snapshot, capabilities, modules, panel lifecycle, extension scan/list, event streams, HTTP error contracts, build HTTP surfaces, and self-test.
 - `pnpm plastic:method-parity` runs `plastic/selfTest` in both hosts and verifies shared runtime health checks are green while permitting host-specific checks to differ.
-
-The previous validation blocker was below Plastic code: Electron could report its version, but a minimal Electron app-main preflight timed out before the Plastic main process started. The current validation run now reaches Electron startup, opens the runtime/build HTTP ports, runs the shared contract, and passes method parity against the headless baseline.
 
 `pnpm plastic:validate-unified` is the current automation-friendly validation command. It must:
 

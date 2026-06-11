@@ -13,7 +13,7 @@ import { startElectronIpcTransport } from "./electron-ipc-transport.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostBase } from "./runtime-host-base.js";
-import { createRuntimeHostStandardModules } from "./runtime-host-modules.js";
+import { createElectronRuntimeHostStandardModules } from "./runtime-host-modules.js";
 import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
@@ -126,73 +126,36 @@ const codexAgentBackendModule: RuntimeModule = {
     await codexAdapter.registerMethods();
   }
 };
-const startupModules = createRuntimeHostStandardModules({
+const startupModules = createElectronRuntimeHostStandardModules({
   config: hostConfig,
-  mode: "electron",
-  getHostDetails: async () => ({
-    app: { version: app.getVersion(), ready: app.isReady() },
-    build: buildStatus(),
-    runtime: {
-      windowCount: BrowserWindow.getAllWindows().length,
-      retainedWindowCount: windows.size,
-      eventStream: "runtime-http-transport"
-    },
-    codex: codexAdapter.status(),
-    visibleRefs: await electronDeixisHost.listVisibleRefs()
-  }),
-  agent: {
-    workbench: {
-      mode: "electron",
-      workspaceDir,
-      eventPath,
-      getRuntimeStatus: buildStatus,
-      getCodexStatus: () => codexAdapter.status(),
-      readGitStatus,
-      getFocusedElectronWindowId: () => electronDeixisHost.findWindow()?.id,
-      listVisibleRefs: electronDeixisHost.listVisibleRefs,
-      panelIdFromRef: electronDeixisHost.panelIdFromRef,
-      sourceHintsFor: electronDeixisHost.sourceHintsFor,
-      visualActions: ({ ref, panelId }) => [
-        { id: "list-refs", title: "List visible refs", method: "deixis/listVisibleRefs" },
-        { id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: ref ? { ref } : {} },
-        ...(panelId ? [{ id: "focus-panel", title: "Focus panel", method: "windows/focusPanel", input: { panelId } }] : [])
-      ]
-    },
-    orient: {
-      workspaceDir,
-      findFocusedWindowId: (windowId) => electronDeixisHost.findWindow(windowId)?.id,
-      listVisibleRefs: electronDeixisHost.listVisibleRefs
-    }
-  },
-  support: {
-    plasticDir,
-    getBuildStatus: buildStatus,
-    getHost: hostStatus.host,
-    runCommand: runLocalCommand,
-    getDiagnostics: hostStatus.diagnostics,
-    healthChecks: [
-      { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await electronDeixisHost.listVisibleRefs()).length }) },
-      { id: "build:status", run: () => buildStatus() },
-      { id: "codex:status", run: () => codexAdapter.status() },
-      { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
-    ]
-  },
-  capability: {
-    rendererControl: {
-      reloadRenderers: () =>
-        BrowserWindow.getAllWindows().map((window) => {
-          window.webContents.reload();
-          return { windowId: window.id, reloaded: true };
-        })
-    },
-    windowCapability: {
-      browserWindow: BrowserWindow,
-      createWindow,
-      scrollRefIntoViewScript: electronDeixisHost.scrollRefIntoViewScript
-    },
-    deixis: electronDeixisHost
-  },
-  agentBackend: codexAgentBackendModule,
+  workspaceDir,
+  eventPath,
+  plasticDir,
+  getBuildStatus: buildStatus,
+  getHost: hostStatus.host,
+  runCommand: runLocalCommand,
+  getDiagnostics: hostStatus.diagnostics,
+  readGitStatus,
+  getAppVersion: () => app.getVersion(),
+  isAppReady: () => app.isReady(),
+  getWindowCount: () => BrowserWindow.getAllWindows().length,
+  getRetainedWindowCount: () => windows.size,
+  getCodexStatus: () => codexAdapter.status(),
+  callBridgeStatus: () => runPromise(methods.call("bridge/status", {})),
+  findFocusedWindowId: (windowId) => electronDeixisHost.findWindow(windowId)?.id,
+  listVisibleRefs: electronDeixisHost.listVisibleRefs,
+  panelIdFromRef: electronDeixisHost.panelIdFromRef,
+  sourceHintsFor: electronDeixisHost.sourceHintsFor,
+  reloadRenderers: () =>
+    BrowserWindow.getAllWindows().map((window) => {
+      window.webContents.reload();
+      return { windowId: window.id, reloaded: true };
+    }),
+  browserWindow: BrowserWindow,
+  createWindow,
+  scrollRefIntoViewScript: electronDeixisHost.scrollRefIntoViewScript,
+  deixis: electronDeixisHost,
+  agentBackend: codexAgentBackendModule
 });
 const transports = await startRuntimeHostControlPlane({
   workspaceDir,
