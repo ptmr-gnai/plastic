@@ -163,6 +163,30 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   return { methods: 5, events: [darkEvent.id, lightEvent.id], theme: lightState.app.theme };
 };
 
+export const assertPanelLifecycleProjection = async ({ rpc, panelId }) => {
+  const created = await rpc("panels/create", {
+    id: panelId,
+    title: "Contract Panel",
+    kind: "generic",
+    body: "Created by scripts/plastic-contract.mjs",
+    order: 10
+  });
+  const panelsAfterCreate = await rpc("panels/list");
+  assert(panelsAfterCreate.some((panel) => panel.id === panelId), "created panel not projected");
+  const panel = await rpc("panels/get", { id: panelId });
+  assert(panel.title === "Contract Panel", "created panel title mismatch");
+  await rpc("panels/rename", { id: panelId, title: "Contract Panel Renamed" });
+  const renamed = await rpc("panels/get", { id: panelId });
+  assert(renamed.title === "Contract Panel Renamed", "renamed panel not projected");
+  await rpc("panels/move", { id: panelId, order: 1 });
+  const moved = await rpc("panels/get", { id: panelId });
+  assert(moved.order === 1, "moved panel order not projected");
+  await rpc("panels/close", { id: panelId });
+  const panelsAfterClose = await rpc("panels/list");
+  assert(!panelsAfterClose.some((candidate) => candidate.id === panelId), "closed panel still projected");
+  return { id: created.id, panelId, createEventId: created.id, remainingPanels: panelsAfterClose.length };
+};
+
 export const itemsFrom = (value, message) => {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.items)) return value.items;

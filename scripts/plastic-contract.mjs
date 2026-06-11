@@ -7,6 +7,7 @@ import {
   check,
   assertControlLegibilityAndThemeProjection,
   assertMethodDiscoveryParity,
+  assertPanelLifecycleProjection,
   itemsFrom,
   rawRuntimeRequest,
   results,
@@ -387,27 +388,8 @@ await check("runtime event stream", async () => {
 });
 
 await check("panel lifecycle", async () => {
-  createdPanelEvent = await rpc("panels/create", {
-    id: panelId,
-    title: "Contract Panel",
-    kind: "generic",
-    body: "Created by scripts/plastic-contract.mjs"
-  });
-  const panelsAfterCreate = await rpc("panels/list");
-  assert(panelsAfterCreate.some((panel) => panel.id === panelId), "created panel not projected");
-  const panel = await rpc("panels/get", { id: panelId });
-  assert(panel.title === "Contract Panel", "created panel title mismatch");
-  await rpc("panels/rename", { id: panelId, title: "Contract Panel Renamed" });
-  const renamed = await rpc("panels/get", { id: panelId });
-  assert(renamed.title === "Contract Panel Renamed", "renamed panel not projected");
-  await rpc("panels/close", { id: panelId });
-  const panelsAfterClose = await rpc("panels/list");
-  assert(!panelsAfterClose.some((candidate) => candidate.id === panelId), "closed panel still projected");
-  return {
-    panelId,
-    createEventId: createdPanelEvent.id,
-    remainingPanels: panelsAfterClose.length
-  };
+  createdPanelEvent = await assertPanelLifecycleProjection({ rpc, panelId });
+  return createdPanelEvent;
 });
 
 await check("extensions/scaffold", async () => {
