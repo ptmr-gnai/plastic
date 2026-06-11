@@ -17,6 +17,7 @@ import {
   createRuntimeHostAgentModules,
   createRuntimeHostCapabilityModules,
   createRuntimeHostProjectionModules,
+  createRuntimeHostProjectionResource,
   createRuntimeHostStartupModules,
   createRuntimeHostSupportModules
 } from "./runtime-host-modules.js";
@@ -142,26 +143,11 @@ const capabilityModules = createRuntimeHostCapabilityModules({
   },
   deixis: electronDeixisHost
 });
+const projectionResource = createRuntimeHostProjectionResource({ config: hostConfig, mode: "electron" });
 const projectionModules = createRuntimeHostProjectionModules({
   config: hostConfig,
   mode: "electron",
-  bus: {
-    runtimeRpcUrl: preferredRuntimeRpcUrl,
-    runtimeRpcUrls,
-    runtimeHost: controlPlane.runtime.host,
-    runtimePort
-  },
-  resource: {
-    id: "rpc-bus",
-    title: "Plastic RPC Bus",
-    state: {
-      runtimeRpcUrl: preferredRuntimeRpcUrl,
-      runtimeRpcUrls,
-      runtimeHost: controlPlane.runtime.host,
-      runtimePort
-    },
-    rpcUrl: preferredRuntimeRpcUrl
-  },
+  ...projectionResource,
   getHostDetails: async () => ({
     app: { version: app.getVersion(), ready: app.isReady() },
     build: buildStatus(),

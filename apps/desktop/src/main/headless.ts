@@ -4,6 +4,7 @@ import {
   createRuntimeHostAgentModules,
   createRuntimeHostCapabilityModules,
   createRuntimeHostProjectionModules,
+  createRuntimeHostProjectionResource,
   createRuntimeHostStartupModules,
   createRuntimeHostSupportModules
 } from "./runtime-host-modules.js";
@@ -43,16 +44,11 @@ const {
 const { eventStore, methods, runPromise } = runtime;
 const buildStatus = hostStatus.buildStatus;
 
+const projectionResource = createRuntimeHostProjectionResource({ config: hostConfig, mode: "headless", state: buildStatus() });
 const projectionModules = createRuntimeHostProjectionModules({
   config: hostConfig,
   mode: "headless",
-  bus: { runtimeRpcUrl, runtimePort },
-  resource: {
-    id: "headless-runtime",
-    title: "Plastic Headless Runtime",
-    state: buildStatus(),
-    rpcUrl: runtimeRpcUrl
-  },
+  ...projectionResource,
   getHostDetails: () => ({
     build: buildStatus(),
     runtime: { windowCount: 0 },

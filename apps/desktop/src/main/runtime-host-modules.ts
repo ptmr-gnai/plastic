@@ -16,6 +16,29 @@ import { createWindowCapabilityModule } from "./window-capability-methods.js";
 type RuntimeHostConfig = ReturnType<typeof createRuntimeHostConfig>;
 type RuntimeMode = "electron" | "headless";
 
+export const createRuntimeHostProjectionResource = (input: {
+  config: RuntimeHostConfig;
+  mode: RuntimeMode;
+  state?: unknown;
+}) => {
+  const runtimeRpcUrl = input.config.preferredRuntimeRpcUrl;
+  const bus = {
+    runtimeRpcUrl,
+    runtimeRpcUrls: input.config.runtimeRpcUrls,
+    runtimeHost: input.config.controlPlane.runtime.host,
+    runtimePort: input.config.runtimePort
+  };
+  return {
+    bus,
+    resource: {
+      id: input.mode === "headless" ? "headless-runtime" : "rpc-bus",
+      title: input.mode === "headless" ? "Plastic Headless Runtime" : "Plastic RPC Bus",
+      state: input.state ?? bus,
+      rpcUrl: runtimeRpcUrl
+    }
+  };
+};
+
 export const createRuntimeHostProjectionModules = (input: {
   config: RuntimeHostConfig;
   mode: RuntimeMode;
