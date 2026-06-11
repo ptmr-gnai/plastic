@@ -8,7 +8,8 @@ const steps = [
     id: "electron",
     command: "pnpm",
     args: ["plastic:validate-electron"],
-    env: { PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS: process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? "3000" }
+    env: { PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS: process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? "3000" },
+    continueOnFailure: true
   },
   {
     id: "unified",
@@ -44,7 +45,7 @@ const results = [];
 for (const step of steps) {
   const result = await runStep(step);
   results.push(result);
-  if (!result.ok) {
+  if (!result.ok && !step.continueOnFailure) {
     break;
   }
 }
@@ -53,6 +54,7 @@ const summary = {
   ok: results.every((result) => result.ok) && results.length === steps.length,
   checks: results.length,
   expectedChecks: steps.length,
+  continuedAfterFailure: results.some((result) => !result.ok),
   results
 };
 
