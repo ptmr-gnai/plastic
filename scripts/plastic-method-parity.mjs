@@ -21,6 +21,7 @@ const rpc = async (method, input = {}) => {
 const methodIds = (methods) => methods.map((method) => method.id).sort();
 
 const byId = (methods) => Object.fromEntries(methods.map((method) => [method.id, method]));
+const modulesById = (modules) => Object.fromEntries(modules.map((module) => [module.id, module]));
 
 const capture = async () => {
   const state = await rpc("plastic/state");
@@ -58,6 +59,16 @@ const compare = (base, current) => {
   const moduleOrderDrift = JSON.stringify(baseModuleIds) === JSON.stringify(currentModuleIds)
     ? []
     : [{ base: baseModuleIds, current: currentModuleIds }];
+  const baseModules = modulesById(base.modules);
+  const currentModules = modulesById(current.modules);
+  const moduleMethodDrift = baseModuleIds
+    .filter((id) => currentModules[id])
+    .filter((id) => JSON.stringify(baseModules[id].methodIds) !== JSON.stringify(currentModules[id].methodIds))
+    .map((id) => ({
+      id,
+      base: baseModules[id].methodIds,
+      current: currentModules[id].methodIds
+    }));
   const baseMethods = byId(base.methods);
   const currentMethods = byId(current.methods);
   const ownerDrift = baseIds
@@ -68,7 +79,7 @@ const compare = (base, current) => {
       base: baseMethods[id].owner,
       current: currentMethods[id].owner
     }));
-  return { missing, added, ownerDrift, missingModules, addedModules, moduleOrderDrift };
+  return { missing, added, ownerDrift, missingModules, addedModules, moduleOrderDrift, moduleMethodDrift };
 };
 
 const main = async () => {
@@ -83,7 +94,8 @@ const main = async () => {
       comparison.ownerDrift.length ? `owner drift: ${comparison.ownerDrift.map((item) => item.id).join(", ")}` : null,
       comparison.missingModules.length ? `missing modules: ${comparison.missingModules.join(", ")}` : null,
       comparison.addedModules.length ? `added modules: ${comparison.addedModules.join(", ")}` : null,
-      comparison.moduleOrderDrift.length ? "module order drift" : null
+      comparison.moduleOrderDrift.length ? "module order drift" : null,
+      comparison.moduleMethodDrift.length ? `module method drift: ${comparison.moduleMethodDrift.map((item) => item.id).join(", ")}` : null
     ].filter(Boolean);
     if (failures.length > 0) {
       throw new Error(`Method parity failed between ${base.mode} and ${current.mode}: ${failures.join("; ")}`);
