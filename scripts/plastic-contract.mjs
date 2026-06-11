@@ -60,6 +60,7 @@ await check("plastic/state", async () => {
     : assertArray(state.resources, "state.resources is not an array")
       .filter((resource) => resource.id === "panels" || resource.kind === "panel");
   const serviceResources = assertArray(state.resources, "state.resources is not an array").filter((resource) => resource.kind === "service");
+  assert(serviceResources.some((resource) => resource.links?.some((link) => link.method === "runtime/host") && resource.actions?.some((action) => action.method === "runtime/host")), "state service resource missing host affordances");
   assert(serviceResources.some((resource) => resource.links?.some((link) => link.method === "runtime/capabilities") && resource.actions?.some((action) => action.method === "runtime/capabilities")), "state service resource missing capabilities affordances");
   assert(panelResources.length > 0, "state does not expose panels");
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
@@ -111,7 +112,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
-  assert(snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing capabilities link");
+  assert(snapshot.links?.some((link) => link.method === "runtime/host") && snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing host or capabilities link");
   assert(snapshot.links?.some((link) => link.rel === "control-plane" && link.method === "events/list"), "snapshot missing control plane link");
   assert(snapshot.methods.items?.every((method) => method.availability?.status), "snapshot methods missing availability");
   return {

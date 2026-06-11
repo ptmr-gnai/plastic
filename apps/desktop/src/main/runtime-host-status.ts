@@ -140,10 +140,12 @@ export const decorateRuntimeState = (input: {
         { rel: "rpc", href: input.resource.rpcUrl, method: "http/post" },
         { rel: "state", href: "plastic/state", method: "plastic/state" },
         { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+        { rel: "host", href: "runtime/host", method: "runtime/host" },
         { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" }
       ],
       actions: [
         { id: "call", title: "Call RPC method", method: "rpc/call" },
+        { id: "read-host", title: "Read runtime host", method: "runtime/host" },
         { id: "read-capabilities", title: "Read host capabilities", method: "runtime/capabilities" }
       ]
     }

@@ -86,6 +86,7 @@ export const createRuntimeSnapshotModule = (input: {
               links: [
                 { rel: "state", href: "plastic/state", method: "plastic/state" },
                 { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+                { rel: "host", href: "runtime/host", method: "runtime/host" },
                 { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },
                 { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
                 { rel: "events", href: "events/list", method: "events/list" },
