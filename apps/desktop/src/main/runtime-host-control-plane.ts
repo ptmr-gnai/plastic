@@ -19,7 +19,31 @@ export const startRuntimeHostControlPlane = async (
     onBuildListening?: () => void;
   }
 ): Promise<RuntimeHostTransports> => {
-  await runRuntimeStartupSequence(input);
+  await runRuntimeStartupSequence({
+    ...input,
+    startedPayload: {
+      ...input.startedPayload,
+      controlPlane: {
+        runtime: {
+          transport: "http",
+          host: input.runtimeHost,
+          port: input.runtimePort,
+          rpcPath: "/rpc",
+          eventStreamPath: "/events/stream",
+          healthPath: "/healthz"
+        },
+        build: {
+          transport: "http",
+          host: input.buildHost,
+          port: input.buildPort,
+          rpcPath: "/rpc",
+          healthPath: "/healthz",
+          statusPath: "/status",
+          snapshotPath: "/snapshot"
+        }
+      }
+    }
+  });
   input.onPhase?.("start sockets");
 
   return startRuntimeHostTransports({

@@ -2,7 +2,7 @@ import {
   assert, assertArray, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
   assertAgentOrientationPacket, assertAgentWorkbenchPacket, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
   assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
-  assertRuntimeStartedCapabilityInventory, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
+  assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
   assertMatchingModuleInventories, itemsFrom, rawRuntimeRequest, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 
@@ -195,6 +195,7 @@ await check("build/status", async () => {
 });
 
 await check("build HTTP transport", async () => {
+  const controlPlane = await assertRuntimeStartedControlPlane({ rpc });
   const runtimeHealth = await runtimeGet("/healthz");
   const health = await buildGet("/healthz");
   const status = await buildGet("/status");
@@ -203,10 +204,13 @@ await check("build HTTP transport", async () => {
   assert(runtimeHealth.service === "plastic.runtime", "runtime /healthz returned wrong service");
   assert(health.service === "plastic.build", "build /healthz returned wrong service");
   assert(status.value?.status === "running", "build /status did not report running");
+  assert(status.value.buildSocket?.endsWith(`:${controlPlane.build.port}`), "build status socket does not match startup control plane");
   assert(buildSnapshot.value?.app?.mode === state.app.mode, "build /snapshot mode mismatch");
   assert(diagnostics?.workspaceDir, "build /rpc app/diagnostics missing workspaceDir");
   return {
     buildUrl,
+    runtimePort: controlPlane.runtime.port,
+    buildPort: controlPlane.build.port,
     service: status.value.service,
     snapshotMode: buildSnapshot.value.app.mode,
     diagnosticsWindowCount: diagnostics.windowCount

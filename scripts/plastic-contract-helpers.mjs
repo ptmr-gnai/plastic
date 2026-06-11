@@ -293,6 +293,27 @@ export const assertRuntimeStartedCapabilityInventory = async ({ rpc }) => {
   return { eventId: latest.id, count: capabilities.length, ids, items: capabilities };
 };
 
+export const assertRuntimeStartedControlPlane = async ({ rpc }) => {
+  const events = await rpc("events/list", { types: ["runtime.started"], limit: 5 });
+  const items = itemsFrom(events, "runtime.started events/list returned no items");
+  const latest = items.at(-1);
+  assert(latest, "runtime.started event missing");
+  const controlPlane = latest.payload?.controlPlane;
+  assert(controlPlane?.runtime?.transport === "http", "runtime.started missing runtime HTTP transport");
+  assert(controlPlane.runtime.rpcPath === "/rpc", "runtime.started runtime rpcPath mismatch");
+  assert(controlPlane.runtime.eventStreamPath === "/events/stream", "runtime.started runtime event stream path mismatch");
+  assert(controlPlane.runtime.healthPath === "/healthz", "runtime.started runtime health path mismatch");
+  assert(controlPlane?.build?.transport === "http", "runtime.started missing build HTTP transport");
+  assert(controlPlane.build.rpcPath === "/rpc", "runtime.started build rpcPath mismatch");
+  assert(controlPlane.build.statusPath === "/status", "runtime.started build status path mismatch");
+  assert(controlPlane.build.snapshotPath === "/snapshot", "runtime.started build snapshot path mismatch");
+  return {
+    eventId: latest.id,
+    runtime: controlPlane.runtime,
+    build: controlPlane.build
+  };
+};
+
 export const assertMatchingCapabilityInventories = ({ live, durable }) => {
   assert(live.count === durable.count, "runtime/capabilities live and durable counts diverged");
   assert(
