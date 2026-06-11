@@ -1,7 +1,7 @@
 import type { RuntimeCapability } from "./runtime-method-context.js";
 import { createGitStatusReader, createWorkspaceCommandRunner } from "./runtime-host-command.js";
 import { createRuntimeHostConfig } from "./runtime-host-config.js";
-import { createRuntimeHostStatusAccessors } from "./runtime-host-status.js";
+import { createRuntimeHostStatusAccessors, runtimeHostBaseDescriptor } from "./runtime-host-status.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 
 type RuntimeMode = "electron" | "headless";
@@ -43,6 +43,9 @@ export const createRuntimeHostBase = async (input: {
     hostStatus,
     readGitStatus,
     runLocalCommand,
-    runtime
+    runtime,
+    startedPayloadBase: {
+      hostBase: runtimeHostBaseDescriptor
+    }
   };
 };

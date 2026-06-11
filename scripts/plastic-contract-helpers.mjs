@@ -2,8 +2,7 @@ import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane
 import { capabilityExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
-export const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
-export const runtimeUrl = rpcUrl.replace(/\/rpc$/, "");
+export const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc", runtimeUrl = rpcUrl.replace(/\/rpc$/, "");
 export const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
 export const results = [];
 
@@ -33,8 +32,7 @@ export const getJson = async (baseUrl, path, label) => {
   return payload;
 };
 
-export const runtimeGet = (path) => getJson(runtimeUrl, path, "runtime");
-export const buildGet = (path) => getJson(buildUrl, path, "build");
+export const runtimeGet = (path) => getJson(runtimeUrl, path, "runtime"), buildGet = (path) => getJson(buildUrl, path, "build");
 
 export const buildRpc = async (method, input) => {
   const response = await fetch(`${buildUrl}/rpc`, {
@@ -291,6 +289,8 @@ export const assertRuntimeStartedCapabilityInventory = async ({ rpc }) => {
   const latest = items.at(-1);
   assert(latest, "runtime.started event missing");
   const capabilities = latest.payload?.capabilities;
+  assert(latest.payload?.hostBase?.id === "runtime-host-base", "runtime.started missing shared host base marker");
+  assert(latest.payload?.hostBase?.version === 1, "runtime.started host base version mismatch");
   assert(Array.isArray(capabilities), "runtime.started missing capability inventory");
   const ids = capabilities.map((capability) => capability.id);
   for (const id of ["runtime.capabilities", "electron.window", "agent.codex"]) {
