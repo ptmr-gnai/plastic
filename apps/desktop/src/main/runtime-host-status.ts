@@ -4,6 +4,11 @@ import type { PlasticState } from "@plastic/core";
 type RuntimeHostConfig = ReturnType<typeof createRuntimeHostConfig>;
 type RuntimeMode = "electron" | "headless";
 
+export const runtimeHostBaseDescriptor = {
+  id: "runtime-host-base",
+  version: 1
+} as const;
+
 export const createRuntimeBuildStatus = (
   input: {
     config: RuntimeHostConfig;
@@ -25,6 +30,7 @@ export const createRuntimeBuildStatus = (
     runtimeRpcUrl,
     controlPlane: config.controlPlane,
     buildSocket: config.controlPlane.build.baseUrl,
+    hostBase: runtimeHostBaseDescriptor,
     pid: process.pid,
     startedAt,
     ...extra
@@ -43,6 +49,7 @@ export const createRuntimeDiagnostics = (
     cwd: process.cwd(),
     workspaceDir: config.workspaceDir,
     eventPath: config.eventPath,
+    hostBase: runtimeHostBaseDescriptor,
     ...extra
   };
 };

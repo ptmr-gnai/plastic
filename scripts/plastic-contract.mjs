@@ -230,6 +230,8 @@ await check("build/status", async () => {
   const status = await buildGet("/status");
   assert(build?.status === "running", "build/status did not report running");
   assert(build.mode === state.app.mode, "build/status mode mismatch");
+  assert(build.hostBase?.id === "runtime-host-base", "build/status missing shared host base marker");
+  assert(build.hostBase?.version === 1, "build/status host base version mismatch");
   assert(status.value?.status === build.status, "build /status did not match build/status");
   assert(status.value?.mode === state.app.mode, "build /status mode mismatch");
   assert(status.value?.workspaceDir === build.workspaceDir, "build /status workspaceDir mismatch");
@@ -259,11 +261,13 @@ await check("build HTTP transport", async () => {
   assert(health.service === "plastic.build", "build /healthz returned wrong service");
   assert(status.value?.status === "running", "build /status did not report running");
   assert(status.value?.mode === state.app.mode, "build /status mode mismatch");
+  assert(status.value?.hostBase?.id === "runtime-host-base", "build /status missing shared host base marker");
   assert(stableJson(status.value.controlPlane) === stableJson(controlPlaneDescriptor), "build /status control plane does not match startup control plane");
   assert(status.value.buildSocket?.endsWith(`:${controlPlane.build.port}`), "build status socket does not match startup control plane");
   assert(buildSnapshot.value?.app?.mode === state.app.mode, "build /snapshot mode mismatch");
   assert(diagnostics?.workspaceDir, "build /rpc app/diagnostics missing workspaceDir");
   assert(diagnostics.mode === state.app.mode, "build /rpc app/diagnostics mode mismatch");
+  assert(diagnostics.hostBase?.id === "runtime-host-base", "build /rpc app/diagnostics missing shared host base marker");
   return {
     buildUrl,
     runtimePort: controlPlane.runtime.port,
@@ -288,6 +292,7 @@ await check("app/diagnostics", async () => {
   const diagnostics = await rpc("app/diagnostics");
   assert(diagnostics?.workspaceDir, "app/diagnostics missing workspaceDir");
   assert(diagnostics.mode === state.app.mode, "app/diagnostics mode mismatch");
+  assert(diagnostics.hostBase?.id === "runtime-host-base", "app/diagnostics missing shared host base marker");
   assert(typeof diagnostics.windowCount === "number", "app/diagnostics missing windowCount");
   return {
     mode: diagnostics.mode,
