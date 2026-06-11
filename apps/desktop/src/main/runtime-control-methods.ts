@@ -14,6 +14,73 @@ const runtimeControlAvailability = {
   notes: "Runtime control is provided by Plastic's shared method registry in headed and headless modes."
 };
 
+const eventScopeSchema = {
+  type: "object",
+  description: "Optional scope filter.",
+  properties: {
+    panelId: { type: "string" },
+    agentId: { type: "string" },
+    extensionId: { type: "string" },
+    windowId: { type: "string" }
+  }
+};
+
+const readOnlyEffects = {
+  durableEvents: [],
+  mutatesProjection: []
+};
+
+const readOnlyReversibility = {
+  reversible: true,
+  notes: "Read-only method."
+};
+
+const eventListMetadata = {
+  inputSchema: {
+    type: "object",
+    properties: {
+      after: { type: "string", description: "Return events after this event id." },
+      before: { type: "string", description: "Return events before this event id." },
+      limit: { oneOf: [{ type: "number" }, { const: "all" }], description: "Maximum events to return, or all." },
+      types: { type: "array", items: { type: "string" }, description: "Optional event type filter." },
+      includeDeltas: { type: "boolean", description: "Include noisy delta events." },
+      scope: eventScopeSchema
+    }
+  },
+  examples: [
+    {
+      title: "Read recent self-test events",
+      input: { types: ["plastic.self_test.completed"], limit: 5 },
+      verifyWith: { method: "events/timeline", input: { limit: 5 } }
+    }
+  ],
+  effects: readOnlyEffects,
+  reversibility: readOnlyReversibility
+};
+
+const eventTimelineMetadata = {
+  inputSchema: {
+    type: "object",
+    properties: {
+      after: { type: "string", description: "Summarize events after this event id." },
+      before: { type: "string", description: "Summarize events before this event id." },
+      limit: { type: "number", description: "Maximum timeline items to return." },
+      includeRaw: { type: "boolean", description: "Include raw events beside summaries." },
+      includeDeltas: { type: "boolean", description: "Include noisy delta events." },
+      scope: eventScopeSchema
+    }
+  },
+  examples: [
+    {
+      title: "Summarize recent workspace activity",
+      input: { limit: 10 },
+      verifyWith: { method: "events/list", input: { limit: 10 } }
+    }
+  ],
+  effects: readOnlyEffects,
+  reversibility: readOnlyReversibility
+};
+
 export const registerRuntimeControlMethods = async (input: RuntimeMethodContext) => {
   await registerMethodDiscovery(input);
   await registerRpcCall(input);
@@ -144,6 +211,7 @@ const registerEventReaders = async (input: {
       description: "Lists bounded raw events with optional type, scope, cursor, and delta filters.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: runtimeControlAvailability,
+      ...eventListMetadata,
       handler: (methodInput) =>
         Effect.map(eventStore.list(), (events) => selectEvents(events, methodInput as EventListInput | undefined))
     })
@@ -156,6 +224,7 @@ const registerEventReaders = async (input: {
       description: "Returns deterministic, agent-readable summaries of recent events with cursors and links.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: runtimeControlAvailability,
+      ...eventTimelineMetadata,
       handler: (methodInput) =>
         Effect.map(eventStore.list(), (events) => buildTimeline(events, methodInput as TimelineInput | undefined))
     })
