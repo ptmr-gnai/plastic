@@ -169,7 +169,7 @@ export const assertReadMethodLegibility = ({ methods, ids }) => {
 export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }) => {
   assertMethodLegibility({
     methods,
-    ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append"]
+    ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append", "plastic/selfTest"]
   });
   assertReadMethodLegibility({ methods, ids: ["events/list", "events/timeline"] });
   assertReadMethodLegibility({ methods, ids: ["plastic/methods", "methods/describe", "runtime/capabilities"] });

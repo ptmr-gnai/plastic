@@ -8,6 +8,7 @@ import {
   checkCapabilityRegistryHealth,
   checkMethodRegistryHealth
 } from "./runtime-health-checks.js";
+import { noInputSchema } from "./runtime-method-metadata.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
 type HealthCheck = {
@@ -39,6 +40,23 @@ export const createRuntimeHealthModule = (input: {
         description: input.description ?? "Runs a fast control-plane health check for event store, projections, methods, and host capabilities.",
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: runtimeHealthAvailability,
+        inputSchema: noInputSchema,
+        examples: [
+          {
+            title: "Run runtime health checks",
+            input: {},
+            expectedEvents: ["plastic.self_test.completed"],
+            verifyWith: { method: "events/list", input: { types: ["plastic.self_test.completed"], limit: 1 } }
+          }
+        ],
+        effects: {
+          durableEvents: ["plastic.self_test.completed"],
+          mutatesProjection: ["events"]
+        },
+        reversibility: {
+          reversible: false,
+          notes: "The self-test result is appended to the event log; compensate by appending a later health event."
+        },
         handler: () =>
           Effect.promise(async () => {
             const checks: HealthCheck[] = [];
