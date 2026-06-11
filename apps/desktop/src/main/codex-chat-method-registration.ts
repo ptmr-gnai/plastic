@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { createEvent, projectPanels, type EventStore, type MethodRegistry } from "@plastic/core";
 import type { RunPromise } from "./runtime-method-context.js";
-import { codexBackendAvailability } from "./codex-method-registration.js";
+import { codexBackendAvailability, codexBackendOwner } from "./codex-method-registration.js";
 import {
   chatBindingMetadata,
   createCodexChatMetadata,
@@ -56,7 +56,7 @@ const registerChatBinding = async (input: CodexChatRegistrationInput) => {
       id: "chats/getBinding",
       title: "Get chat backend binding",
       description: "Returns the current Codex thread binding and active turn state for a chat panel.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...chatBindingMetadata,
       handler: (methodInput) =>
@@ -74,7 +74,7 @@ const registerBindCodexThread = async (input: CodexChatRegistrationInput) => {
       id: "chats/bindCodexThread",
       title: "Bind chat to Codex thread",
       description: "Durably binds a chat panel to an existing Codex thread id.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
@@ -96,7 +96,7 @@ const registerStartCodexThread = async (input: CodexChatRegistrationInput) => {
       id: "chats/startCodexThread",
       title: "Start chat Codex thread",
       description: "Starts a Codex thread through native thread/start and binds it to a chat panel.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
@@ -136,7 +136,7 @@ const registerCreateCodexChat = async (input: CodexChatRegistrationInput) => {
       id: "chats/createCodexChat",
       title: "Create Codex chat",
       description: "Creates a new chat panel, starts a fresh Codex thread, and binds them.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...createCodexChatMetadata,
       handler: (methodInput) => Effect.promise(() => createCodexChat(input, methodInput))
@@ -213,7 +213,7 @@ const registerInterruptChat = async (input: CodexChatRegistrationInput) => {
       id: "chats/interrupt",
       title: "Interrupt chat turn",
       description: "Interrupts the active Codex turn bound to a chat panel.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
@@ -257,7 +257,7 @@ const registerCloseChat = async (input: CodexChatRegistrationInput) => {
       id: "chats/close",
       title: "Close chat",
       description: "Closes a chat panel and interrupts any in-progress Codex turn before removing it.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       handler: (methodInput) => Effect.promise(() => closeChat(input, methodInput))
     })
@@ -326,7 +326,7 @@ const registerSendToCodex = async (input: CodexChatRegistrationInput) => {
       id: "chats/sendToCodex",
       title: "Send chat message to Codex",
       description: "Durably records a user message, binds the chat to a Codex thread, and starts a Codex turn.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...sendToCodexMetadata,
       handler: (methodInput) => Effect.promise(() => sendToCodex(input, methodInput))

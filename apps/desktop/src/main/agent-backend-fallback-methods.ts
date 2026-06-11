@@ -21,6 +21,7 @@ import {
   codexSetDefaultsMetadata,
   codexStatusMetadata
 } from "./codex-backend-method-metadata.js";
+import { codexBackendOwner } from "./codex-method-registration.js";
 
 type ChatInput = {
   chatId?: string;
@@ -91,7 +92,7 @@ const registerCodexStatus = async (context: RuntimeMethodContext, availability: 
     context.methods.register({
       id: "codex/status",
       title: "Codex status",
-      owner: { kind: "runtime", id: "plastic.agent-backend" },
+      owner: codexBackendOwner,
       availability,
       ...codexStatusMetadata,
       handler: () => Effect.succeed({
@@ -111,7 +112,7 @@ const registerChatBinding = async (context: RuntimeMethodContext, availability: 
       id: "chats/getBinding",
       title: "Get chat backend binding",
       description: "Returns the current agent backend binding for a chat panel.",
-      owner: { kind: "runtime", id: "plastic.agent-backend" },
+      owner: codexBackendOwner,
       availability,
       ...chatBindingMetadata,
       handler: (input) => Effect.succeed({
@@ -132,7 +133,7 @@ const registerCreateChat = async (context: RuntimeMethodContext, availability: C
       id: "chats/createCodexChat",
       title: "Create Codex chat",
       description: "Creates a chat panel; Codex thread creation is unavailable without an agent.codex capability.",
-      owner: { kind: "runtime", id: "plastic.agent-backend" },
+      owner: codexBackendOwner,
       availability,
       ...fallbackCreateCodexChatMetadata,
       handler: (input) => Effect.promise(() => createFallbackChat(context, input, availability))
@@ -181,7 +182,7 @@ const registerSendToCodex = async (context: RuntimeMethodContext, availability: 
       id: "chats/sendToCodex",
       title: "Send chat message to Codex",
       description: "Records a chat message; Codex turn start is unavailable without an agent.codex capability.",
-      owner: { kind: "runtime", id: "plastic.agent-backend" },
+      owner: codexBackendOwner,
       availability,
       ...fallbackSendToCodexMetadata,
       handler: (input) => Effect.promise(() => recordFallbackMessage(context, input, availability))
@@ -196,7 +197,7 @@ const registerUnavailableCodexMethods = async (context: RuntimeMethodContext, av
         id: definition.id,
         title: definition.title,
         description: definition.description ?? "Codex app-server passthrough is unavailable in this host.",
-        owner: { kind: "runtime", id: "plastic.agent-backend" },
+        owner: codexBackendOwner,
         availability,
         ...(definition.metadata ?? {}),
         handler: () => Effect.promise(async () => {

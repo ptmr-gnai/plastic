@@ -10,6 +10,7 @@
     "typecheck": "pnpm -r typecheck",
     "guardrails": "node scripts/guardrails.mjs",
     "plastic:contract": "node scripts/plastic-contract.mjs",
+    "plastic:method-parity": "node scripts/plastic-method-parity.mjs",
     "validate": "pnpm typecheck && pnpm guardrails",
     "clean": "find . -name dist -type d -prune -exec rm -rf {} + && find . -name dist-electron -type d -prune -exec rm -rf {} +"
   },

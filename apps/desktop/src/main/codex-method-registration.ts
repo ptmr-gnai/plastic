@@ -17,6 +17,7 @@ export const codexBackendAvailability = {
   status: "available" as const,
   requiredCapabilities: ["agent.codex"]
 };
+export const codexBackendOwner = { kind: "runtime" as const, id: "plastic.agent-backend" };
 
 type CodexAliasDefinition = {
   id: string;
@@ -86,7 +87,7 @@ const registerCodexStatus = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/status",
       title: "Codex status",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...codexStatusMetadata,
       handler: () => Effect.sync(input.status)
@@ -100,7 +101,7 @@ const registerCodexDefaults = async (input: CodexCoreRegistrationInput) => {
       id: "codex/defaults",
       title: "Get Codex defaults",
       description: "Returns Plastic's durable Codex adapter defaults used for new chat threads and turns.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...codexDefaultsMetadata,
       handler: () => Effect.promise(input.getCodexDefaults)
@@ -114,7 +115,7 @@ const registerCodexSetDefaults = async (input: CodexCoreRegistrationInput) => {
       id: "codex/setDefaults",
       title: "Set Codex defaults",
       description: "Durably updates Plastic's Codex adapter defaults.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...codexSetDefaultsMetadata,
       handler: (methodInput) =>
@@ -139,7 +140,7 @@ const registerCodexConnect = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/connect",
       title: "Connect Codex app-server",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       handler: (methodInput) =>
         Effect.promise(async () => {
@@ -155,7 +156,7 @@ const registerCodexInitialize = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/initialize",
       title: "Initialize Codex app-server",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       handler: () => Effect.promise(input.initialize)
     })
@@ -168,7 +169,7 @@ const registerCodexRequest = async (input: CodexCoreRegistrationInput) => {
       id: "codex/request",
       title: "Raw Codex request",
       description: "Passthrough to any Codex app-server method. Params and result are preserved as-is.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...codexRequestMetadata,
       handler: (methodInput) =>
@@ -197,7 +198,7 @@ const registerConfigurePlasticMcp = async (input: CodexBridgeRegistrationInput) 
       id: "bridge/configurePlasticMcp",
       title: "Configure Plastic MCP bridge",
       description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...bridgeConfigurePlasticMcpMetadata,
       handler: () =>
@@ -215,7 +216,7 @@ const registerBridgeStatus = async (input: CodexBridgeRegistrationInput) => {
       id: "bridge/status",
       title: "Plastic bridge status",
       description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...bridgeStatusMetadata,
       handler: () =>
@@ -251,7 +252,7 @@ const registerBridgeTest = async (input: CodexBridgeRegistrationInput) => {
       id: "bridge/test",
       title: "Test Plastic MCP bridge",
       description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...bridgeTestMetadata,
       handler: () =>
@@ -279,7 +280,7 @@ const registerCallPlasticRpcTool = async (input: CodexBridgeRegistrationInput) =
       id: "bridge/callPlasticRpcTool",
       title: "Call Plastic RPC through MCP",
       description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...bridgeCallPlasticRpcToolMetadata,
       handler: (methodInput) =>
@@ -371,7 +372,7 @@ const registerCodexAliasMethod = async (
       id: definition.id,
       title: definition.title,
       description: `Passthrough to Codex app-server ${definition.codexMethod}.`,
-      owner: { kind: "runtime", id: "plastic.codex-adapter" },
+      owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...codexAliasMetadata(definition.codexMethod),
       handler: (methodInput) =>

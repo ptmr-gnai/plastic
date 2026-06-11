@@ -10,6 +10,7 @@ dist-electron/
 .plastic/events/
 .plastic/extensions/
 .plastic/build/
+.plastic/tmp/
 .plastic/*.png
 .clay/events/
 .clay/snapshots/

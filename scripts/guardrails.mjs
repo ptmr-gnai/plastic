@@ -145,7 +145,7 @@ const checkMethodRegistration = (file, text) => {
     if (!/\btitle:\s*(?:"[^"]+"|[\w.]+)/.test(block)) {
       addWarning("method-metadata", repoPath, `${id} is missing a title.`);
     }
-    if (!/\bowner:\s*\{/.test(block)) {
+    if (!/\bowner:\s*(?:\{|[A-Za-z_$][\w$]*)/.test(block)) {
       addWarning("method-metadata", repoPath, `${id} is missing owner metadata.`);
     }
     if (/owner:\s*\{\s*kind:\s*"extension"/.test(block) && repoPath.startsWith("apps/desktop/src/main/")) {
