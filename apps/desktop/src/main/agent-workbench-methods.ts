@@ -15,6 +15,7 @@ import type {
   RuntimeModule,
   RunPromise
 } from "./runtime-method-context.js";
+import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 
 type AgentWorkbenchInput = {
   panelId?: string;
@@ -72,6 +73,24 @@ export const createAgentWorkbenchModule = (host: AgentWorkbenchHost): RuntimeMod
         description: "Returns a high-signal workbench packet for agents: state, refs, events, methods, git dirt, and recommended actions.",
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: agentWorkbenchAvailability,
+        inputSchema: {
+          type: "object",
+          properties: {
+            panelId: { type: "string", description: "Optional panel id to focus the workbench packet." },
+            ref: { type: "string", description: "Optional visible ref to resolve into panel/source context." },
+            eventCursor: { type: "string", description: "Optional event id cursor for timeline context." },
+            limit: { type: "number", description: "Maximum timeline items to include." }
+          }
+        },
+        examples: [
+          {
+            title: "Read a compact agent workbench",
+            input: { panelId: "chat-main", limit: 5 },
+            verifyWith: { method: "agent/orient", input: { panelId: "chat-main" } }
+          }
+        ],
+        effects: readOnlyEffects,
+        reversibility: readOnlyReversibility,
         handler: (input) =>
           Effect.promise(() => buildWorkbench({ capabilities, eventStore, methods, runPromise, host, input }))
       })

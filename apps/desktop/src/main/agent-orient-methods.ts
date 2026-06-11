@@ -14,6 +14,7 @@ import type {
   RuntimeModule,
   RunPromise
 } from "./runtime-method-context.js";
+import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 
 type AgentOrientInput = {
   agentId?: string;
@@ -52,6 +53,24 @@ export const createAgentOrientModule = (host: AgentOrientHost): RuntimeModule =>
         description: "Returns a compact local orientation packet for an embodied agent or panel.",
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: agentOrientAvailability,
+        inputSchema: {
+          type: "object",
+          properties: {
+            agentId: { type: "string", description: "Optional agent id. Defaults from panelId when present." },
+            panelId: { type: "string", description: "Optional panel id to orient around." },
+            windowId: { oneOf: [{ type: "number" }, { type: "string" }], description: "Optional host window id." },
+            eventCursor: { type: "string", description: "Optional event id cursor for timeline context." }
+          }
+        },
+        examples: [
+          {
+            title: "Orient around the main chat panel",
+            input: { panelId: "chat-main" },
+            verifyWith: { method: "plastic/state", input: {} }
+          }
+        ],
+        effects: readOnlyEffects,
+        reversibility: readOnlyReversibility,
         handler: (input) =>
           Effect.promise(() => buildOrientation({ capabilities, eventStore, methods, runPromise, host, input }))
       })
