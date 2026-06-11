@@ -21,10 +21,7 @@ import {
   createRuntimeHostStartupModules,
   createRuntimeHostSupportModules
 } from "./runtime-host-modules.js";
-import {
-  createRuntimeBuildStatus,
-  createRuntimeDiagnostics,
-} from "./runtime-host-status.js";
+import { createRuntimeHostStatusAccessors } from "./runtime-host-status.js";
 import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
@@ -67,17 +64,26 @@ const codexAdapter = createCodexAdapter({
   runtimeRpcUrls
 });
 
-const buildStatus = () => createRuntimeBuildStatus({
+const hostStatus = createRuntimeHostStatusAccessors({
   config: hostConfig,
   mode: "electron",
   service: "plastic.build",
   startedAt: processStartedAt,
   runtimeRpcUrl: preferredRuntimeRpcUrl,
-  extensionsDir: join(plasticDir, "extensions"),
-  viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,
-  runtimeSocket: controlPlane.runtime.baseUrl,
-  runtimeRpcUrls
+  getBuildStatusExtra: () => ({
+    extensionsDir: join(plasticDir, "extensions"),
+    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,
+    runtimeSocket: controlPlane.runtime.baseUrl,
+    runtimeRpcUrls
+  }),
+  getDiagnosticsExtra: () => ({
+    appReady: app.isReady(),
+    windowCount: BrowserWindow.getAllWindows().length,
+    retainedWindowCount: windows.size,
+    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
+  })
 });
+const buildStatus = hostStatus.buildStatus;
 
 const readGitStatus = createGitStatusReader({ runCommand: runLocalCommand });
 
@@ -212,14 +218,7 @@ const supportModules = createRuntimeHostSupportModules({
   plasticDir,
   getBuildStatus: buildStatus,
   runCommand: runLocalCommand,
-  getDiagnostics: () => createRuntimeDiagnostics({
-    config: hostConfig,
-    mode: "electron",
-    appReady: app.isReady(),
-    windowCount: BrowserWindow.getAllWindows().length,
-    retainedWindowCount: windows.size,
-    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
-  })
+  getDiagnostics: hostStatus.diagnostics
 });
 const runtimeHealthModule = createRuntimeHealthModule({
   hostChecks: [

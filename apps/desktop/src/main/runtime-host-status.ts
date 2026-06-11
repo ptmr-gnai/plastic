@@ -47,6 +47,32 @@ export const createRuntimeDiagnostics = (
   };
 };
 
+export const createRuntimeHostStatusAccessors = (input: {
+  config: RuntimeHostConfig;
+  mode: RuntimeMode;
+  service: string;
+  startedAt: string;
+  runtimeRpcUrl: string;
+  getBuildStatusExtra?: () => Record<string, unknown>;
+  getDiagnosticsExtra?: () => Record<string, unknown>;
+}) => ({
+  buildStatus: () =>
+    createRuntimeBuildStatus({
+      config: input.config,
+      mode: input.mode,
+      service: input.service,
+      startedAt: input.startedAt,
+      runtimeRpcUrl: input.runtimeRpcUrl,
+      ...(input.getBuildStatusExtra?.() ?? {})
+    }),
+  diagnostics: () =>
+    createRuntimeDiagnostics({
+      config: input.config,
+      mode: input.mode,
+      ...(input.getDiagnosticsExtra?.() ?? {})
+    })
+});
+
 export const decorateRuntimeState = (input: {
   state: PlasticState;
   mode: RuntimeMode;

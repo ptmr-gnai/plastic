@@ -8,10 +8,7 @@ import {
   createRuntimeHostStartupModules,
   createRuntimeHostSupportModules
 } from "./runtime-host-modules.js";
-import {
-  createRuntimeBuildStatus,
-  createRuntimeDiagnostics,
-} from "./runtime-host-status.js";
+import { createRuntimeHostStatusAccessors } from "./runtime-host-status.js";
 import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
@@ -34,14 +31,23 @@ const { eventStore, methods, runPromise } = runtime;
 const runLocalCommand = createWorkspaceCommandRunner(workspaceDir);
 const readGitStatus = createGitStatusReader({ runCommand: runLocalCommand });
 
-const buildStatus = () => createRuntimeBuildStatus({
+const hostStatus = createRuntimeHostStatusAccessors({
   config: hostConfig,
   mode: "headless",
   service: "plastic.headless",
   startedAt,
   runtimeRpcUrl,
-  runtimePort
+  getBuildStatusExtra: () => ({ runtimePort }),
+  getDiagnosticsExtra: () => ({
+    appReady: false,
+    windowCount: 0,
+    retainedWindowCount: 0,
+    viteUrl: null,
+    runtimeRpcUrl,
+    runtimePort
+  })
 });
+const buildStatus = hostStatus.buildStatus;
 
 const projectionModules = createRuntimeHostProjectionModules({
   config: hostConfig,
@@ -71,16 +77,7 @@ const agentModules = createRuntimeHostAgentModules({
   },
   orient: { workspaceDir }
 });
-const headlessDiagnostics = () => createRuntimeDiagnostics({
-  config: hostConfig,
-  mode: "headless",
-  appReady: false,
-  windowCount: 0,
-  retainedWindowCount: 0,
-  viteUrl: null,
-  runtimeRpcUrl,
-  runtimePort
-});
+const headlessDiagnostics = hostStatus.diagnostics;
 const supportModules = createRuntimeHostSupportModules({
   plasticDir,
   getBuildStatus: buildStatus,
