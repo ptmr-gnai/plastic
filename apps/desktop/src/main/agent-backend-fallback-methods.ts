@@ -11,6 +11,10 @@ import {
   fallbackSendToCodexMetadata
 } from "./chat-method-metadata.js";
 import {
+  bridgeCallPlasticRpcToolMetadata,
+  bridgeConfigurePlasticMcpMetadata,
+  bridgeStatusMetadata,
+  bridgeTestMetadata,
   codexDefaultsMetadata,
   codexRequestMetadata,
   codexSetDefaultsMetadata,
@@ -53,10 +57,10 @@ const unavailableCodexMethods: UnavailableMethodDefinition[] = [
   { id: "codex/turnInterrupt", title: "Interrupt Codex turn" },
   { id: "codex/modelList", title: "List Codex models" },
   { id: "codex/configRead", title: "Read Codex config" },
-  { id: "bridge/configurePlasticMcp", title: "Configure Plastic MCP bridge" },
-  { id: "bridge/status", title: "Plastic bridge status" },
-  { id: "bridge/test", title: "Test Plastic bridge" },
-  { id: "bridge/callPlasticRpcTool", title: "Call Plastic RPC through Codex MCP" },
+  { id: "bridge/configurePlasticMcp", title: "Configure Plastic MCP bridge", metadata: bridgeConfigurePlasticMcpMetadata },
+  { id: "bridge/status", title: "Plastic bridge status", metadata: bridgeStatusMetadata },
+  { id: "bridge/test", title: "Test Plastic bridge", metadata: bridgeTestMetadata },
+  { id: "bridge/callPlasticRpcTool", title: "Call Plastic RPC through Codex MCP", metadata: bridgeCallPlasticRpcToolMetadata },
   { id: "chats/bindCodexThread", title: "Bind chat to Codex thread" },
   { id: "chats/startCodexThread", title: "Start chat Codex thread" },
   { id: "chats/interrupt", title: "Interrupt chat turn" },

@@ -2,6 +2,10 @@ import { Effect } from "effect";
 import type { MethodRegistry } from "@plastic/core";
 import type { RunPromise } from "./runtime-method-context.js";
 import {
+  bridgeCallPlasticRpcToolMetadata,
+  bridgeConfigurePlasticMcpMetadata,
+  bridgeStatusMetadata,
+  bridgeTestMetadata,
   codexDefaultsMetadata,
   codexRequestMetadata,
   codexSetDefaultsMetadata,
@@ -194,6 +198,7 @@ const registerConfigurePlasticMcp = async (input: CodexBridgeRegistrationInput) 
       description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
       availability: codexBackendAvailability,
+      ...bridgeConfigurePlasticMcpMetadata,
       handler: () =>
         Effect.promise(async () => {
           await input.ensureInitialized();
@@ -211,6 +216,7 @@ const registerBridgeStatus = async (input: CodexBridgeRegistrationInput) => {
       description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
       availability: codexBackendAvailability,
+      ...bridgeStatusMetadata,
       handler: () =>
         Effect.promise(async () => {
           await input.ensureInitialized();
@@ -246,6 +252,7 @@ const registerBridgeTest = async (input: CodexBridgeRegistrationInput) => {
       description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
       availability: codexBackendAvailability,
+      ...bridgeTestMetadata,
       handler: () =>
         Effect.promise(async () => {
           await input.ensureInitialized();
@@ -273,6 +280,7 @@ const registerCallPlasticRpcTool = async (input: CodexBridgeRegistrationInput) =
       description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
       availability: codexBackendAvailability,
+      ...bridgeCallPlasticRpcToolMetadata,
       handler: (methodInput) =>
         Effect.promise(async () => {
           await input.ensureInitialized();

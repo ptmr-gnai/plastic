@@ -183,7 +183,7 @@ export const assertPassthroughMethodLegibility = ({ methods, ids }) => {
 export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }) => {
   assertMethodLegibility({
     methods,
-    ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append", "plastic/selfTest", "build/typecheck", "extensions/scan", "extensions/scaffold", "extensions/activate", "extensions/verify", "extensions/verifyAll", "extensions/registerPanel", "extensions/forkBundled", "panels/sendMessage", "panels/markMessageRead", "chats/createCodexChat", "chats/sendToCodex", "codex/setDefaults"]
+    ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append", "plastic/selfTest", "build/typecheck", "extensions/scan", "extensions/scaffold", "extensions/activate", "extensions/verify", "extensions/verifyAll", "extensions/registerPanel", "extensions/forkBundled", "panels/sendMessage", "panels/markMessageRead", "chats/createCodexChat", "chats/sendToCodex", "codex/setDefaults", "bridge/configurePlasticMcp", "bridge/test", "bridge/callPlasticRpcTool"]
   });
   assertReadMethodLegibility({ methods, ids: ["events/list", "events/timeline"] });
   assertReadMethodLegibility({ methods, ids: ["plastic/methods", "methods/describe", "runtime/capabilities"] });
@@ -195,6 +195,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["panels/listMessages", "panels/mailboxes"] });
   assertReadMethodLegibility({ methods, ids: ["chats/getBinding"] });
   assertReadMethodLegibility({ methods, ids: ["codex/status", "codex/defaults"] });
+  assertReadMethodLegibility({ methods, ids: ["bridge/status"] });
   assertPassthroughMethodLegibility({ methods, ids: ["codex/request"] });
   const darkEvent = await rpc("app/setTheme", { theme: "dark" });
   assert(darkEvent?.type === "theme.changed", "app/setTheme did not append theme.changed");

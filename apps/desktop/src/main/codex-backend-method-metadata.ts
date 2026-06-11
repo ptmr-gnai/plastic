@@ -78,3 +78,84 @@ export const codexRequestMetadata = {
     notes: "Passthrough effects depend on the Codex app-server method being called."
   }
 };
+
+export const bridgeConfigurePlasticMcpMetadata = {
+  inputSchema: noInputSchema,
+  examples: [
+    {
+      title: "Configure the Plastic MCP bridge",
+      input: {},
+      expectedEvents: ["bridge.plastic_mcp.configured"],
+      verifyWith: { method: "bridge/status", input: {} }
+    }
+  ],
+  effects: {
+    durableEvents: ["bridge.plastic_mcp.configured"],
+    mutatesProjection: ["codexBridge"]
+  },
+  reversibility: {
+    reversible: false,
+    notes: "Bridge configuration mutates Codex MCP config; compensate by editing or reconfiguring Codex MCP settings."
+  }
+};
+
+export const bridgeStatusMetadata = {
+  inputSchema: noInputSchema,
+  examples: [
+    {
+      title: "Read Plastic bridge status",
+      input: {},
+      verifyWith: { method: "codex/status", input: {} }
+    }
+  ],
+  effects: readOnlyEffects,
+  reversibility: readOnlyReversibility
+};
+
+export const bridgeTestMetadata = {
+  inputSchema: noInputSchema,
+  examples: [
+    {
+      title: "Test whether Codex can see the Plastic MCP tool",
+      input: {},
+      expectedEvents: ["bridge.plastic_mcp.tested"],
+      verifyWith: { method: "bridge/status", input: {} }
+    }
+  ],
+  effects: {
+    durableEvents: ["bridge.plastic_mcp.tested"],
+    mutatesProjection: ["codexBridge"]
+  },
+  reversibility: {
+    reversible: false,
+    notes: "Bridge test results are durable observations; compensate by appending a later test result."
+  }
+};
+
+export const bridgeCallPlasticRpcToolMetadata = {
+  inputSchema: {
+    type: "object",
+    required: ["method"],
+    properties: {
+      threadId: { type: "string", description: "Optional Codex thread id to use for the MCP tool call." },
+      method: { type: "string", description: "Plastic RPC method to call through the plastic_rpc MCP tool." },
+      input: { type: "object", description: "Plastic RPC input payload." }
+    }
+  },
+  examples: [
+    {
+      title: "Call Plastic state through the MCP bridge",
+      input: { method: "plastic/state", input: {} },
+      expectedEvents: ["bridge.plastic_rpc_tool.called"],
+      verifyWith: { method: "events/timeline", input: { scope: { agentId: "codex" } } }
+    }
+  ],
+  effects: {
+    durableEvents: ["bridge.plastic_rpc_tool.called"],
+    mutatesProjection: ["codexBridge"]
+  },
+  reversibility: {
+    reversible: false,
+    notes: "The delegated Plastic RPC method may have its own effects; inspect that method metadata before calling."
+  }
+};
