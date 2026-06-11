@@ -23,10 +23,14 @@ export const assertHttpErrorContract = async ({ label, rawRequest, runId }) => {
     headers: { origin: "http://127.0.0.1:5173" }
   });
   assert(preflight.response.status === 204, `${label} OPTIONS /rpc did not return 204`);
+  assert(preflight.response.headers.get("access-control-allow-origin"), `${label} OPTIONS /rpc missing CORS origin header`);
+  assert(preflight.response.headers.get("access-control-allow-methods")?.includes("OPTIONS"), `${label} OPTIONS /rpc missing OPTIONS CORS method`);
+  assert(preflight.response.headers.get("access-control-allow-headers")?.includes("content-type"), `${label} OPTIONS /rpc missing content-type CORS header`);
   assert(preflight.payload.ok !== false, `${label} OPTIONS /rpc returned error payload`);
 
   const unknownGet = await rawRequest("/does-not-exist");
   assert(unknownGet.response.status === 404, `${label} unknown GET did not return 404`);
+  assert(unknownGet.response.headers.get("access-control-allow-origin"), `${label} unknown GET missing CORS origin header`);
   assert(unknownGet.payload.ok === false, `${label} unknown GET missing ok:false`);
   assert(unknownGet.payload.error === "Not found", `${label} unknown GET error mismatch`);
 

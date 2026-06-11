@@ -16,6 +16,7 @@ type BuildHttpTransportInput = {
   host: string;
   port: number;
   getStatus: () => unknown;
+  corsOrigin?: string;
   onListening?: () => void;
 };
 
@@ -30,7 +31,13 @@ export const startBuildHttpTransport = async (input: BuildHttpTransportInput): P
   );
 
   const server = createServer(async (request, response) => {
-    await handleBuildRequest({ eventStreamClients, input, request, response });
+    await handleBuildRequest({
+      eventStreamClients,
+      input,
+      request,
+      response,
+      corsOrigin: input.corsOrigin ?? "*"
+    });
   });
 
   server.listen(input.port, input.host, input.onListening);
@@ -53,31 +60,33 @@ const handleBuildRequest = async (context: {
   input: BuildHttpTransportInput;
   request: IncomingMessage;
   response: ServerResponse;
+  corsOrigin: string;
 }) => {
-  const { eventStreamClients, input, request, response } = context;
+  const { corsOrigin, eventStreamClients, input, request, response } = context;
   if (request.method === "OPTIONS") {
-    sendJson(response, 204, {});
+    sendJson(response, 204, {}, corsOrigin);
     return;
   }
   if (request.method === "GET" && request.url === "/healthz") {
-    sendJson(response, 200, { ok: true, service: "plastic.build" });
+    sendJson(response, 200, { ok: true, service: "plastic.build" }, corsOrigin);
     return;
   }
   if (request.method === "GET" && request.url === "/events/stream") {
-    handleBuildEventStream({ eventStreamClients, request, response });
+    handleBuildEventStream({ corsOrigin, eventStreamClients, request, response });
     return;
   }
-  if (await handleBuildMethodGet({ input, request, response })) {
+  if (await handleBuildMethodGet({ corsOrigin, input, request, response })) {
     return;
   }
   if (request.method === "POST" && request.url === "/rpc") {
-    await handleBuildRpc({ input, request, response });
+    await handleBuildRpc({ corsOrigin, input, request, response });
     return;
   }
-  sendJson(response, 404, { ok: false, error: "Not found" });
+  sendJson(response, 404, { ok: false, error: "Not found" }, corsOrigin);
 };
 
 const handleBuildMethodGet = async (context: {
+  corsOrigin: string;
   input: BuildHttpTransportInput;
   request: IncomingMessage;
   response: ServerResponse;
@@ -94,21 +103,22 @@ const handleBuildMethodGet = async (context: {
   }
   try {
     const value = await context.input.runPromise(context.input.methods.call(method, {}));
-    sendJson(context.response, 200, { ok: true, value });
+    sendJson(context.response, 200, { ok: true, value }, context.corsOrigin);
   } catch (error) {
-    sendJson(context.response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+    sendJson(context.response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) }, context.corsOrigin);
   }
   return true;
 };
 
 const handleBuildEventStream = (context: {
+  corsOrigin: string;
   eventStreamClients: Set<ServerResponse>;
   request: IncomingMessage;
   response: ServerResponse;
 }) => {
-  const { eventStreamClients, request, response } = context;
+  const { corsOrigin, eventStreamClients, request, response } = context;
   response.writeHead(200, {
-    "access-control-allow-origin": "*",
+    "access-control-allow-origin": corsOrigin,
     "cache-control": "no-cache",
     "connection": "keep-alive",
     "content-type": "text/event-stream"
@@ -121,6 +131,7 @@ const handleBuildEventStream = (context: {
 };
 
 const handleBuildRpc = async (context: {
+  corsOrigin: string;
   input: BuildHttpTransportInput;
   request: IncomingMessage;
   response: ServerResponse;
@@ -131,8 +142,8 @@ const handleBuildRpc = async (context: {
       throw new Error("RPC request requires method");
     }
     const value = await context.input.runPromise(context.input.methods.call(body.method, body.input));
-    sendJson(context.response, 200, { ok: true, value });
+    sendJson(context.response, 200, { ok: true, value }, context.corsOrigin);
   } catch (error) {
-    sendJson(context.response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+    sendJson(context.response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) }, context.corsOrigin);
   }
 };

@@ -34,6 +34,7 @@ export const startRuntimeHostTransports = async (input: {
     host: input.controlPlane.build.host,
     port: input.controlPlane.build.port,
     getStatus: input.getBuildStatus,
+    ...(input.runtimeCorsOrigin ? { corsOrigin: input.runtimeCorsOrigin } : {}),
     ...(input.onBuildListening ? { onListening: input.onBuildListening } : {})
   });
 
