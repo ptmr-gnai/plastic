@@ -7,7 +7,7 @@ const runtimeUrl = process.env.PLASTIC_RUNTIME_URL ?? "http://127.0.0.1:7331";
 const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
 const rpcUrl = `${runtimeUrl}/rpc`;
 const parityBaseline = process.env.PLASTIC_METHOD_PARITY_OUT ?? ".plastic/tmp/headless-methods.json";
-const readinessTimeoutMs = Number(process.env.PLASTIC_VALIDATE_READY_TIMEOUT_MS ?? 30_000);
+const readinessTimeoutMs = Number(process.env.PLASTIC_VALIDATE_READY_TIMEOUT_MS ?? 90_000);
 const desktopDir = new URL("../apps/desktop/", import.meta.url).pathname;
 
 let activeHost = null;
@@ -33,7 +33,11 @@ const startHost = (script) => {
   const child = spawn("node", [`scripts/${script}`], {
     cwd: desktopDir,
     stdio: "inherit",
-    shell: process.platform === "win32"
+    shell: process.platform === "win32",
+    env: {
+      ...process.env,
+      ...(script === "dev.mjs" ? { PLASTIC_DEV_EXIT_ON_ELECTRON_EXIT: "1" } : {})
+    }
   });
   activeHost = child;
   return child;

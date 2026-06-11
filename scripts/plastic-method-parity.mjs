@@ -47,7 +47,8 @@ const methodMetadataFields = [
   "effects",
   "preconditions",
   "reversibility",
-  "permissions"
+  "permissions",
+  "links"
 ];
 
 const capture = async () => {
@@ -73,6 +74,7 @@ const capture = async () => {
       preconditions: stableValue(method.preconditions),
       reversibility: stableValue(method.reversibility),
       permissions: sorted(method.permissions),
+      links: stableValue(method.links),
       owner: method.owner,
       requiredCapabilities: sorted(method.availability?.requiredCapabilities)
     })).sort((left, right) => left.id.localeCompare(right.id)),

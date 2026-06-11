@@ -16,8 +16,13 @@ const run = (command, args, options = {}) => {
     shell: process.platform === "win32",
     ...options
   });
+  const label = [command, ...args].join(" ");
+  console.log(`[plastic:dev] spawned ${label} pid=${child.pid ?? "unknown"}`);
   children.add(child);
-  child.on("exit", () => children.delete(child));
+  child.on("exit", (code, signal) => {
+    children.delete(child);
+    console.log(`[plastic:dev] exited ${label} code=${code ?? "null"} signal=${signal ?? "null"}`);
+  });
   return child;
 };
 
@@ -56,10 +61,18 @@ while (!viteReady) {
   }
 }
 
-run("pnpm", ["exec", "electron", "."], {
+const electronChild = run("pnpm", ["exec", "electron", "."], {
   env: {
     ...process.env,
     PLASTIC_WORKSPACE_DIR: workspaceDir,
+    ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1",
     VITE_DEV_SERVER_URL: viteUrl
+  }
+});
+
+electronChild.on("exit", (code, signal) => {
+  if (process.env.PLASTIC_DEV_EXIT_ON_ELECTRON_EXIT === "1") {
+    cleanup();
+    process.exit(code ?? (signal ? 1 : 0));
   }
 });
