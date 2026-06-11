@@ -27,6 +27,28 @@ export const registerExtensionActivationMethods = async (input: {
       description: "Loads or reloads extension main modules and lets them register runtime methods.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionActivationAvailability,
+      inputSchema: {
+        type: "object",
+        properties: {
+          extensionId: { type: "string", description: "Optional extension id to activate. Omit to activate all discovered extensions." }
+        }
+      },
+      examples: [
+        {
+          title: "Activate one extension",
+          input: { extensionId: "plastic.chat" },
+          expectedEvents: ["extension.loaded", "extension.failed"],
+          verifyWith: { method: "extensions/list", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["extension.loaded", "extension.failed"],
+        mutatesProjection: ["events", "methods"]
+      },
+      reversibility: {
+        reversible: false,
+        notes: "Activation may register live runtime methods and append load/failure events; restart or reload to reset live registrations."
+      },
       handler: (inputValue) =>
         Effect.promise(async () => {
           const payload = inputValue as { extensionId?: string };
