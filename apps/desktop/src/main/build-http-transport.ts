@@ -71,6 +71,7 @@ const handleBuildRequest = async (context: {
 
 const buildMethodByPath: Record<string, string> = {
   "/capabilities": "runtime/capabilities",
+  "/host": "runtime/host",
   "/methods": "plastic/methods",
   "/snapshot": "plastic/snapshot",
   "/state": "plastic/state",

@@ -462,7 +462,7 @@ The first unification pass is substantially complete:
 - `createPlasticRuntime` creates the shared event store, method registry, capability registry, append helper, and module registration path.
 - `createRuntimeHostBase` creates shared host config/status, workspace command helpers, git status, runtime construction, and durable `runtime.started` base payload.
 - Electron and headless both use shared runtime modules for state, snapshot, agent workbench/orientation, build, diagnostics, extension authoring/runtime, renderer/window/deixis capability-backed methods, runtime control, panel control, panel mailbox, runtime modules, and health.
-- The runtime/build HTTP transports share request helpers, RPC dispatch, method GET dispatch, SSE event streams, CORS behavior, and error envelopes.
+- The runtime/build HTTP transports share request helpers, RPC dispatch, method GET dispatch, `/host`, `/state`, `/methods`, `/capabilities`, `/snapshot`, SSE event streams, CORS behavior, and error envelopes.
 - `runtime/host`, `runtime/capabilities`, `methods/describe`, `runtime/modules`, `agent/workbench`, `agent/orient`, `plastic/state`, and `plastic/snapshot` expose enough host/capability metadata for agents to learn which methods are available, degraded, or unavailable.
 - `runtime.started` durably records the shared host descriptor, capability inventory, module inventory, and control plane, so agents can compare live runtime state with the event log.
 - The shared contract harness validates headless end to end, including state, methods, snapshot, capabilities, modules, panel lifecycle, extension scan/list, event streams, HTTP error contracts, build HTTP surfaces, and self-test.

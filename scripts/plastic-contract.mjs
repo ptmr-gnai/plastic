@@ -264,13 +264,16 @@ await check("build/status", async () => {
 await check("build HTTP transport", async () => {
   const controlPlane = await assertRuntimeStartedControlPlane({ rpc });
   const controlPlaneDescriptor = { runtime: controlPlane.runtime, build: controlPlane.build };
-  const runtimeHealth = await runtimeGet("/healthz"), runtimeCapabilities = await runtimeGet("/capabilities"), runtimeSnapshot = await runtimeGet("/snapshot");
-  const health = await buildGet("/healthz"), buildCapabilities = await buildGet("/capabilities"), status = await buildGet("/status"), buildSnapshot = await buildGet("/snapshot");
+  const runtimeHealth = await runtimeGet("/healthz"), runtimeHost = await runtimeGet("/host"), runtimeCapabilities = await runtimeGet("/capabilities"), runtimeSnapshot = await runtimeGet("/snapshot");
+  const health = await buildGet("/healthz"), buildHost = await buildGet("/host"), buildCapabilities = await buildGet("/capabilities"), status = await buildGet("/status"), buildSnapshot = await buildGet("/snapshot");
   const diagnostics = await buildRpc("app/diagnostics", {});
   assert(runtimeHealth.service === "plastic.runtime", "runtime /healthz returned wrong service");
+  assert(runtimeHost.value?.mode === state.app.mode, "runtime /host mode mismatch");
   assert(runtimeCapabilities.value?.count >= 1, "runtime /capabilities returned no capabilities");
   assert(runtimeSnapshot.value?.app?.mode === state.app.mode, "runtime /snapshot mode mismatch");
   assert(health.service === "plastic.build", "build /healthz returned wrong service");
+  assert(buildHost.value?.mode === runtimeHost.value.mode, "build /host mode mismatch");
+  assert(buildHost.value?.hostBase?.id === "runtime-host-base", "build /host missing shared host base marker");
   assert(buildCapabilities.value?.count === runtimeCapabilities.value.count, "build /capabilities count mismatch");
   assert(status.value?.status === "running" && status.value?.mode === state.app.mode, "build /status state mismatch");
   assert(status.value?.hostBase?.id === "runtime-host-base", "build /status missing shared host base marker");
