@@ -17,6 +17,36 @@ type CreateChatInput = {
   order?: number;
 };
 
+type UnavailableMethodDefinition = {
+  id: string;
+  title: string;
+  description?: string;
+};
+
+const unavailableCodexMethods: UnavailableMethodDefinition[] = [
+  { id: "codex/defaults", title: "Get Codex defaults" },
+  { id: "codex/setDefaults", title: "Set Codex defaults" },
+  { id: "codex/connect", title: "Connect Codex app-server" },
+  { id: "codex/initialize", title: "Initialize Codex app-server" },
+  { id: "codex/request", title: "Raw Codex request" },
+  { id: "codex/threadStart", title: "Start Codex thread" },
+  { id: "codex/threadResume", title: "Resume Codex thread" },
+  { id: "codex/threadFork", title: "Fork Codex thread" },
+  { id: "codex/threadList", title: "List Codex threads" },
+  { id: "codex/threadRead", title: "Read Codex thread" },
+  { id: "codex/threadArchive", title: "Archive Codex thread" },
+  { id: "codex/threadNameSet", title: "Set Codex thread name" },
+  { id: "codex/turnStart", title: "Start Codex turn" },
+  { id: "codex/turnSteer", title: "Steer active Codex turn" },
+  { id: "codex/turnInterrupt", title: "Interrupt Codex turn" },
+  { id: "codex/modelList", title: "List Codex models" },
+  { id: "codex/configRead", title: "Read Codex config" },
+  { id: "chats/bindCodexThread", title: "Bind chat to Codex thread" },
+  { id: "chats/startCodexThread", title: "Start chat Codex thread" },
+  { id: "chats/interrupt", title: "Interrupt chat turn" },
+  { id: "chats/close", title: "Close chat backend" }
+];
+
 export const agentBackendFallbackModule: RuntimeModule = {
   id: "agent-backend-fallback",
   register: async (context) => {
@@ -29,6 +59,7 @@ export const agentBackendFallbackModule: RuntimeModule = {
     await registerChatBinding(context, codexAvailability);
     await registerCreateChat(context, codexAvailability);
     await registerSendToCodex(context, codexAvailability);
+    await registerUnavailableCodexMethods(context, codexAvailability);
   }
 };
 
@@ -132,6 +163,23 @@ const registerSendToCodex = async (context: RuntimeMethodContext, availability: 
       handler: (input) => Effect.promise(() => recordFallbackMessage(context, input, availability))
     })
   );
+};
+
+const registerUnavailableCodexMethods = async (context: RuntimeMethodContext, availability: CodexAvailability) => {
+  for (const definition of unavailableCodexMethods) {
+    await context.runPromise(
+      context.methods.register({
+        id: definition.id,
+        title: definition.title,
+        description: definition.description ?? "Codex app-server passthrough is unavailable in this host.",
+        owner: { kind: "runtime", id: "plastic.agent-backend" },
+        availability,
+        handler: () => Effect.promise(async () => {
+          throw new Error(`${definition.id} is unavailable: missing agent.codex capability`);
+        })
+      })
+    );
+  }
 };
 
 const recordFallbackMessage = async (context: RuntimeMethodContext, input: unknown, availability: CodexAvailability) => {

@@ -3,6 +3,10 @@ const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
+const backendMethodIds = [
+  "codex/status", "codex/defaults", "codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList",
+  "chats/getBinding", "chats/startCodexThread", "chats/createCodexChat", "chats/interrupt", "chats/sendToCodex"
+];
 
 const results = [];
 
@@ -112,10 +116,7 @@ await check("plastic/methods", async () => {
     "methods/describe",
     "runtime/capabilities",
     "agent/orient",
-    "codex/status",
-    "chats/getBinding",
-    "chats/createCodexChat",
-    "chats/sendToCodex",
+    ...backendMethodIds,
     "panels/create",
     "extensions/list",
     "extensions/scaffold",
@@ -215,9 +216,8 @@ await check("agent/orient", async () => {
 
 await check("agent backend metadata", async () => {
   const expectedAvailability = state.app.mode === "electron" ? "available" : "unavailable";
-  const methodIds = ["codex/status", "chats/getBinding", "chats/createCodexChat", "chats/sendToCodex"];
   const descriptions = await Promise.all(
-    methodIds.map((id) => rpc("methods/describe", { id }))
+    backendMethodIds.map((id) => rpc("methods/describe", { id }))
   );
   for (const description of descriptions) {
     assert(description.availability?.status === expectedAvailability, `${description.id} availability mismatch`);
