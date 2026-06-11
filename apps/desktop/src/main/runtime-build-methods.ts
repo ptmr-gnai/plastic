@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
 export type RuntimeCommandResult = {
@@ -28,6 +29,16 @@ export const createRuntimeBuildModule = (input: {
         description: "Returns the local build/dev socket status and key development environment paths.",
         owner: { kind: "runtime", id: "plastic.build" },
         availability: runtimeBuildAvailability,
+        inputSchema: noInputSchema,
+        examples: [
+          {
+            title: "Read build socket status",
+            input: {},
+            verifyWith: { method: "app/diagnostics", input: {} }
+          }
+        ],
+        effects: readOnlyEffects,
+        reversibility: readOnlyReversibility,
         handler: () => Effect.sync(input.getStatus)
       })
     );
@@ -39,6 +50,23 @@ export const createRuntimeBuildModule = (input: {
         description: "Runs pnpm typecheck, records stdout/stderr, and appends a durable build.typecheck.completed event.",
         owner: { kind: "runtime", id: "plastic.build" },
         availability: runtimeBuildAvailability,
+        inputSchema: noInputSchema,
+        examples: [
+          {
+            title: "Run TypeScript validation",
+            input: {},
+            expectedEvents: ["build.typecheck.completed"],
+            verifyWith: { method: "events/list", input: { types: ["build.typecheck.completed"], limit: 1 } }
+          }
+        ],
+        effects: {
+          durableEvents: ["build.typecheck.completed"],
+          mutatesProjection: ["events"]
+        },
+        reversibility: {
+          reversible: false,
+          notes: "The typecheck result is appended to the event log; compensate by appending a later build event."
+        },
         handler: () =>
           Effect.promise(async () => {
             const startedAt = new Date().toISOString();

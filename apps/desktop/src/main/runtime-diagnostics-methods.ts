@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
 const runtimeDiagnosticsAvailability = {
@@ -18,6 +19,16 @@ export const createRuntimeDiagnosticsModule = (input: {
         description: "Returns runtime host diagnostics for the current Plastic process.",
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: runtimeDiagnosticsAvailability,
+        inputSchema: noInputSchema,
+        examples: [
+          {
+            title: "Read host diagnostics",
+            input: {},
+            verifyWith: { method: "plastic/state", input: {} }
+          }
+        ],
+        effects: readOnlyEffects,
+        reversibility: readOnlyReversibility,
         handler: () => Effect.sync(input.getDiagnostics)
       })
     );
