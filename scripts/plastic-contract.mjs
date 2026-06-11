@@ -185,12 +185,15 @@ await check("agent/workbench", async () => {
   const workbench = await rpc("agent/workbench", { limit: 5 });
   assert(workbench?.app?.mode === state.app.mode, "workbench app mode does not match state");
   assert(workbench.control?.methodCount >= 1, "workbench method count missing");
+  assert(workbench.control.capabilities?.count >= 1, "workbench capabilities count missing");
+  assertArray(workbench.control.capabilities.items, "workbench capabilities items missing");
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assert(workbench.observability?.timeline, "workbench timeline missing");
   assert(workbench.workspace?.git, "workbench git status missing");
   return {
     mode: workbench.app.mode,
     methods: workbench.control.methodCount,
+    capabilities: workbench.control.capabilities.count,
     actions: workbench.control.recommendedActions.length,
     visibleRefs: workbench.observability.visibleRefs?.length ?? 0
   };

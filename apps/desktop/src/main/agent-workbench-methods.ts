@@ -9,7 +9,12 @@ import {
   type MethodRegistry,
   type TimelineInput
 } from "@plastic/core";
-import type { RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
+import type {
+  CapabilityRegistry,
+  RuntimeMethodContext,
+  RuntimeModule,
+  RunPromise
+} from "./runtime-method-context.js";
 
 type AgentWorkbenchInput = {
   panelId?: string;
@@ -59,7 +64,7 @@ const agentWorkbenchAvailability = {
 
 export const createAgentWorkbenchModule = (host: AgentWorkbenchHost): RuntimeModule => ({
   id: "agent-workbench",
-  register: async ({ eventStore, methods, runPromise }: RuntimeMethodContext) => {
+  register: async ({ capabilities, eventStore, methods, runPromise }: RuntimeMethodContext) => {
     await runPromise(
       methods.register({
         id: "agent/workbench",
@@ -68,20 +73,21 @@ export const createAgentWorkbenchModule = (host: AgentWorkbenchHost): RuntimeMod
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: agentWorkbenchAvailability,
         handler: (input) =>
-          Effect.promise(() => buildWorkbench({ eventStore, methods, runPromise, host, input }))
+          Effect.promise(() => buildWorkbench({ capabilities, eventStore, methods, runPromise, host, input }))
       })
     );
   }
 });
 
 const buildWorkbench = async (input: {
+  capabilities: CapabilityRegistry;
   eventStore: EventStore;
   methods: MethodRegistry;
   runPromise: RunPromise;
   host: AgentWorkbenchHost;
   input: unknown;
 }) => {
-  const { eventStore, methods, runPromise, host } = input;
+  const { capabilities, eventStore, methods, runPromise, host } = input;
   const workbenchInput = input.input as AgentWorkbenchInput | undefined;
   const events = await runPromise(eventStore.list());
   const methodList = await runPromise(methods.list());
@@ -105,7 +111,7 @@ const buildWorkbench = async (input: {
       window: findFocusWindow(windowsModel, panelId, host.getFocusedElectronWindowId?.())
     },
     observability: buildObservability({ host, workbenchInput, events, panelId, extensionId: extension?.id, visibleRefs }),
-    control: buildControl({ host, methodList, workbenchInput, panelId, latestEventId: events.at(-1)?.id }),
+    control: buildControl({ capabilities, host, methodList, workbenchInput, panelId, latestEventId: events.at(-1)?.id }),
     workspace: { git: await host.readGitStatus() },
     obligations: {
       orientBeforeMutation: true,
@@ -162,14 +168,20 @@ const buildObservability = (input: {
 };
 
 const buildControl = (input: {
+  capabilities: CapabilityRegistry;
   host: AgentWorkbenchHost;
   methodList: Parameters<typeof groupMethodsByOwner>[0];
   workbenchInput: AgentWorkbenchInput | undefined;
   panelId: string | undefined;
   latestEventId: string | undefined;
 }) => {
-  const { host, methodList, workbenchInput, panelId, latestEventId } = input;
+  const { capabilities, host, methodList, workbenchInput, panelId, latestEventId } = input;
+  const capabilityItems = capabilities.list();
   return {
+    capabilities: {
+      count: capabilityItems.length,
+      items: capabilityItems
+    },
     methodCount: methodList.length,
     methodGroups: groupMethodsByOwner(methodList),
     recommendedActions: [
