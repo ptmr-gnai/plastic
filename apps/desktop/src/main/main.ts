@@ -12,8 +12,7 @@ import { createCodexAdapter } from "./codex-adapter.js";
 import { startElectronIpcTransport } from "./electron-ipc-transport.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
-import { createGitStatusReader, createWorkspaceCommandRunner } from "./runtime-host-command.js";
-import { createRuntimeHostConfig } from "./runtime-host-config.js";
+import { createRuntimeHostBase } from "./runtime-host-base.js";
 import {
   createRuntimeHostAgentModules,
   createRuntimeHostCapabilityModules,
@@ -21,16 +20,38 @@ import {
   createRuntimeHostStartupModules,
   createRuntimeHostSupportModules
 } from "./runtime-host-modules.js";
-import { createRuntimeHostStatusAccessors } from "./runtime-host-status.js";
 import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
-import { createPlasticRuntime } from "./runtime-kernel.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
 const { app, BrowserWindow, ipcMain } = electron;
-const hostConfig = createRuntimeHostConfig();
+const windows = new Set<ElectronBrowserWindow>();
+const {
+  hostConfig,
+  hostStatus,
+  readGitStatus,
+  runLocalCommand,
+  runtime
+} = await createRuntimeHostBase({
+  capabilities: createElectronRuntimeCapabilities(),
+  mode: "electron",
+  service: "plastic.build",
+  runtimeRpcUrl: (config) => config.preferredRuntimeRpcUrl,
+  getBuildStatusExtra: (config) => ({
+    extensionsDir: join(config.plasticDir, "extensions"),
+    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,
+    runtimeSocket: config.controlPlane.runtime.baseUrl,
+    runtimeRpcUrls: config.runtimeRpcUrls
+  }),
+  getDiagnosticsExtra: () => ({
+    appReady: app.isReady(),
+    windowCount: BrowserWindow.getAllWindows().length,
+    retainedWindowCount: windows.size,
+    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
+  })
+});
 const {
   workspaceDir,
   plasticDir,
@@ -46,13 +67,6 @@ const logStartup = (stage: string) => {
   console.log(`[plastic:startup] ${stage}`);
 };
 
-const runLocalCommand = createWorkspaceCommandRunner(workspaceDir);
-
-const windows = new Set<ElectronBrowserWindow>();
-const processStartedAt = new Date().toISOString();
-const runtimeCapabilities = createElectronRuntimeCapabilities();
-logStartup("create runtime kernel");
-const runtime = await createPlasticRuntime({ workspaceDir, eventPath, capabilities: runtimeCapabilities });
 const { eventStore, methods, runPromise } = runtime;
 logStartup("runtime kernel ready");
 const codexAdapter = createCodexAdapter({
@@ -64,28 +78,7 @@ const codexAdapter = createCodexAdapter({
   runtimeRpcUrls
 });
 
-const hostStatus = createRuntimeHostStatusAccessors({
-  config: hostConfig,
-  mode: "electron",
-  service: "plastic.build",
-  startedAt: processStartedAt,
-  runtimeRpcUrl: preferredRuntimeRpcUrl,
-  getBuildStatusExtra: () => ({
-    extensionsDir: join(plasticDir, "extensions"),
-    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,
-    runtimeSocket: controlPlane.runtime.baseUrl,
-    runtimeRpcUrls
-  }),
-  getDiagnosticsExtra: () => ({
-    appReady: app.isReady(),
-    windowCount: BrowserWindow.getAllWindows().length,
-    retainedWindowCount: windows.size,
-    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
-  })
-});
 const buildStatus = hostStatus.buildStatus;
-
-const readGitStatus = createGitStatusReader({ runCommand: runLocalCommand });
 
 async function createWindow(title = "Plastic") {
   const window = new BrowserWindow({
