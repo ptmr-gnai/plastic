@@ -25,6 +25,15 @@ const byId = (methods) => Object.fromEntries(methods.map((method) => [method.id,
 const modulesById = (modules) => Object.fromEntries(modules.map((module) => [module.id, module]));
 const capabilitiesById = (capabilities) => Object.fromEntries(capabilities.map((capability) => [capability.id, capability]));
 const sorted = (values) => [...(values ?? [])].sort();
+const sharedHealthCheckIds = [
+  "event-store:list",
+  "methods:list",
+  "capabilities:list",
+  "runtime-modules:map",
+  "panels:project",
+  "windows:project",
+  "extensions:project"
+];
 const serviceAffordances = (state) => (state.resources ?? [])
   .filter((resource) => resource.kind === "service")
   .reduce(
@@ -64,6 +73,18 @@ const hostShape = (host) => ({
     })
   }
 });
+const healthShape = (selfTest) => {
+  const checks = Array.isArray(selfTest?.checks) ? selfTest.checks : [];
+  const byId = Object.fromEntries(checks.map((check) => [check.id, check]));
+  return {
+    ok: selfTest?.ok === true,
+    checkIds: sorted(checks.map((check) => check.id)),
+    sharedChecks: sharedHealthCheckIds.map((id) => ({
+      id,
+      ok: byId[id]?.ok === true
+    }))
+  };
+};
 
 const methodMetadataFields = [
   "title",
@@ -85,11 +106,13 @@ const capture = async () => {
   const methods = await rpc("plastic/methods");
   const modules = await rpc("runtime/modules");
   const capabilities = await rpc("runtime/capabilities");
+  const selfTest = await rpc("plastic/selfTest");
   return {
     capturedAt: new Date().toISOString(),
     rpcUrl,
     mode: state.app?.mode ?? "unknown",
     host: hostShape(host),
+    health: healthShape(selfTest),
     discovery: {
       serviceResources: serviceAffordances(state),
       snapshotLinks: snapshotAffordances(snapshot)
@@ -97,6 +120,7 @@ const capture = async () => {
     methodCount: methods.length,
     moduleCount: modules.count,
     capabilityCount: capabilities.count,
+    healthCheckCount: selfTest.checks?.length ?? 0,
     methods: methods.map((method) => ({
       id: method.id,
       title: method.title,
@@ -132,6 +156,7 @@ const compare = (base, current) => {
   const moduleDrift = compareModules(base.modules, current.modules);
   const capabilityDrift = compareCapabilities(base.capabilities, current.capabilities);
   const methodDrift = compareMethodMetadata({ baseIds, baseMethods: byId(base.methods), currentMethods: byId(current.methods) });
+  const healthDrift = compareHealth(base.health, current.health);
   return {
     missing,
     added,
@@ -139,10 +164,26 @@ const compare = (base, current) => {
     ...moduleDrift,
     ...capabilityDrift,
     hostShapeDrift: JSON.stringify(base.host) === JSON.stringify(current.host) ? [] : [{ base: base.host, current: current.host }],
+    healthDrift,
     discoveryDrift: JSON.stringify(base.discovery) === JSON.stringify(current.discovery) ? [] : [{ base: base.discovery, current: current.discovery }],
     methodCapabilityDrift: methodDrift.methodCapabilityDrift,
     methodMetadataDrift: methodDrift.methodMetadataDrift
   };
+};
+
+const compareHealth = (baseHealth, currentHealth) => {
+  const failures = [];
+  if (!baseHealth?.ok || !currentHealth?.ok) {
+    failures.push({ id: "plastic/selfTest", base: baseHealth?.ok === true, current: currentHealth?.ok === true });
+  }
+  const baseShared = Object.fromEntries((baseHealth?.sharedChecks ?? []).map((check) => [check.id, check.ok]));
+  const currentShared = Object.fromEntries((currentHealth?.sharedChecks ?? []).map((check) => [check.id, check.ok]));
+  for (const id of sharedHealthCheckIds) {
+    if (baseShared[id] !== true || currentShared[id] !== true) {
+      failures.push({ id, base: baseShared[id] === true, current: currentShared[id] === true });
+    }
+  }
+  return failures;
 };
 
 const compareModules = (baseModulesList, currentModulesList) => {
@@ -231,6 +272,7 @@ const main = async () => {
       comparison.addedCapabilities.length ? `added capabilities: ${comparison.addedCapabilities.join(", ")}` : null,
       comparison.capabilityTitleDrift.length ? `capability title drift: ${comparison.capabilityTitleDrift.map((item) => item.id).join(", ")}` : null,
       comparison.hostShapeDrift.length ? "host shape drift" : null,
+      comparison.healthDrift.length ? `health drift: ${comparison.healthDrift.map((item) => item.id).join(", ")}` : null,
       comparison.discoveryDrift.length ? "discovery affordance drift" : null,
       comparison.methodCapabilityDrift.length ? `method capability drift: ${comparison.methodCapabilityDrift.map((item) => item.id).join(", ")}` : null,
       comparison.methodMetadataDrift.length ? `method metadata drift: ${comparison.methodMetadataDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null
@@ -249,6 +291,7 @@ const main = async () => {
     methods: current.methodCount,
     modules: current.moduleCount,
     capabilities: current.capabilityCount,
+    healthChecks: current.healthCheckCount,
     comparison
   }, null, 2));
 };
