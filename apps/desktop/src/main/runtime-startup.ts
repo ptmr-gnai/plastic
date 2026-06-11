@@ -76,8 +76,12 @@ export const runRuntimeStartupSequence = async (input: RuntimeStartupSequenceInp
   input.onPhase?.("register runtime methods");
   await registerCoreRuntimeModulesAtStartup(input);
   const moduleInventory = await input.runPromise(input.methods.call("runtime/modules", {}));
+  const capabilityInventory = await input.runPromise(input.methods.call("runtime/capabilities", {}));
   await appendRuntimeStartedEvent(input.runtime, {
     ...input.startedPayload,
+    capabilities: Array.isArray((capabilityInventory as { items?: unknown })?.items)
+      ? (capabilityInventory as { items: unknown[] }).items
+      : [],
     modules: Array.isArray((moduleInventory as { items?: unknown })?.items)
       ? (moduleInventory as { items: unknown[] }).items
       : []

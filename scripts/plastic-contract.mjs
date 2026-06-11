@@ -1,9 +1,9 @@
 import {
   assert, assertArray, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
   assertAgentOrientationPacket, assertAgentWorkbenchPacket, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
-  assertRpcCallDispatch, assertRuntimeModuleInventory,
-  assertRuntimeStartedModuleInventory, assertMatchingModuleInventories, itemsFrom, rawRuntimeRequest, results, rpc, rpcUrl,
-  runtimeEventStream, runtimeGet
+  assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
+  assertRuntimeStartedCapabilityInventory, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
+  assertMatchingModuleInventories, itemsFrom, rawRuntimeRequest, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 
 const runId = `contract-${Date.now()}`;
@@ -108,17 +108,16 @@ await check("control method legibility and theme projection", async () => {
 });
 
 await check("runtime/capabilities", async () => {
-  const capabilities = await rpc("runtime/capabilities");
-  const items = assertArray(capabilities.items, "runtime/capabilities.items is not an array");
-  const byId = Object.fromEntries(items.map((capability) => [capability.id, capability]));
-  const shared = ["runtime.capabilities", "window.projection", "event.projection"];
+  const live = await assertRuntimeCapabilityInventory({ rpc });
+  const durable = await assertRuntimeStartedCapabilityInventory({ rpc });
+  assertMatchingCapabilityInventories({ live, durable });
+  const byId = Object.fromEntries(live.items.map((capability) => [capability.id, capability]));
   const host = ["electron.window", "dom.refs", "dom.eval", "dom.input", "screenshot", "agent.codex"];
-  for (const id of [...shared, ...host]) assert(byId[id], `runtime/capabilities missing ${id}`);
   const expectedHostCapability = state.app.mode === "electron" ? "available" : "unavailable";
   for (const id of host) assert(byId[id].status === expectedHostCapability, `${id} status mismatch`);
   const description = await rpc("methods/describe", { id: "runtime/capabilities" });
   assert(description.availability?.status === "available", "runtime/capabilities availability mismatch");
-  return { count: capabilities.count, hostCapabilityStatus: expectedHostCapability };
+  return { live, durable, hostCapabilityStatus: expectedHostCapability };
 });
 
 await check("runtime/modules", async () => {

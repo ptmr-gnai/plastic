@@ -265,6 +265,42 @@ export const assertRuntimeModuleInventory = async ({ rpc }) => {
   return { count: modules.count, ids, items };
 };
 
+export const assertRuntimeCapabilityInventory = async ({ rpc }) => {
+  const capabilities = await rpc("runtime/capabilities");
+  const items = assertArray(capabilities.items, "runtime/capabilities.items is not an array");
+  const ids = items.map((capability) => capability.id);
+  for (const id of [
+    "runtime.capabilities", "window.projection", "event.projection", "electron.window",
+    "dom.refs", "dom.eval", "dom.input", "screenshot", "agent.codex"
+  ]) {
+    assert(ids.includes(id), `runtime/capabilities missing ${id}`);
+  }
+  assert(items.every((capability) => ["available", "degraded", "unavailable"].includes(capability.status)), "runtime/capabilities has invalid status");
+  return { count: capabilities.count, ids, items };
+};
+
+export const assertRuntimeStartedCapabilityInventory = async ({ rpc }) => {
+  const events = await rpc("events/list", { types: ["runtime.started"], limit: 5 });
+  const items = itemsFrom(events, "runtime.started events/list returned no items");
+  const latest = items.at(-1);
+  assert(latest, "runtime.started event missing");
+  const capabilities = latest.payload?.capabilities;
+  assert(Array.isArray(capabilities), "runtime.started missing capability inventory");
+  const ids = capabilities.map((capability) => capability.id);
+  for (const id of ["runtime.capabilities", "electron.window", "agent.codex"]) {
+    assert(ids.includes(id), `runtime.started capability inventory missing ${id}`);
+  }
+  return { eventId: latest.id, count: capabilities.length, ids, items: capabilities };
+};
+
+export const assertMatchingCapabilityInventories = ({ live, durable }) => {
+  assert(live.count === durable.count, "runtime/capabilities live and durable counts diverged");
+  assert(
+    JSON.stringify(capabilityPairs(live.items)) === JSON.stringify(capabilityPairs(durable.items)),
+    "runtime/capabilities live and durable items diverged"
+  );
+};
+
 export const assertMatchingModuleInventories = ({ live, durable }) => {
   assert(live.count === durable.count, "runtime/modules live and durable counts diverged");
   assert(
@@ -376,6 +412,14 @@ const moduleAvailabilityPairs = (items) =>
   items.map((module) => ({
     id: module.id,
     availability: module.availability
+  }));
+
+const capabilityPairs = (items) =>
+  items.map((capability) => ({
+    id: capability.id,
+    title: capability.title,
+    status: capability.status,
+    notes: capability.notes ?? null
   }));
 
 export const itemsFrom = (value, message) => {
