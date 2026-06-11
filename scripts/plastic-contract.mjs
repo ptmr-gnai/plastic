@@ -8,6 +8,7 @@ import {
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
+import { capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
@@ -276,15 +277,12 @@ await check("app/diagnostics", async () => {
 });
 
 await check("renderer/reload metadata", async () => {
+  const expectations = capabilityBackedMethodExpectationsForMode(state.app.mode);
   const description = await rpc("methods/describe", { id: "renderer/reload" });
+  const expected = expectations["renderer/reload"];
   assert(description.id === "renderer/reload", "described wrong renderer method");
   assert(description.availability?.status, "renderer/reload missing availability");
-  assert(
-    state.app.mode === "electron"
-      ? description.availability.status === "available"
-      : description.availability.status === "unavailable",
-    "renderer/reload availability does not match host mode"
-  );
+  assert(description.availability.status === expected.status, "renderer/reload availability does not match host mode");
   return {
     availability: description.availability.status,
     requiredCapabilities: description.availability.requiredCapabilities ?? []
@@ -292,39 +290,16 @@ await check("renderer/reload metadata", async () => {
 });
 
 await check("capability-backed method metadata", async () => {
-  const expectedVisualAvailability = state.app.mode === "electron" ? "available" : "unavailable";
-  const expectedWindowListAvailability = state.app.mode === "electron" ? "available" : "degraded";
+  const expectations = capabilityBackedMethodExpectationsForMode(state.app.mode);
   const descriptions = await Promise.all(
-    [
-      "windows/list",
-      "windows/create",
-      "windows/focusPanel",
-      "windows/scrollToRef",
-      "windows/screenshot",
-      "deixis/listVisibleRefs",
-      "deixis/resolveRef",
-      "deixis/evalDom",
-      "deixis/clickRef",
-      "deixis/fillRef",
-      "deixis/verifyRefAction"
-    ].map((id) => rpc("methods/describe", { id }))
+    Object.keys(expectations).map((id) => rpc("methods/describe", { id }))
   );
   const byId = Object.fromEntries(descriptions.map((description) => [description.id, description]));
-  assert(byId["windows/list"].availability?.status === expectedWindowListAvailability, "windows/list availability mismatch");
-  for (const id of [
-    "windows/create",
-    "windows/focusPanel",
-    "windows/scrollToRef",
-    "windows/screenshot",
-    "deixis/listVisibleRefs",
-    "deixis/resolveRef",
-    "deixis/evalDom",
-    "deixis/clickRef",
-    "deixis/fillRef",
-    "deixis/verifyRefAction"
-  ]) {
-    assert(byId[id].availability?.status === expectedVisualAvailability, `${id} availability mismatch`);
-    assert(Array.isArray(byId[id].availability.requiredCapabilities), `${id} missing required capabilities`);
+  for (const [id, expected] of Object.entries(expectations)) {
+    const availability = byId[id].availability;
+    assert(availability?.status === expected.status, `${id} availability mismatch`);
+    assert(JSON.stringify(availability.requiredCapabilities ?? []) === JSON.stringify(expected.requiredCapabilities), `${id} required capabilities mismatch`);
+    assert(JSON.stringify(availability.missingCapabilities ?? []) === JSON.stringify(expected.missingCapabilities), `${id} missing capabilities mismatch`);
   }
   const windows = await rpc("windows/list");
   assertArray(windows, "windows/list is not an array");
@@ -344,7 +319,7 @@ await check("capability-backed method metadata", async () => {
   return {
     mode: state.app.mode,
     windowsList: byId["windows/list"].availability.status,
-    visualAvailability: expectedVisualAvailability,
+    expectations,
     methods: descriptions.length,
     windows: windows.length
   };
