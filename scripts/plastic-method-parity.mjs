@@ -22,28 +22,36 @@ const methodIds = (methods) => methods.map((method) => method.id).sort();
 
 const byId = (methods) => Object.fromEntries(methods.map((method) => [method.id, method]));
 const modulesById = (modules) => Object.fromEntries(modules.map((module) => [module.id, module]));
+const capabilitiesById = (capabilities) => Object.fromEntries(capabilities.map((capability) => [capability.id, capability]));
+const sorted = (values) => [...(values ?? [])].sort();
 
 const capture = async () => {
   const state = await rpc("plastic/state");
   const methods = await rpc("plastic/methods");
   const modules = await rpc("runtime/modules");
+  const capabilities = await rpc("runtime/capabilities");
   return {
     capturedAt: new Date().toISOString(),
     rpcUrl,
     mode: state.app?.mode ?? "unknown",
     methodCount: methods.length,
     moduleCount: modules.count,
+    capabilityCount: capabilities.count,
     methods: methods.map((method) => ({
       id: method.id,
       title: method.title,
       owner: method.owner,
-      availability: method.availability
+      requiredCapabilities: sorted(method.availability?.requiredCapabilities)
     })).sort((left, right) => left.id.localeCompare(right.id)),
     modules: modules.items.map((module) => ({
       id: module.id,
       order: module.order,
       methodIds: [...module.methodIds].sort()
-    })).sort((left, right) => left.order - right.order)
+    })).sort((left, right) => left.order - right.order),
+    capabilities: capabilities.items.map((capability) => ({
+      id: capability.id,
+      title: capability.title
+    })).sort((left, right) => left.id.localeCompare(right.id))
   };
 };
 
@@ -71,6 +79,20 @@ const compare = (base, current) => {
     }));
   const baseMethods = byId(base.methods);
   const currentMethods = byId(current.methods);
+  const baseCapabilityIds = base.capabilities.map((capability) => capability.id);
+  const currentCapabilityIds = current.capabilities.map((capability) => capability.id);
+  const missingCapabilities = baseCapabilityIds.filter((id) => !currentCapabilityIds.includes(id));
+  const addedCapabilities = currentCapabilityIds.filter((id) => !baseCapabilityIds.includes(id));
+  const baseCapabilities = capabilitiesById(base.capabilities);
+  const currentCapabilities = capabilitiesById(current.capabilities);
+  const capabilityTitleDrift = baseCapabilityIds
+    .filter((id) => currentCapabilities[id])
+    .filter((id) => baseCapabilities[id].title !== currentCapabilities[id].title)
+    .map((id) => ({
+      id,
+      base: baseCapabilities[id].title,
+      current: currentCapabilities[id].title
+    }));
   const ownerDrift = baseIds
     .filter((id) => currentMethods[id])
     .filter((id) => JSON.stringify(baseMethods[id].owner) !== JSON.stringify(currentMethods[id].owner))
@@ -79,7 +101,27 @@ const compare = (base, current) => {
       base: baseMethods[id].owner,
       current: currentMethods[id].owner
     }));
-  return { missing, added, ownerDrift, missingModules, addedModules, moduleOrderDrift, moduleMethodDrift };
+  const methodCapabilityDrift = baseIds
+    .filter((id) => currentMethods[id])
+    .filter((id) => JSON.stringify(baseMethods[id].requiredCapabilities) !== JSON.stringify(currentMethods[id].requiredCapabilities))
+    .map((id) => ({
+      id,
+      base: baseMethods[id].requiredCapabilities,
+      current: currentMethods[id].requiredCapabilities
+    }));
+  return {
+    missing,
+    added,
+    ownerDrift,
+    missingModules,
+    addedModules,
+    moduleOrderDrift,
+    moduleMethodDrift,
+    missingCapabilities,
+    addedCapabilities,
+    capabilityTitleDrift,
+    methodCapabilityDrift
+  };
 };
 
 const main = async () => {
@@ -95,7 +137,11 @@ const main = async () => {
       comparison.missingModules.length ? `missing modules: ${comparison.missingModules.join(", ")}` : null,
       comparison.addedModules.length ? `added modules: ${comparison.addedModules.join(", ")}` : null,
       comparison.moduleOrderDrift.length ? "module order drift" : null,
-      comparison.moduleMethodDrift.length ? `module method drift: ${comparison.moduleMethodDrift.map((item) => item.id).join(", ")}` : null
+      comparison.moduleMethodDrift.length ? `module method drift: ${comparison.moduleMethodDrift.map((item) => item.id).join(", ")}` : null,
+      comparison.missingCapabilities.length ? `missing capabilities: ${comparison.missingCapabilities.join(", ")}` : null,
+      comparison.addedCapabilities.length ? `added capabilities: ${comparison.addedCapabilities.join(", ")}` : null,
+      comparison.capabilityTitleDrift.length ? `capability title drift: ${comparison.capabilityTitleDrift.map((item) => item.id).join(", ")}` : null,
+      comparison.methodCapabilityDrift.length ? `method capability drift: ${comparison.methodCapabilityDrift.map((item) => item.id).join(", ")}` : null
     ].filter(Boolean);
     if (failures.length > 0) {
       throw new Error(`Method parity failed between ${base.mode} and ${current.mode}: ${failures.join("; ")}`);
@@ -110,6 +156,7 @@ const main = async () => {
     mode: current.mode,
     methods: current.methodCount,
     modules: current.moduleCount,
+    capabilities: current.capabilityCount,
     comparison
   }, null, 2));
 };

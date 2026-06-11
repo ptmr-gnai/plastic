@@ -29,11 +29,12 @@ export const createWindowCapabilityModule = (input: WindowCapabilityModuleInput 
 
 const registerWindowList = async (context: RuntimeMethodContext) => {
   const { eventStore, methods, runPromise } = context;
+  const requiredCapabilities = ["electron.window", "window.projection"];
   const availability = context.capabilities.has("electron.window")
-    ? availabilityFromCapabilities(context.capabilities, ["electron.window", "window.projection"])
+    ? availabilityFromCapabilities(context.capabilities, requiredCapabilities)
     : {
         status: "degraded" as const,
-        requiredCapabilities: ["window.projection"],
+        requiredCapabilities,
         missingCapabilities: context.capabilities.missing(["electron.window"]),
         notes: "This host can project durable windows but cannot inspect live Electron windows."
       };
