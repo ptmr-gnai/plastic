@@ -5,6 +5,7 @@ import {
   createRuntimeHostAgentModules,
   createRuntimeHostCapabilityModules,
   createRuntimeHostProjectionModules,
+  createRuntimeHostStartupModules,
   createRuntimeHostSupportModules
 } from "./runtime-host-modules.js";
 import {
@@ -94,6 +95,13 @@ const runtimeHealthModule = createRuntimeHealthModule({
   ]
 });
 const capabilityModules = createRuntimeHostCapabilityModules();
+const startupModules = createRuntimeHostStartupModules({
+  projection: projectionModules,
+  agent: agentModules,
+  support: supportModules,
+  capability: capabilityModules,
+  health: runtimeHealthModule
+});
 const transports = await startRuntimeHostControlPlane({
   workspaceDir,
   bundledExtensionsDir,
@@ -101,17 +109,7 @@ const transports = await startRuntimeHostControlPlane({
   methods,
   runPromise,
   runtime,
-  state: projectionModules.state,
-  snapshot: projectionModules.snapshot,
-  agentWorkbench: agentModules.agentWorkbench,
-  agentOrient: agentModules.agentOrient,
-  build: supportModules.build,
-  diagnostics: supportModules.diagnostics,
-  extensionAuthoring: supportModules.extensionAuthoring,
-  rendererControl: capabilityModules.rendererControl,
-  windowCapability: capabilityModules.windowCapability,
-  deixis: capabilityModules.deixis,
-  health: runtimeHealthModule,
+  ...startupModules,
   startedPayload: { mode: "headless" },
   controlPlane,
   getBuildStatus: buildStatus,

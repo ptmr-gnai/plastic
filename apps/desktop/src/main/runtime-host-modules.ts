@@ -7,6 +7,7 @@ import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-b
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
 import { createSnapshotAppDetails, decorateRuntimeState } from "./runtime-host-status.js";
 import type { createRuntimeHostConfig } from "./runtime-host-config.js";
+import type { RuntimeModulePlanInput } from "./runtime-module-plan.js";
 import { createRuntimeSnapshotModule } from "./runtime-snapshot-methods.js";
 import { createRuntimeStateModule } from "./runtime-state-methods.js";
 import { createWindowCapabilityModule } from "./window-capability-methods.js";
@@ -90,4 +91,26 @@ export const createRuntimeHostSupportModules = (input: {
     getDiagnostics: input.getDiagnostics
   }),
   extensionAuthoring: createExtensionAuthoringModule({ plasticDir: input.plasticDir })
+});
+
+export const createRuntimeHostStartupModules = (input: {
+  projection: ReturnType<typeof createRuntimeHostProjectionModules>;
+  agent: ReturnType<typeof createRuntimeHostAgentModules>;
+  support: ReturnType<typeof createRuntimeHostSupportModules>;
+  capability: ReturnType<typeof createRuntimeHostCapabilityModules>;
+  agentBackend?: RuntimeModulePlanInput["agentBackend"];
+  health: NonNullable<RuntimeModulePlanInput["health"]>;
+}): RuntimeModulePlanInput => ({
+  state: input.projection.state,
+  snapshot: input.projection.snapshot,
+  agentWorkbench: input.agent.agentWorkbench,
+  agentOrient: input.agent.agentOrient,
+  build: input.support.build,
+  diagnostics: input.support.diagnostics,
+  extensionAuthoring: input.support.extensionAuthoring,
+  rendererControl: input.capability.rendererControl,
+  windowCapability: input.capability.windowCapability,
+  deixis: input.capability.deixis,
+  ...(input.agentBackend !== undefined ? { agentBackend: input.agentBackend } : {}),
+  health: input.health
 });
