@@ -15,6 +15,7 @@ export const codexStatusMetadata = {
 };
 
 export const codexDefaultsMetadata = {
+  description: "Returns Plastic's durable Codex adapter defaults used for new chat threads and turns.",
   inputSchema: noInputSchema,
   examples: [
     {
@@ -28,6 +29,7 @@ export const codexDefaultsMetadata = {
 };
 
 export const codexSetDefaultsMetadata = {
+  description: "Durably updates Plastic's Codex adapter defaults.",
   inputSchema: {
     type: "object",
     required: ["model"],
@@ -54,6 +56,7 @@ export const codexSetDefaultsMetadata = {
 };
 
 export const codexRequestMetadata = {
+  description: "Passthrough to any Codex app-server method. Params and result are preserved as-is.",
   inputSchema: {
     type: "object",
     required: ["method"],
@@ -80,6 +83,7 @@ export const codexRequestMetadata = {
 };
 
 export const bridgeConfigurePlasticMcpMetadata = {
+  description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
   inputSchema: noInputSchema,
   examples: [
     {
@@ -100,6 +104,7 @@ export const bridgeConfigurePlasticMcpMetadata = {
 };
 
 export const bridgeStatusMetadata = {
+  description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
   inputSchema: noInputSchema,
   examples: [
     {
@@ -113,6 +118,7 @@ export const bridgeStatusMetadata = {
 };
 
 export const bridgeTestMetadata = {
+  description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
   inputSchema: noInputSchema,
   examples: [
     {
@@ -133,6 +139,7 @@ export const bridgeTestMetadata = {
 };
 
 export const bridgeCallPlasticRpcToolMetadata = {
+  description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
   inputSchema: {
     type: "object",
     required: ["method"],
@@ -161,6 +168,7 @@ export const bridgeCallPlasticRpcToolMetadata = {
 };
 
 export const codexAliasMetadata = (codexMethod: string) => ({
+  description: `Passthrough to Codex app-server ${codexMethod}.`,
   inputSchema: {
     type: "object",
     properties: {

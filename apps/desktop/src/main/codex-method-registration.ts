@@ -100,7 +100,6 @@ const registerCodexDefaults = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/defaults",
       title: "Get Codex defaults",
-      description: "Returns Plastic's durable Codex adapter defaults used for new chat threads and turns.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...codexDefaultsMetadata,
@@ -114,7 +113,6 @@ const registerCodexSetDefaults = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/setDefaults",
       title: "Set Codex defaults",
-      description: "Durably updates Plastic's Codex adapter defaults.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...codexSetDefaultsMetadata,
@@ -140,6 +138,7 @@ const registerCodexConnect = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/connect",
       title: "Connect Codex app-server",
+      description: "Connects to the Codex app-server process.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       handler: (methodInput) =>
@@ -156,6 +155,7 @@ const registerCodexInitialize = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/initialize",
       title: "Initialize Codex app-server",
+      description: "Initializes the Codex app-server session.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       handler: () => Effect.promise(input.initialize)
@@ -168,7 +168,6 @@ const registerCodexRequest = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/request",
       title: "Raw Codex request",
-      description: "Passthrough to any Codex app-server method. Params and result are preserved as-is.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...codexRequestMetadata,
@@ -197,7 +196,6 @@ const registerConfigurePlasticMcp = async (input: CodexBridgeRegistrationInput) 
     input.methods.register({
       id: "bridge/configurePlasticMcp",
       title: "Configure Plastic MCP bridge",
-      description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...bridgeConfigurePlasticMcpMetadata,
@@ -215,7 +213,6 @@ const registerBridgeStatus = async (input: CodexBridgeRegistrationInput) => {
     input.methods.register({
       id: "bridge/status",
       title: "Plastic bridge status",
-      description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...bridgeStatusMetadata,
@@ -251,7 +248,6 @@ const registerBridgeTest = async (input: CodexBridgeRegistrationInput) => {
     input.methods.register({
       id: "bridge/test",
       title: "Test Plastic MCP bridge",
-      description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...bridgeTestMetadata,
@@ -279,7 +275,6 @@ const registerCallPlasticRpcTool = async (input: CodexBridgeRegistrationInput) =
     input.methods.register({
       id: "bridge/callPlasticRpcTool",
       title: "Call Plastic RPC through MCP",
-      description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...bridgeCallPlasticRpcToolMetadata,
@@ -371,7 +366,6 @@ const registerCodexAliasMethod = async (
     input.methods.register({
       id: definition.id,
       title: definition.title,
-      description: `Passthrough to Codex app-server ${definition.codexMethod}.`,
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
       ...codexAliasMetadata(definition.codexMethod),

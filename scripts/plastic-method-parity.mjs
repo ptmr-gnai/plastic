@@ -24,6 +24,31 @@ const byId = (methods) => Object.fromEntries(methods.map((method) => [method.id,
 const modulesById = (modules) => Object.fromEntries(modules.map((module) => [module.id, module]));
 const capabilitiesById = (capabilities) => Object.fromEntries(capabilities.map((capability) => [capability.id, capability]));
 const sorted = (values) => [...(values ?? [])].sort();
+const stableValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map(stableValue);
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, nested]) => [key, stableValue(nested)])
+    );
+  }
+  return value;
+};
+
+const methodMetadataFields = [
+  "title",
+  "description",
+  "inputSchema",
+  "outputSchema",
+  "examples",
+  "effects",
+  "preconditions",
+  "reversibility",
+  "permissions"
+];
 
 const capture = async () => {
   const state = await rpc("plastic/state");
@@ -40,6 +65,14 @@ const capture = async () => {
     methods: methods.map((method) => ({
       id: method.id,
       title: method.title,
+      description: method.description,
+      inputSchema: stableValue(method.inputSchema),
+      outputSchema: stableValue(method.outputSchema),
+      examples: stableValue(method.examples),
+      effects: stableValue(method.effects),
+      preconditions: stableValue(method.preconditions),
+      reversibility: stableValue(method.reversibility),
+      permissions: sorted(method.permissions),
       owner: method.owner,
       requiredCapabilities: sorted(method.availability?.requiredCapabilities)
     })).sort((left, right) => left.id.localeCompare(right.id)),
@@ -109,6 +142,17 @@ const compare = (base, current) => {
       base: baseMethods[id].requiredCapabilities,
       current: currentMethods[id].requiredCapabilities
     }));
+  const methodMetadataDrift = methodMetadataFields.flatMap((field) =>
+    baseIds
+      .filter((id) => currentMethods[id])
+      .filter((id) => JSON.stringify(baseMethods[id][field]) !== JSON.stringify(currentMethods[id][field]))
+      .map((id) => ({
+        id,
+        field,
+        base: baseMethods[id][field],
+        current: currentMethods[id][field]
+      }))
+  );
   return {
     missing,
     added,
@@ -120,7 +164,8 @@ const compare = (base, current) => {
     missingCapabilities,
     addedCapabilities,
     capabilityTitleDrift,
-    methodCapabilityDrift
+    methodCapabilityDrift,
+    methodMetadataDrift
   };
 };
 
@@ -141,7 +186,8 @@ const main = async () => {
       comparison.missingCapabilities.length ? `missing capabilities: ${comparison.missingCapabilities.join(", ")}` : null,
       comparison.addedCapabilities.length ? `added capabilities: ${comparison.addedCapabilities.join(", ")}` : null,
       comparison.capabilityTitleDrift.length ? `capability title drift: ${comparison.capabilityTitleDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.methodCapabilityDrift.length ? `method capability drift: ${comparison.methodCapabilityDrift.map((item) => item.id).join(", ")}` : null
+      comparison.methodCapabilityDrift.length ? `method capability drift: ${comparison.methodCapabilityDrift.map((item) => item.id).join(", ")}` : null,
+      comparison.methodMetadataDrift.length ? `method metadata drift: ${comparison.methodMetadataDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null
     ].filter(Boolean);
     if (failures.length > 0) {
       throw new Error(`Method parity failed between ${base.mode} and ${current.mode}: ${failures.join("; ")}`);

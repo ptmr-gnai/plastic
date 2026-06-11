@@ -223,7 +223,6 @@ const supportModules = createRuntimeHostSupportModules({
   })
 });
 const runtimeHealthModule = createRuntimeHealthModule({
-  description: "Runs a fast control-plane health check for event store, projections, methods, DOM refs, build status, and Codex status.",
   hostChecks: [
     { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await electronDeixisHost.listVisibleRefs()).length }) },
     { id: "build:status", run: () => buildStatus() },

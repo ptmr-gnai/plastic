@@ -89,7 +89,6 @@ const supportModules = createRuntimeHostSupportModules({
   getDiagnostics: () => headlessDiagnostics()
 });
 const runtimeHealthModule = createRuntimeHealthModule({
-  description: "Runs a fast control-plane health check for event store, projections, methods, build status, diagnostics, and headless agent fallback.",
   hostChecks: [
     { id: "build:status", run: () => buildStatus() },
     { id: "diagnostics:status", run: () => headlessDiagnostics() },

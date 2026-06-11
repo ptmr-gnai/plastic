@@ -7,8 +7,8 @@ import {
 } from "./runtime-method-context.js";
 import {
   chatBindingMetadata,
-  fallbackCreateCodexChatMetadata,
-  fallbackSendToCodexMetadata
+  createCodexChatMetadata,
+  sendToCodexMetadata
 } from "./chat-method-metadata.js";
 import {
   bridgeCallPlasticRpcToolMetadata,
@@ -42,11 +42,26 @@ type UnavailableMethodDefinition = {
 };
 
 const unavailableCodexMethods: UnavailableMethodDefinition[] = [
-  { id: "codex/defaults", title: "Get Codex defaults", metadata: codexDefaultsMetadata },
-  { id: "codex/setDefaults", title: "Set Codex defaults", metadata: codexSetDefaultsMetadata },
-  { id: "codex/connect", title: "Connect Codex app-server" },
-  { id: "codex/initialize", title: "Initialize Codex app-server" },
-  { id: "codex/request", title: "Raw Codex request", metadata: codexRequestMetadata },
+  {
+    id: "codex/defaults",
+    title: "Get Codex defaults",
+    description: "Returns Plastic's durable Codex adapter defaults used for new chat threads and turns.",
+    metadata: codexDefaultsMetadata
+  },
+  {
+    id: "codex/setDefaults",
+    title: "Set Codex defaults",
+    description: "Durably updates Plastic's Codex adapter defaults.",
+    metadata: codexSetDefaultsMetadata
+  },
+  { id: "codex/connect", title: "Connect Codex app-server", description: "Connects to the Codex app-server process." },
+  { id: "codex/initialize", title: "Initialize Codex app-server", description: "Initializes the Codex app-server session." },
+  {
+    id: "codex/request",
+    title: "Raw Codex request",
+    description: "Passthrough to any Codex app-server method. Params and result are preserved as-is.",
+    metadata: codexRequestMetadata
+  },
   { id: "codex/threadStart", title: "Start Codex thread", metadata: codexAliasMetadata("thread/start") },
   { id: "codex/threadResume", title: "Resume Codex thread", metadata: codexAliasMetadata("thread/resume") },
   { id: "codex/threadFork", title: "Fork Codex thread", metadata: codexAliasMetadata("thread/fork") },
@@ -59,14 +74,50 @@ const unavailableCodexMethods: UnavailableMethodDefinition[] = [
   { id: "codex/turnInterrupt", title: "Interrupt Codex turn", metadata: codexAliasMetadata("turn/interrupt") },
   { id: "codex/modelList", title: "List Codex models", metadata: codexAliasMetadata("model/list") },
   { id: "codex/configRead", title: "Read Codex config", metadata: codexAliasMetadata("config/read") },
-  { id: "bridge/configurePlasticMcp", title: "Configure Plastic MCP bridge", metadata: bridgeConfigurePlasticMcpMetadata },
-  { id: "bridge/status", title: "Plastic bridge status", metadata: bridgeStatusMetadata },
-  { id: "bridge/test", title: "Test Plastic bridge", metadata: bridgeTestMetadata },
-  { id: "bridge/callPlasticRpcTool", title: "Call Plastic RPC through Codex MCP", metadata: bridgeCallPlasticRpcToolMetadata },
-  { id: "chats/bindCodexThread", title: "Bind chat to Codex thread" },
-  { id: "chats/startCodexThread", title: "Start chat Codex thread" },
-  { id: "chats/interrupt", title: "Interrupt chat turn" },
-  { id: "chats/close", title: "Close chat backend" }
+  {
+    id: "bridge/configurePlasticMcp",
+    title: "Configure Plastic MCP bridge",
+    description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
+    metadata: bridgeConfigurePlasticMcpMetadata
+  },
+  {
+    id: "bridge/status",
+    title: "Plastic bridge status",
+    description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
+    metadata: bridgeStatusMetadata
+  },
+  {
+    id: "bridge/test",
+    title: "Test Plastic MCP bridge",
+    description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
+    metadata: bridgeTestMetadata
+  },
+  {
+    id: "bridge/callPlasticRpcTool",
+    title: "Call Plastic RPC through MCP",
+    description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
+    metadata: bridgeCallPlasticRpcToolMetadata
+  },
+  {
+    id: "chats/bindCodexThread",
+    title: "Bind chat to Codex thread",
+    description: "Durably binds a chat panel to an existing Codex thread id."
+  },
+  {
+    id: "chats/startCodexThread",
+    title: "Start chat Codex thread",
+    description: "Starts a Codex thread through native thread/start and binds it to a chat panel."
+  },
+  {
+    id: "chats/interrupt",
+    title: "Interrupt chat turn",
+    description: "Interrupts the active Codex turn bound to a chat panel."
+  },
+  {
+    id: "chats/close",
+    title: "Close chat",
+    description: "Closes a chat panel and interrupts any in-progress Codex turn before removing it."
+  }
 ];
 
 export const agentBackendFallbackModule: RuntimeModule = {
@@ -111,7 +162,7 @@ const registerChatBinding = async (context: RuntimeMethodContext, availability: 
     context.methods.register({
       id: "chats/getBinding",
       title: "Get chat backend binding",
-      description: "Returns the current agent backend binding for a chat panel.",
+      description: "Returns the current Codex thread binding and active turn state for a chat panel.",
       owner: codexBackendOwner,
       availability,
       ...chatBindingMetadata,
@@ -132,10 +183,10 @@ const registerCreateChat = async (context: RuntimeMethodContext, availability: C
     context.methods.register({
       id: "chats/createCodexChat",
       title: "Create Codex chat",
-      description: "Creates a chat panel; Codex thread creation is unavailable without an agent.codex capability.",
+      description: "Creates a new chat panel, starts a fresh Codex thread, and binds them.",
       owner: codexBackendOwner,
       availability,
-      ...fallbackCreateCodexChatMetadata,
+      ...createCodexChatMetadata,
       handler: (input) => Effect.promise(() => createFallbackChat(context, input, availability))
     })
   );
@@ -181,10 +232,10 @@ const registerSendToCodex = async (context: RuntimeMethodContext, availability: 
     context.methods.register({
       id: "chats/sendToCodex",
       title: "Send chat message to Codex",
-      description: "Records a chat message; Codex turn start is unavailable without an agent.codex capability.",
+      description: "Durably records a user message, binds the chat to a Codex thread, and starts a Codex turn.",
       owner: codexBackendOwner,
       availability,
-      ...fallbackSendToCodexMetadata,
+      ...sendToCodexMetadata,
       handler: (input) => Effect.promise(() => recordFallbackMessage(context, input, availability))
     })
   );
