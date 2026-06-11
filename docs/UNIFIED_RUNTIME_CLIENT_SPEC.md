@@ -455,26 +455,29 @@ agents call RPC/MCP
 
 The CLI should not become a separate implementation of Plastic behavior.
 
+## Implementation Status
+
+The first unification pass is substantially complete:
+
+- `createPlasticRuntime` creates the shared event store, method registry, capability registry, append helper, and module registration path.
+- `createRuntimeHostBase` creates shared host config/status, workspace command helpers, git status, runtime construction, and durable `runtime.started` base payload.
+- Electron and headless both use shared runtime modules for state, snapshot, agent workbench/orientation, build, diagnostics, extension authoring/runtime, renderer/window/deixis capability-backed methods, runtime control, panel control, panel mailbox, runtime modules, and health.
+- The runtime/build HTTP transports share request helpers, RPC dispatch, method GET dispatch, SSE event streams, CORS behavior, and error envelopes.
+- `runtime/capabilities`, `methods/describe`, `runtime/modules`, `agent/workbench`, `agent/orient`, `plastic/state`, and `plastic/snapshot` expose enough host/capability metadata for agents to learn which methods are available, degraded, or unavailable.
+- The shared contract harness validates headless end to end, including state, methods, snapshot, capabilities, modules, panel lifecycle, extension scan/list, event streams, HTTP error contracts, build HTTP surfaces, and self-test.
+
+The current validation blocker is below Plastic code: in this automation environment, the Electron binary can report its version, but a minimal Electron app-main preflight times out before the Plastic main process starts. Until that is fixed, headed validation cannot run the same contract even though the Electron host code uses the shared runtime assembly.
+
 ## Practical Next Step
 
-The first implementation slice should extract a shared `panelControlRuntimeModule`.
-
-Why:
-
-- panel methods already exist in both Electron and headless;
-- the behavior should be identical in both modes;
-- the methods are central to Plastic as an extensible workspace;
-- validation is easy and empirical;
-- it reduces duplication immediately.
+Fix or route around the Electron app-main preflight so the same contract can run against Electron again.
 
 Proof:
 
-1. Start headless.
-2. Call `panels/create`, `panels/get`, `panels/rename`, `panels/move`, `panels/remove`.
-3. Verify `events/list` and `panels/list`.
-4. Start Electron.
-5. Run the same calls against the same RPC bus.
-6. Verify the GUI projection updates.
+1. `PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS=3000 pnpm plastic:validate-electron` reaches Plastic startup logs instead of timing out in the minimal Electron probe.
+2. Electron starts the runtime and build HTTP ports.
+3. `pnpm plastic:contract` passes against Electron's runtime/build URLs.
+4. `pnpm plastic:method-parity` compares Electron against the captured headless baseline.
+5. Any differences are explained only by capability status, not missing shared methods.
 
-That slice starts converting the architecture from "two hosts that both register panel methods" to "one runtime method module used by both hosts."
-
+After Electron validation is unblocked, the next architecture slice should shrink the remaining host bootstraps by extracting shared host descriptors for projection resources, agent host inputs, and health checks. That would further reduce the amount of parallel assembly in `main.ts` and `headless.ts`.
