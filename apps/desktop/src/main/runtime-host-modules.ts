@@ -20,6 +20,25 @@ type RuntimeHostProjectionInput = Parameters<typeof createRuntimeHostProjectionM
 type RuntimeHostAgentInput = Parameters<typeof createRuntimeHostAgentModules>[0];
 type RuntimeHostCapabilityInput = Parameters<typeof createRuntimeHostCapabilityModules>[0];
 type RuntimeHostSupportInput = Parameters<typeof createRuntimeHostSupportBundle>[0];
+type HeadlessRuntimeHostStandardInput = {
+  config: RuntimeHostConfig;
+  workspaceDir: string;
+  eventPath: string;
+  plasticDir: string;
+  getBuildStatus: () => unknown;
+  getHost: () => Record<string, unknown>;
+  runCommand: RuntimeHostSupportInput["runCommand"];
+  getDiagnostics: RuntimeHostSupportInput["getDiagnostics"];
+  readGitStatus: RuntimeHostAgentInput["workbench"]["readGitStatus"];
+  callCodexStatus: () => Promise<unknown>;
+};
+
+const unavailableCodexStatus = () => ({
+  connected: false,
+  initialized: false,
+  pid: null,
+  pendingRequests: 0
+});
 
 export const createRuntimeHostProjectionResource = (input: {
   config: RuntimeHostConfig;
@@ -190,3 +209,39 @@ export const createRuntimeHostStandardModules = (input: {
     health: support.health
   });
 };
+
+export const createHeadlessRuntimeHostStandardModules = (input: HeadlessRuntimeHostStandardInput) =>
+  createRuntimeHostStandardModules({
+    config: input.config,
+    mode: "headless",
+    projectionState: input.getBuildStatus(),
+    getHostDetails: () => ({
+      build: input.getBuildStatus(),
+      runtime: { windowCount: 0 },
+      codex: unavailableCodexStatus(),
+      visibleRefs: []
+    }),
+    agent: {
+      workbench: {
+        mode: "headless",
+        workspaceDir: input.workspaceDir,
+        eventPath: input.eventPath,
+        getRuntimeStatus: input.getBuildStatus,
+        getCodexStatus: unavailableCodexStatus,
+        readGitStatus: input.readGitStatus
+      },
+      orient: { workspaceDir: input.workspaceDir }
+    },
+    support: {
+      plasticDir: input.plasticDir,
+      getBuildStatus: input.getBuildStatus,
+      getHost: input.getHost,
+      runCommand: input.runCommand,
+      getDiagnostics: input.getDiagnostics,
+      healthChecks: [
+        { id: "build:status", run: input.getBuildStatus },
+        { id: "diagnostics:status", run: input.getDiagnostics },
+        { id: "agent-backend:fallback", run: input.callCodexStatus }
+      ]
+    }
+  });
