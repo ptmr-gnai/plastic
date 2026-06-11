@@ -260,7 +260,6 @@ const transports = await startRuntimeHostControlPlane({
     mode: "electron",
     version: app.getVersion()
   },
-  onBeforeTransports: () => logStartup("start sockets"),
   runtimeHost,
   runtimePort,
   buildHost,

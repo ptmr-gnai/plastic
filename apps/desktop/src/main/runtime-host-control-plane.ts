@@ -17,11 +17,10 @@ export const startRuntimeHostControlPlane = async (
     runtimeCorsOrigin?: string;
     onRuntimeListening?: () => void;
     onBuildListening?: () => void;
-    onBeforeTransports?: () => void;
   }
 ): Promise<RuntimeHostTransports> => {
   await runRuntimeStartupSequence(input);
-  input.onBeforeTransports?.();
+  input.onPhase?.("start sockets");
 
   return startRuntimeHostTransports({
     eventStore: input.eventStore,
