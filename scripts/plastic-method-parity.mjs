@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { stableValue } from "./plastic-stable-json.mjs";
 
 const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
 const outPath = process.env.PLASTIC_METHOD_PARITY_OUT;
@@ -24,19 +25,6 @@ const byId = (methods) => Object.fromEntries(methods.map((method) => [method.id,
 const modulesById = (modules) => Object.fromEntries(modules.map((module) => [module.id, module]));
 const capabilitiesById = (capabilities) => Object.fromEntries(capabilities.map((capability) => [capability.id, capability]));
 const sorted = (values) => [...(values ?? [])].sort();
-const stableValue = (value) => {
-  if (Array.isArray(value)) {
-    return value.map(stableValue);
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, nested]) => [key, stableValue(nested)])
-    );
-  }
-  return value;
-};
 
 const methodMetadataFields = [
   "title",

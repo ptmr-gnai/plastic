@@ -1,4 +1,5 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
+import { stableJson } from "./plastic-stable-json.mjs";
 
 export const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
 export const runtimeUrl = rpcUrl.replace(/\/rpc$/, "");
@@ -112,20 +113,6 @@ export const assertArray = (value, message) => {
 
 export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) => {
   const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
-  const stableValue = (value) => {
-    if (Array.isArray(value)) {
-      return value.map(stableValue);
-    }
-    if (value && typeof value === "object") {
-      return Object.fromEntries(
-        Object.entries(value)
-          .sort(([left], [right]) => left.localeCompare(right))
-          .map(([key, nested]) => [key, stableValue(nested)])
-      );
-    }
-    return value;
-  };
-  const stableJson = (value) => JSON.stringify(stableValue(value));
   for (const id of sampleIds) {
     const listed = byId[id];
     assert(listed, `plastic/methods missing ${id}`);
