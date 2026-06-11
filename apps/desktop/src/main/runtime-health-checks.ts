@@ -34,6 +34,12 @@ export const checkMethodRegistryHealth = (
   const missingAvailability = methods
     .filter((method) => !method.availability?.status)
     .map((method) => method.id);
+  const invalidAvailabilityStatuses = methods
+    .filter((method) =>
+      method.availability?.status
+      && !["available", "degraded", "unavailable"].includes(method.availability.status)
+    )
+    .map((method) => method.id);
   const missingReferencedCapabilities = methods.flatMap((method) =>
     (method.availability?.requiredCapabilities ?? [])
       .filter((capabilityId) => !capabilityIds.has(capabilityId))
@@ -43,13 +49,22 @@ export const checkMethodRegistryHealth = (
   if (missingAvailability.length > 0) {
     throw new Error(`Methods missing availability: ${missingAvailability.join(", ")}`);
   }
+  if (invalidAvailabilityStatuses.length > 0) {
+    throw new Error(`Methods with invalid availability status: ${invalidAvailabilityStatuses.join(", ")}`);
+  }
   if (missingReferencedCapabilities.length > 0) {
     throw new Error(`Methods reference missing capabilities: ${missingReferencedCapabilities.join(", ")}`);
   }
   if (missingRequiredMethods.length > 0) {
     throw new Error(`Required methods missing: ${missingRequiredMethods.join(", ")}`);
   }
-  return { count: methods.length, missingAvailability, missingReferencedCapabilities, missingRequiredMethods };
+  return {
+    count: methods.length,
+    missingAvailability,
+    invalidAvailabilityStatuses,
+    missingReferencedCapabilities,
+    missingRequiredMethods
+  };
 };
 
 export const checkCapabilityRegistryHealth = (capabilities: RuntimeCapability[]) => {
