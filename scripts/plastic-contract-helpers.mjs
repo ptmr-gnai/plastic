@@ -136,6 +136,20 @@ export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) =
   }
 };
 
+export const assertMethodLegibility = ({ methods, ids }) => {
+  const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
+  for (const id of ids) {
+    const method = byId[id];
+    assert(method, `plastic/methods missing ${id}`);
+    assert(method.description, `${id} missing description`);
+    assert(method.inputSchema, `${id} missing inputSchema`);
+    assert(Array.isArray(method.examples) && method.examples.length > 0, `${id} missing examples`);
+    assert(method.effects?.durableEvents?.length > 0, `${id} missing durable event effects`);
+    assert(method.effects?.mutatesProjection?.length > 0, `${id} missing projection effects`);
+    assert(method.reversibility?.reversible !== undefined, `${id} missing reversibility`);
+  }
+};
+
 export const itemsFrom = (value, message) => {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.items)) return value.items;

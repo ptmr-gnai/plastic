@@ -6,6 +6,7 @@ import {
   buildUrl,
   check,
   assertMethodDiscoveryParity,
+  assertMethodLegibility,
   itemsFrom,
   rawRuntimeRequest,
   results,
@@ -106,6 +107,11 @@ await check("method discovery parity", async () => {
   ];
   await assertMethodDiscoveryParity({ methods, rpc, sampleIds });
   return { sampled: sampleIds.length };
+});
+
+await check("method legibility metadata", async () => {
+  assertMethodLegibility({ methods, ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme"] });
+  return { methods: 5 };
 });
 
 await check("runtime/capabilities", async () => {
