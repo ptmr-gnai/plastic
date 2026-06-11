@@ -39,15 +39,38 @@ const run = (command, args, options = {}) =>
 
 const runWithTimeout = (command, args, timeoutMs, options = {}) =>
   new Promise((resolve, reject) => {
+    let stdout = "";
+    let stderr = "";
+    const stdio = options.stdio ?? ["ignore", "pipe", "pipe"];
     const child = spawn(command, args, {
       cwd: new URL("..", import.meta.url).pathname,
-      stdio: "inherit",
+      stdio,
       shell: process.platform === "win32",
       ...options
     });
+    child.stdout?.on("data", (chunk) => {
+      const text = chunk.toString();
+      stdout += text;
+      process.stdout.write(text);
+    });
+    child.stderr?.on("data", (chunk) => {
+      const text = chunk.toString();
+      stderr += text;
+      process.stderr.write(text);
+    });
+    const describeFailure = (reason) => {
+      const details = [
+        `${command} ${args.join(" ")} ${reason}`,
+        `cwd: ${options.cwd ?? new URL("..", import.meta.url).pathname}`,
+        `timeoutMs: ${timeoutMs}`,
+        `stdout: ${stdout.trim() || "<empty>"}`,
+        `stderr: ${stderr.trim() || "<empty>"}`
+      ];
+      return new Error(details.join("\n"));
+    };
     const timeout = setTimeout(() => {
       child.kill("SIGTERM");
-      reject(new Error(`${command} ${args.join(" ")} did not exit within ${timeoutMs}ms`));
+      reject(describeFailure(`did not exit within ${timeoutMs}ms`));
     }, timeoutMs);
     child.on("exit", (code, signal) => {
       clearTimeout(timeout);
@@ -55,7 +78,7 @@ const runWithTimeout = (command, args, timeoutMs, options = {}) =>
         resolve({ code, signal });
         return;
       }
-      reject(new Error(`${command} ${args.join(" ")} exited with ${code ?? signal}`));
+      reject(describeFailure(`exited with ${code ?? signal}`));
     });
   });
 
