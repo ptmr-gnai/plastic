@@ -247,10 +247,7 @@ export const assertRuntimeModuleInventory = async ({ rpc }) => {
   ]) {
     assert(ids.includes(id), `runtime/modules missing ${id}`);
   }
-  assert(
-    ids.some((id) => id === "agent-backend-codex" || id === "agent-backend-fallback"),
-    "runtime/modules missing an agent backend module"
-  );
+  assert(ids.includes("agent-backend"), "runtime/modules missing agent-backend");
   assert(items.every((module, index) => module.order === index), "runtime/modules order is not stable");
   assertModuleMethodMap(items, "runtime/modules");
   return { count: modules.count, ids, items };
@@ -347,10 +344,7 @@ export const assertRuntimeStartedModuleInventory = async ({ rpc }) => {
   for (const id of ["runtime-state", "runtime-control", "extension-runtime", "panel-mailbox", "runtime-modules"]) {
     assert(ids.includes(id), `runtime.started module inventory missing ${id}`);
   }
-  assert(
-    ids.some((id) => id === "agent-backend-codex" || id === "agent-backend-fallback"),
-    "runtime.started module inventory missing an agent backend module"
-  );
+  assert(ids.includes("agent-backend"), "runtime.started module inventory missing agent-backend");
   assertModuleMethodMap(modules, "runtime.started");
   return { eventId: latest.id, count: modules.length, ids, items: modules };
 };

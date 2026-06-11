@@ -120,9 +120,7 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
     : [];
   const ids = new Set(items.map((item) => (item as { id?: string }).id).filter(Boolean));
   const missingRequiredModules = requiredRuntimeModules.filter((id) => !ids.has(id));
-  const missingAgentBackend = !items.some((item) =>
-    ["agent-backend-codex", "agent-backend-fallback"].includes((item as { id?: string }).id ?? "")
-  );
+  const missingAgentBackend = !ids.has("agent-backend");
   const missingMethodIds = items
     .filter((item) => !Array.isArray((item as { methodIds?: unknown }).methodIds))
     .map((item) => (item as { id?: string }).id ?? "<missing-id>");

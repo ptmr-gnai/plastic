@@ -232,7 +232,7 @@ const runtimeHealthModule = createRuntimeHealthModule({
   ]
 });
 const codexAgentBackendModule: RuntimeModule = {
-  id: "agent-backend-codex",
+  id: "agent-backend",
   register: async () => {
     await codexAdapter.registerMethods();
   }

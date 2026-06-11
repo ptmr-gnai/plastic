@@ -70,7 +70,7 @@ const unavailableCodexMethods: UnavailableMethodDefinition[] = [
 ];
 
 export const agentBackendFallbackModule: RuntimeModule = {
-  id: "agent-backend-fallback",
+  id: "agent-backend",
   register: async (context) => {
     const codexAvailability = availabilityFromCapabilities(
       context.capabilities,
