@@ -255,6 +255,10 @@ export const assertRuntimeModuleInventory = async ({ rpc }) => {
   ]) {
     assert(ids.includes(id), `runtime/modules missing ${id}`);
   }
+  assert(
+    ids.some((id) => id === "agent-backend-codex" || id === "agent-backend-fallback"),
+    "runtime/modules missing an agent backend module"
+  );
   assert(items.every((module, index) => module.order === index), "runtime/modules order is not stable");
   return { count: modules.count, ids };
 };

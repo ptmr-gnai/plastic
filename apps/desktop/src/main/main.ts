@@ -27,6 +27,7 @@ import {
 import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
+import type { RuntimeModule } from "./runtime-method-context.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
@@ -228,6 +229,12 @@ const runtimeHealthModule = createRuntimeHealthModule({
     { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
   ]
 });
+const codexAgentBackendModule: RuntimeModule = {
+  id: "agent-backend-codex",
+  register: async () => {
+    await codexAdapter.registerMethods();
+  }
+};
 const transports = await startRuntimeHostControlPlane({
   workspaceDir,
   bundledExtensionsDir,
@@ -243,7 +250,7 @@ const transports = await startRuntimeHostControlPlane({
   diagnostics: supportModules.diagnostics,
   extensionAuthoring: supportModules.extensionAuthoring,
   rendererControl: capabilityModules.rendererControl,
-  agentBackend: null,
+  agentBackend: codexAgentBackendModule,
   windowCapability: capabilityModules.windowCapability,
   deixis: capabilityModules.deixis,
   health: runtimeHealthModule,
@@ -252,10 +259,6 @@ const transports = await startRuntimeHostControlPlane({
   startedPayload: {
     mode: "electron",
     version: app.getVersion()
-  },
-  beforeStarted: async () => {
-    logStartup("register codex methods");
-    await codexAdapter.registerMethods();
   },
   onBeforeTransports: () => logStartup("start sockets"),
   runtimeHost,
