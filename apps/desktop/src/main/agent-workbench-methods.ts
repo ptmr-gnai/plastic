@@ -15,6 +15,7 @@ import type {
   RuntimeModule,
   RunPromise
 } from "./runtime-method-context.js";
+import { readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 
 type AgentWorkbenchInput = {
@@ -130,7 +131,7 @@ const buildWorkbench = async (input: {
       window: findFocusWindow(windowsModel, panelId, host.getFocusedElectronWindowId?.())
     },
     observability: buildObservability({ host, workbenchInput, events, panelId, extensionId: extension?.id, visibleRefs }),
-    control: buildControl({ capabilities, host, methodList, workbenchInput, panelId, latestEventId: events.at(-1)?.id }),
+    control: await buildControl({ capabilities, host, methods, methodList, runPromise, workbenchInput, panelId, latestEventId: events.at(-1)?.id }),
     workspace: { git: await host.readGitStatus() },
     obligations: {
       orientBeforeMutation: true,
@@ -186,27 +187,31 @@ const buildObservability = (input: {
   };
 };
 
-const buildControl = (input: {
+const buildControl = async (input: {
   capabilities: CapabilityRegistry;
   host: AgentWorkbenchHost;
+  methods: MethodRegistry;
   methodList: Parameters<typeof groupMethodsByOwner>[0];
+  runPromise: RunPromise;
   workbenchInput: AgentWorkbenchInput | undefined;
   panelId: string | undefined;
   latestEventId: string | undefined;
 }) => {
-  const { capabilities, host, methodList, workbenchInput, panelId, latestEventId } = input;
+  const { capabilities, host, methods, methodList, runPromise, workbenchInput, panelId, latestEventId } = input;
   const capabilityItems = capabilities.list();
   return {
     capabilities: {
       count: capabilityItems.length,
       items: capabilityItems
     },
+    modules: await readRuntimeModules({ methods, runPromise }),
     methodCount: methodList.length,
     methodGroups: groupMethodsByOwner(methodList),
     recommendedActions: [
       { id: "refresh-workbench", title: "Refresh workbench", method: "agent/workbench", input: { panelId, eventCursor: latestEventId } },
       { id: "read-state", title: "Read state", method: "plastic/state" },
       { id: "read-methods", title: "Read methods", method: "plastic/methods" },
+      { id: "read-modules", title: "Read runtime modules", method: "runtime/modules" },
       { id: "read-timeline", title: "Read timeline", method: host.mode === "electron" ? "events/timeline" : "events/list", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } },
       ...(host.visualActions?.({
         ...(workbenchInput?.ref ? { ref: workbenchInput.ref } : {}),

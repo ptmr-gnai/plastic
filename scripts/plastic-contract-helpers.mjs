@@ -301,6 +301,53 @@ export const assertRuntimeStartedModuleInventory = async ({ rpc }) => {
   return { eventId: latest.id, count: modules.length, ids, items: modules };
 };
 
+export const assertAgentWorkbenchPacket = ({ workbench, mode }) => {
+  assert(workbench?.app?.mode === mode, "workbench app mode does not match state");
+  assert(workbench.control?.methodCount >= 1, "workbench method count missing");
+  assert(workbench.control.capabilities?.count >= 1, "workbench capabilities count missing");
+  assertArray(workbench.control.capabilities.items, "workbench capabilities items missing");
+  assert(workbench.control.modules?.count >= 1, "workbench runtime module count missing");
+  assertArray(workbench.control.modules.items, "workbench runtime modules items missing");
+  assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
+  assert(
+    workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"),
+    "workbench missing runtime/modules recommended action"
+  );
+  assert(workbench.observability?.timeline, "workbench timeline missing");
+  assert(workbench.workspace?.git, "workbench git status missing");
+  return {
+    mode: workbench.app.mode,
+    methods: workbench.control.methodCount,
+    capabilities: workbench.control.capabilities.count,
+    modules: workbench.control.modules.count,
+    actions: workbench.control.recommendedActions.length,
+    visibleRefs: workbench.observability.visibleRefs?.length ?? 0
+  };
+};
+
+export const assertAgentOrientationPacket = (orientation) => {
+  assert(orientation?.agent?.id, "agent/orient missing agent id");
+  assert(orientation.embodiment?.projectDir, "agent/orient missing projectDir");
+  assert(orientation.capabilities.host?.count >= 1, "agent/orient missing host capability count");
+  assertArray(orientation.capabilities.host.items, "agent/orient host capabilities missing");
+  assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
+  assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
+  assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
+  assert(
+    orientation.capabilities.links?.some((link) => link.method === "runtime/modules"),
+    "agent/orient missing runtime/modules link"
+  );
+  assert(orientation.memory?.eventCount >= 1, "agent/orient missing event memory");
+  return {
+    agentId: orientation.agent.id,
+    panelId: orientation.embodiment.panelId,
+    capabilities: orientation.capabilities.host.count,
+    modules: orientation.capabilities.modules.count,
+    visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
+    recommendedActions: orientation.capabilities.recommendedActions.length
+  };
+};
+
 const assertModuleMethodMap = (items, source) => {
   for (const module of items) {
     assert(Array.isArray(module.methodIds), `${source} ${module.id} missing methodIds`);

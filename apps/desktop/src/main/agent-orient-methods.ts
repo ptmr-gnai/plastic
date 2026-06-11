@@ -14,6 +14,7 @@ import type {
   RuntimeModule,
   RunPromise
 } from "./runtime-method-context.js";
+import { readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 
 type AgentOrientInput = {
@@ -124,7 +125,14 @@ const buildOrientation = async (input: {
       visibleRefs: context.localVisibleRefs.slice(0, 40)
     },
     memory: buildMemory(events, globalTimeline),
-    capabilities: buildCapabilities(input.capabilities, methodList, panelId, events.at(-1)?.id),
+    capabilities: await buildCapabilities({
+      capabilities: input.capabilities,
+      methods: input.methods,
+      methodList,
+      runPromise: input.runPromise,
+      panelId,
+      latestEventId: events.at(-1)?.id
+    }),
     obligations: {
       orientBeforeMutation: true,
       verifyAfterMutation: true,
@@ -232,22 +240,25 @@ const buildMemory = (
   ).slice(-12)
 });
 
-const buildCapabilities = (
-  capabilities: CapabilityRegistry,
-  methodList: PlasticMethod[],
-  panelId: string | undefined,
-  latestEventId: string | undefined
-) => ({
+const buildCapabilities = async (input: {
+  capabilities: CapabilityRegistry;
+  methods: MethodRegistry;
+  methodList: PlasticMethod[];
+  runPromise: RunPromise;
+  panelId: string | undefined;
+  latestEventId: string | undefined;
+}) => ({
   host: {
-    count: capabilities.list().length,
-    items: capabilities.list()
+    count: input.capabilities.list().length,
+    items: input.capabilities.list()
   },
-  methods: recommendedMethods(methodList),
+  modules: await readRuntimeModules(input),
+  methods: recommendedMethods(input.methodList),
   recommendedActions: [
-    { id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId, eventCursor: latestEventId } },
+    { id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId: input.panelId, eventCursor: input.latestEventId } },
     { id: "read-state", title: "Read full Plastic state", method: "plastic/state" },
-    { id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: latestEventId } },
-    ...(panelId ? [{ id: "send-chat", title: "Send a message through this chat", method: "chats/sendToCodex", input: { chatId: panelId } }] : []),
+    { id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: input.latestEventId } },
+    ...(input.panelId ? [{ id: "send-chat", title: "Send a message through this chat", method: "chats/sendToCodex", input: { chatId: input.panelId } }] : []),
     { id: "inspect-visible-refs", title: "Inspect visible refs", method: "deixis/listVisibleRefs" },
     { id: "capture-screenshot", title: "Capture screenshot", method: "windows/screenshot" }
   ],
@@ -256,6 +267,7 @@ const buildCapabilities = (
     { rel: "state", href: "plastic/state", method: "plastic/state" },
     { rel: "timeline", href: "events/timeline", method: "events/timeline" },
     { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+    { rel: "modules", href: "runtime/modules", method: "runtime/modules" },
     { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },
     { rel: "visible-refs", href: "deixis/listVisibleRefs", method: "deixis/listVisibleRefs" }
   ]
