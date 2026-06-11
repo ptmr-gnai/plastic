@@ -7,6 +7,7 @@ import {
   type MethodRegistry,
   type TimelineInput
 } from "@plastic/core";
+import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
 const runtimeControlAvailability = {
@@ -23,21 +24,6 @@ const eventScopeSchema = {
     extensionId: { type: "string" },
     windowId: { type: "string" }
   }
-};
-
-const readOnlyEffects = {
-  durableEvents: [],
-  mutatesProjection: []
-};
-
-const readOnlyReversibility = {
-  reversible: true,
-  notes: "Read-only method."
-};
-
-const noInputSchema = {
-  type: "object",
-  properties: {}
 };
 
 const eventListMetadata = {

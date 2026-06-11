@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { buildPlasticState, type PlasticState } from "@plastic/core";
+import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
 const runtimeStateAvailability = {
@@ -19,6 +20,16 @@ export const createRuntimeStateModule = (input: {
         description: "Returns HATEOAS-style app state.",
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: runtimeStateAvailability,
+        inputSchema: noInputSchema,
+        examples: [
+          {
+            title: "Read current app state",
+            input: {},
+            verifyWith: { method: "plastic/methods", input: {} }
+          }
+        ],
+        effects: readOnlyEffects,
+        reversibility: readOnlyReversibility,
         handler: () =>
           Effect.promise(async () => {
             const state = await runPromise(buildPlasticState(eventStore, methods));

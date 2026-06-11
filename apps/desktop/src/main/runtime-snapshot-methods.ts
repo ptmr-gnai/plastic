@@ -4,6 +4,7 @@ import {
   projectPanels,
   projectWindows
 } from "@plastic/core";
+import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
 const runtimeSnapshotAvailability = {
@@ -31,6 +32,16 @@ export const createRuntimeSnapshotModule = (input: {
         description: "Returns a high-signal observable snapshot for agents: app, build, methods, panels, windows, extensions, visible refs, Codex, and recent events.",
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: runtimeSnapshotAvailability,
+        inputSchema: noInputSchema,
+        examples: [
+          {
+            title: "Read agent workbench snapshot",
+            input: {},
+            verifyWith: { method: "plastic/state", input: {} }
+          }
+        ],
+        effects: readOnlyEffects,
+        reversibility: readOnlyReversibility,
         handler: () =>
           Effect.promise(async () => {
             const events = await runPromise(eventStore.list());
