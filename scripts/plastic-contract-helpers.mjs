@@ -187,6 +187,18 @@ export const assertPanelLifecycleProjection = async ({ rpc, panelId }) => {
   return { id: created.id, panelId, createEventId: created.id, remainingPanels: panelsAfterClose.length };
 };
 
+export const assertRpcCallDispatch = async ({ rpc }) => {
+  const panels = await rpc("rpc/call", { method: "panels/list", input: {} });
+  assert(Array.isArray(panels), "rpc/call panels/list did not return panel array");
+  try {
+    await rpc("rpc/call", { method: "rpc/call", input: {} });
+    throw new Error("rpc/call unexpectedly called itself");
+  } catch (error) {
+    assert(String(error.message ?? error).includes("cannot call itself"), "rpc/call self-call error mismatch");
+  }
+  return { delegatedMethod: "panels/list", panels: panels.length };
+};
+
 export const itemsFrom = (value, message) => {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.items)) return value.items;

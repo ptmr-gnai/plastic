@@ -8,6 +8,7 @@ import {
   assertControlLegibilityAndThemeProjection,
   assertMethodDiscoveryParity,
   assertPanelLifecycleProjection,
+  assertRpcCallDispatch,
   itemsFrom,
   rawRuntimeRequest,
   results,
@@ -60,7 +61,7 @@ await check("plastic/methods", async () => {
   assert(JSON.stringify(runtimeMethodIds) === JSON.stringify(methodIds), "runtime /methods ids diverged from plastic/methods");
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   for (const id of [
-    "plastic/state", "plastic/methods", "methods/describe", "runtime/capabilities", "agent/orient",
+    "plastic/state", "plastic/methods", "methods/describe", "rpc/call", "runtime/capabilities", "agent/orient",
     ...backendMethodIds,
     "panels/create", "extensions/list", "extensions/scaffold", "build/status", "app/diagnostics",
     "renderer/reload", "windows/list", "windows/create", "windows/focusPanel", "windows/scrollToRef",
@@ -108,6 +109,10 @@ await check("method discovery parity", async () => {
   ];
   await assertMethodDiscoveryParity({ methods, rpc, sampleIds });
   return { sampled: sampleIds.length };
+});
+
+await check("rpc/call dispatch", async () => {
+  return assertRpcCallDispatch({ rpc });
 });
 
 await check("control method legibility and theme projection", async () => {
