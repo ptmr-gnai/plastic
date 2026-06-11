@@ -58,6 +58,8 @@ await check("plastic/state", async () => {
     ? state.panels
     : assertArray(state.resources, "state.resources is not an array")
       .filter((resource) => resource.id === "panels" || resource.kind === "panel");
+  const serviceResources = assertArray(state.resources, "state.resources is not an array").filter((resource) => resource.kind === "service");
+  assert(serviceResources.some((resource) => resource.links?.some((link) => link.method === "runtime/capabilities") && resource.actions?.some((action) => action.method === "runtime/capabilities")), "state service resource missing capabilities affordances");
   assert(panelResources.length > 0, "state does not expose panels");
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
   assert(runtimeStartedControlPlane.mode === state.app.mode, "runtime.started mode mismatch");
@@ -490,7 +492,6 @@ const summary = {
   failed: failed.length,
   results
 };
-
 console.log(JSON.stringify(summary, null, 2));
 
 if (failed.length > 0) {
