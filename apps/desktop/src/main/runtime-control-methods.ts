@@ -35,6 +35,11 @@ const readOnlyReversibility = {
   notes: "Read-only method."
 };
 
+const noInputSchema = {
+  type: "object",
+  properties: {}
+};
+
 const eventListMetadata = {
   inputSchema: {
     type: "object",
@@ -108,6 +113,16 @@ const registerMethodDiscovery = async (input: {
       description: "Lists all registered RPC methods.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: runtimeControlAvailability,
+      inputSchema: noInputSchema,
+      examples: [
+        {
+          title: "List available methods",
+          input: {},
+          verifyWith: { method: "methods/describe", input: { id: "plastic/methods" } }
+        }
+      ],
+      effects: readOnlyEffects,
+      reversibility: readOnlyReversibility,
       handler: () => methods.list()
     })
   );
@@ -132,6 +147,8 @@ const registerMethodDiscovery = async (input: {
           input: { id: "panels/move" }
         }
       ],
+      effects: readOnlyEffects,
+      reversibility: readOnlyReversibility,
       handler: (methodInput) =>
         Effect.promise(async () => {
           const id = (methodInput as { id?: string }).id;
@@ -189,6 +206,16 @@ const registerCapabilityDiscovery = async (input: RuntimeMethodContext) => {
         status: "available",
         requiredCapabilities: ["runtime.capabilities"]
       },
+      inputSchema: noInputSchema,
+      examples: [
+        {
+          title: "List host capabilities",
+          input: {},
+          verifyWith: { method: "methods/describe", input: { id: "runtime/capabilities" } }
+        }
+      ],
+      effects: readOnlyEffects,
+      reversibility: readOnlyReversibility,
       handler: () => Effect.succeed({
         count: capabilities.list().length,
         items: capabilities.list()

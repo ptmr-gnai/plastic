@@ -172,6 +172,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
     ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append"]
   });
   assertReadMethodLegibility({ methods, ids: ["events/list", "events/timeline"] });
+  assertReadMethodLegibility({ methods, ids: ["plastic/methods", "methods/describe", "runtime/capabilities"] });
   const darkEvent = await rpc("app/setTheme", { theme: "dark" });
   assert(darkEvent?.type === "theme.changed", "app/setTheme did not append theme.changed");
   const darkState = await rpc("plastic/state");
