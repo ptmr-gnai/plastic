@@ -1,11 +1,14 @@
 import { existsSync, rmSync } from "node:fs";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { setTimeout as delay } from "node:timers/promises";
 
 const cwd = new URL("..", import.meta.url).pathname;
 const workspaceDir = new URL("../../..", import.meta.url).pathname;
 const viteUrl = "http://127.0.0.1:5173";
 const electronMain = new URL("../dist-electron/main/main.js", import.meta.url).pathname;
+const require = createRequire(import.meta.url);
+const electronExecutable = require("electron");
 
 const children = new Set();
 
@@ -61,7 +64,7 @@ while (!viteReady) {
   }
 }
 
-const electronChild = run("pnpm", ["exec", "electron", "."], {
+const electronChild = run(electronExecutable, ["."], {
   env: {
     ...process.env,
     PLASTIC_WORKSPACE_DIR: workspaceDir,

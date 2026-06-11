@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -8,7 +9,9 @@ const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
 const rpcUrl = `${runtimeUrl}/rpc`;
 const parityBaseline = process.env.PLASTIC_METHOD_PARITY_OUT ?? ".plastic/tmp/headless-methods.json";
 const readinessTimeoutMs = Number(process.env.PLASTIC_VALIDATE_READY_TIMEOUT_MS ?? 90_000);
+const electronPreflightTimeoutMs = Number(process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? 10_000);
 const desktopDir = new URL("../apps/desktop/", import.meta.url).pathname;
+const desktopRequire = createRequire(new URL("../apps/desktop/package.json", import.meta.url));
 
 let activeHost = null;
 
@@ -28,6 +31,40 @@ const run = (command, args, options = {}) =>
       reject(new Error(`${command} ${args.join(" ")} exited with ${code ?? signal}`));
     });
   });
+
+const runWithTimeout = (command, args, timeoutMs, options = {}) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: new URL("..", import.meta.url).pathname,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+      ...options
+    });
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      reject(new Error(`${command} ${args.join(" ")} did not exit within ${timeoutMs}ms`));
+    }, timeoutMs);
+    child.on("exit", (code, signal) => {
+      clearTimeout(timeout);
+      if (code === 0) {
+        resolve({ code, signal });
+        return;
+      }
+      reject(new Error(`${command} ${args.join(" ")} exited with ${code ?? signal}`));
+    });
+  });
+
+const runElectronPreflight = async () => {
+  const electronExecutable = desktopRequire("electron");
+  console.log(`[plastic:validate-hosts] electron preflight ${electronExecutable}`);
+  await runWithTimeout(electronExecutable, ["--version"], electronPreflightTimeoutMs, {
+    cwd: desktopDir,
+    env: {
+      ...process.env,
+      ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1"
+    }
+  });
+};
 
 const startHost = (script) => {
   const child = spawn("node", [`scripts/${script}`], {
@@ -111,5 +148,6 @@ process.on("SIGTERM", () => {
 });
 
 await runHost({ label: "headless", script: "dev-headless.mjs", parity: "capture" });
+await runElectronPreflight();
 await runHost({ label: "electron", script: "dev.mjs", parity: "compare" });
 console.log("[plastic:validate-hosts] headed/headless validation passed");
