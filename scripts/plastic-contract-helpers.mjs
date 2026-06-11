@@ -32,20 +32,6 @@ export const getJson = async (baseUrl, path, label) => {
 export const runtimeGet = (path) => getJson(runtimeUrl, path, "runtime");
 export const buildGet = (path) => getJson(buildUrl, path, "build");
 
-export const rawRuntimeRequest = async (path, init = {}) => {
-  const response = await fetch(`${runtimeUrl}${path}`, init);
-  const text = await response.text();
-  let payload = {};
-  if (text.trim().length > 0) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      throw new Error(`runtime ${path}: response was not JSON`);
-    }
-  }
-  return { response, payload };
-};
-
 export const buildRpc = async (method, input) => {
   const response = await fetch(`${buildUrl}/rpc`, {
     method: "POST",

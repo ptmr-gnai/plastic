@@ -49,6 +49,9 @@ export const startBuildHttpTransport = (input: {
     if (request.method === "POST" && request.url === "/rpc") {
       try {
         const body = await readJsonBody(request) as RpcRequest;
+        if (!body.method) {
+          throw new Error("RPC request requires method");
+        }
         const value = await input.runPromise(input.methods.call(body.method, body.input));
         sendJson(response, 200, { ok: true, value });
       } catch (error) {

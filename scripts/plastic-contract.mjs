@@ -3,8 +3,9 @@ import {
   assertAgentOrientationPacket, assertAgentWorkbenchPacket, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
   assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
-  assertMatchingModuleInventories, itemsFrom, rawRuntimeRequest, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
+  assertMatchingModuleInventories, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
+import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
 
 const runId = `contract-${Date.now()}`;
@@ -226,42 +227,11 @@ await check("build HTTP transport", async () => {
 });
 
 await check("runtime HTTP error contract", async () => {
-  const preflight = await rawRuntimeRequest("/rpc", {
-    method: "OPTIONS",
-    headers: { origin: "http://127.0.0.1:5173" }
-  });
-  assert(preflight.response.status === 204, "runtime OPTIONS /rpc did not return 204");
-  assert(preflight.payload.ok !== false, "runtime OPTIONS /rpc returned error payload");
+  return assertHttpErrorContract({ label: "runtime", rawRequest: rawRuntimeRequest, runId });
+});
 
-  const unknownGet = await rawRuntimeRequest("/does-not-exist");
-  assert(unknownGet.response.status === 404, "runtime unknown GET did not return 404");
-  assert(unknownGet.payload.ok === false, "runtime unknown GET missing ok:false");
-  assert(unknownGet.payload.error === "Not found", "runtime unknown GET error mismatch");
-
-  const missingMethod = await rawRuntimeRequest("/rpc", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({})
-  });
-  assert(missingMethod.response.status === 500, "runtime missing method did not return 500");
-  assert(missingMethod.payload.ok === false, "runtime missing method missing ok:false");
-  assert(missingMethod.payload.error.includes("requires method"), "runtime missing method error mismatch");
-
-  const unknownMethod = await rawRuntimeRequest("/rpc", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ method: `contract/missing-${runId}` })
-  });
-  assert(unknownMethod.response.status === 500, "runtime unknown RPC method did not return 500");
-  assert(unknownMethod.payload.ok === false, "runtime unknown RPC method missing ok:false");
-  assert(unknownMethod.payload.error.includes("not found"), "runtime unknown RPC method error mismatch");
-
-  return {
-    preflight: preflight.response.status,
-    unknownGet: unknownGet.response.status,
-    missingMethod: missingMethod.response.status,
-    unknownMethod: unknownMethod.response.status
-  };
+await check("build HTTP error contract", async () => {
+  return assertHttpErrorContract({ label: "build", rawRequest: rawBuildRequest, runId });
 });
 
 await check("app/diagnostics", async () => {
