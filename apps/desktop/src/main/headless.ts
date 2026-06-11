@@ -21,11 +21,9 @@ const {
   plasticDir,
   eventPath,
   bundledExtensionsDir,
-  runtimeHost,
   runtimePort,
   runtimeRpcUrl,
-  buildHost,
-  buildPort
+  controlPlane
 } = hostConfig;
 const startedAt = new Date().toISOString();
 const runtimeCapabilities = createHeadlessRuntimeCapabilities();
@@ -115,13 +113,10 @@ const transports = await startRuntimeHostControlPlane({
   deixis: capabilityModules.deixis,
   health: runtimeHealthModule,
   startedPayload: { mode: "headless" },
-  runtimeHost,
-  runtimePort,
-  buildHost,
-  buildPort,
+  controlPlane,
   getBuildStatus: buildStatus,
   onRuntimeListening: () => console.log(`[plastic:headless] RPC listening at ${runtimeRpcUrl}`),
-  onBuildListening: () => console.log(`[plastic:headless] Build RPC listening at http://${buildHost}:${buildPort}/rpc`)
+  onBuildListening: () => console.log(`[plastic:headless] Build RPC listening at ${controlPlane.build.rpcUrl}`)
 });
 
 process.on("SIGINT", () => {

@@ -38,12 +38,10 @@ const {
   plasticDir,
   bundledExtensionsDir,
   eventPath,
-  runtimeHost,
   runtimePort,
-  buildHost,
-  buildPort,
   runtimeRpcUrls,
-  preferredRuntimeRpcUrl
+  preferredRuntimeRpcUrl,
+  controlPlane
 } = hostConfig;
 
 const logStartup = (stage: string) => {
@@ -76,7 +74,7 @@ const buildStatus = () => createRuntimeBuildStatus({
   runtimeRpcUrl: preferredRuntimeRpcUrl,
   extensionsDir: join(plasticDir, "extensions"),
   viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,
-  runtimeSocket: `http://${runtimeHost}:${runtimePort}`,
+  runtimeSocket: controlPlane.runtime.baseUrl,
   runtimeRpcUrls
 });
 
@@ -159,7 +157,7 @@ const projectionModules = createRuntimeHostProjectionModules({
   bus: {
     runtimeRpcUrl: preferredRuntimeRpcUrl,
     runtimeRpcUrls,
-    runtimeHost,
+    runtimeHost: controlPlane.runtime.host,
     runtimePort
   },
   resource: {
@@ -168,7 +166,7 @@ const projectionModules = createRuntimeHostProjectionModules({
     state: {
       runtimeRpcUrl: preferredRuntimeRpcUrl,
       runtimeRpcUrls,
-      runtimeHost,
+      runtimeHost: controlPlane.runtime.host,
       runtimePort
     },
     rpcUrl: preferredRuntimeRpcUrl
@@ -261,14 +259,11 @@ const transports = await startRuntimeHostControlPlane({
     mode: "electron",
     version: app.getVersion()
   },
-  runtimeHost,
-  runtimePort,
-  buildHost,
-  buildPort,
+  controlPlane,
   getBuildStatus: buildStatus,
   runtimeCorsOrigin: "http://127.0.0.1:5173"
 });
-logStartup(`runtime listening on ${runtimePort}, build listening on ${buildPort}`);
+logStartup(`runtime listening on ${controlPlane.runtime.port}, build listening on ${controlPlane.build.port}`);
 
 app.on("ready", () => {
   void createWindow();

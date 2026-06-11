@@ -6,26 +6,22 @@ import {
   startRuntimeHostTransports,
   type RuntimeHostTransports
 } from "./runtime-host-transports.js";
-import { createRuntimeHostControlPlaneDescriptor } from "./runtime-host-control-plane-descriptor.js";
+import type { RuntimeHostControlPlaneDescriptor } from "./runtime-host-control-plane-descriptor.js";
 
 export const startRuntimeHostControlPlane = async (
   input: RuntimeStartupSequenceInput & {
-    runtimeHost: string;
-    runtimePort: number;
-    buildHost: string;
-    buildPort: number;
+    controlPlane: RuntimeHostControlPlaneDescriptor;
     getBuildStatus: () => unknown;
     runtimeCorsOrigin?: string;
     onRuntimeListening?: () => void;
     onBuildListening?: () => void;
   }
 ): Promise<RuntimeHostTransports> => {
-  const controlPlane = createRuntimeHostControlPlaneDescriptor(input);
   await runRuntimeStartupSequence({
     ...input,
     startedPayload: {
       ...input.startedPayload,
-      controlPlane
+      controlPlane: input.controlPlane
     }
   });
   input.onPhase?.("start sockets");
@@ -34,10 +30,10 @@ export const startRuntimeHostControlPlane = async (
     eventStore: input.eventStore,
     methods: input.methods,
     runPromise: input.runPromise,
-    runtimeHost: input.runtimeHost,
-    runtimePort: input.runtimePort,
-    buildHost: input.buildHost,
-    buildPort: input.buildPort,
+    runtimeHost: input.controlPlane.runtime.host,
+    runtimePort: input.controlPlane.runtime.port,
+    buildHost: input.controlPlane.build.host,
+    buildPort: input.controlPlane.build.port,
     getBuildStatus: input.getBuildStatus,
     ...(input.runtimeCorsOrigin ? { runtimeCorsOrigin: input.runtimeCorsOrigin } : {}),
     ...(input.onRuntimeListening ? { onRuntimeListening: input.onRuntimeListening } : {}),

@@ -53,3 +53,4 @@ export const createRuntimeHostControlPlaneDescriptor = (
   };
 };
 
+export type RuntimeHostControlPlaneDescriptor = ReturnType<typeof createRuntimeHostControlPlaneDescriptor>;
