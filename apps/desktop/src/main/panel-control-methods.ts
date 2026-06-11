@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import {
   projectPanels,
   type EventStore,
+  type PlasticEventMeta,
   type MethodRegistry
 } from "@plastic/core";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
@@ -16,11 +17,30 @@ type PanelCreateInput = {
   body?: string;
   windowId?: string;
   order?: number;
+  meta?: PlasticEventMeta;
+};
+
+type PanelMutationInput = {
+  id?: string;
+  title?: string;
+  subtitle?: string;
+  windowId?: string;
+  order?: number;
+  reason?: string;
+  meta?: PlasticEventMeta;
 };
 
 const panelControlAvailability = {
   status: "available" as const,
   notes: "Panel control is a host-agnostic runtime primitive available in headed and headless modes."
+};
+
+const eventMetaSchema = {
+  type: "object",
+  description: "Optional event metadata, such as tags for validation or agent-scoped actions.",
+  properties: {
+    tags: { type: "array", items: { type: "string" } }
+  }
 };
 
 export const registerPanelControlMethods = async (input: RuntimeMethodContext) => {
@@ -131,7 +151,8 @@ const registerPanelCreate = async (input: {
           subtitle: { type: "string", description: "Optional panel subtitle." },
           body: { type: "string", description: "Optional generic body text." },
           windowId: { type: "string", description: "Optional target window id." },
-          order: { type: "number", description: "Optional projected ordering value." }
+          order: { type: "number", description: "Optional projected ordering value." },
+          meta: eventMetaSchema
         }
       },
       examples: [
@@ -175,7 +196,8 @@ const registerPanelCreate = async (input: {
               windowId: panelInput.windowId,
               order: panelInput.order
             },
-            scope
+            scope,
+            ...(panelInput.meta ? { meta: panelInput.meta } : {})
           });
         })
     })
@@ -202,7 +224,8 @@ const registerPanelRename = async (input: {
         properties: {
           id: { type: "string", description: "Panel id to rename." },
           title: { type: "string", description: "New panel title." },
-          subtitle: { type: "string", description: "Optional new panel subtitle." }
+          subtitle: { type: "string", description: "Optional new panel subtitle." },
+          meta: eventMetaSchema
         }
       },
       examples: [
@@ -225,7 +248,7 @@ const registerPanelRename = async (input: {
       },
       handler: (methodInput) =>
         Effect.promise(async () => {
-          const panelInput = methodInput as { id?: string; title?: string; subtitle?: string };
+          const panelInput = methodInput as PanelMutationInput;
           if (!panelInput.id || !panelInput.title) {
             throw new Error("panels/rename requires id and title");
           }
@@ -236,7 +259,8 @@ const registerPanelRename = async (input: {
               title: panelInput.title,
               subtitle: panelInput.subtitle
             },
-            scope: { panelId: panelInput.id }
+            scope: { panelId: panelInput.id },
+            ...(panelInput.meta ? { meta: panelInput.meta } : {})
           });
         })
     })
@@ -263,7 +287,8 @@ const registerPanelMove = async (input: {
         properties: {
           id: { type: "string", description: "Panel id to move." },
           windowId: { type: "string", description: "Optional target window id." },
-          order: { type: "number", description: "Optional projected ordering value." }
+          order: { type: "number", description: "Optional projected ordering value." },
+          meta: eventMetaSchema
         }
       },
       examples: [
@@ -286,7 +311,7 @@ const registerPanelMove = async (input: {
       },
       handler: (methodInput) =>
         Effect.promise(async () => {
-          const panelInput = methodInput as { id?: string; windowId?: string; order?: number };
+          const panelInput = methodInput as PanelMutationInput;
           if (!panelInput.id) {
             throw new Error("panels/move requires id");
           }
@@ -297,7 +322,8 @@ const registerPanelMove = async (input: {
               windowId: panelInput.windowId,
               order: panelInput.order
             },
-            scope: { panelId: panelInput.id }
+            scope: { panelId: panelInput.id },
+            ...(panelInput.meta ? { meta: panelInput.meta } : {})
           });
         })
     })
@@ -323,7 +349,8 @@ const registerPanelRemove = async (input: {
         required: ["id"],
         properties: {
           id: { type: "string", description: "Panel id to remove." },
-          reason: { type: "string", description: "Optional reason stored in the removal event." }
+          reason: { type: "string", description: "Optional reason stored in the removal event." },
+          meta: eventMetaSchema
         }
       },
       examples: [
@@ -345,7 +372,7 @@ const registerPanelRemove = async (input: {
       },
       handler: (methodInput) =>
         Effect.promise(async () => {
-          const panelInput = methodInput as { id?: string; reason?: string };
+          const panelInput = methodInput as PanelMutationInput;
           if (!panelInput.id) {
             throw new Error("panels/remove requires id");
           }
@@ -355,7 +382,8 @@ const registerPanelRemove = async (input: {
               id: panelInput.id,
               reason: panelInput.reason
             },
-            scope: { panelId: panelInput.id }
+            scope: { panelId: panelInput.id },
+            ...(panelInput.meta ? { meta: panelInput.meta } : {})
           });
         })
     })
@@ -381,7 +409,8 @@ const registerPanelClose = async (input: {
         required: ["id"],
         properties: {
           id: { type: "string", description: "Panel id to close." },
-          reason: { type: "string", description: "Optional reason stored in the removal event." }
+          reason: { type: "string", description: "Optional reason stored in the removal event." },
+          meta: eventMetaSchema
         }
       },
       examples: [
@@ -403,7 +432,7 @@ const registerPanelClose = async (input: {
       },
       handler: (methodInput) =>
         Effect.promise(async () => {
-          const panelInput = methodInput as { id?: string; reason?: string };
+          const panelInput = methodInput as PanelMutationInput;
           if (!panelInput.id) {
             throw new Error("panels/close requires id");
           }
@@ -413,7 +442,8 @@ const registerPanelClose = async (input: {
               id: panelInput.id,
               reason: panelInput.reason ?? "closed"
             },
-            scope: { panelId: panelInput.id }
+            scope: { panelId: panelInput.id },
+            ...(panelInput.meta ? { meta: panelInput.meta } : {})
           });
         })
     })

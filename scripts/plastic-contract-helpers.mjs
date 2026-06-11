@@ -108,6 +108,10 @@ export const assertArray = (value, message) => {
   return value;
 };
 
+export const assertEventsTagged = (events, tags, message) => {
+  assert(events.every((event) => tags.every((tag) => event.meta?.tags?.includes(tag))), message);
+};
+
 export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) => {
   const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
   for (const id of sampleIds) {
@@ -203,25 +207,26 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   return { methods: 6, events: [darkEvent.id, lightEvent.id], theme: lightState.app.theme };
 };
 
-export const assertPanelLifecycleProjection = async ({ rpc, panelId }) => {
+export const assertPanelLifecycleProjection = async ({ rpc, panelId, meta }) => {
   const created = await rpc("panels/create", {
     id: panelId,
     title: "Contract Panel",
     kind: "generic",
     body: "Created by scripts/plastic-contract.mjs",
-    order: 10
+    order: 10,
+    ...(meta ? { meta } : {})
   });
   const panelsAfterCreate = await rpc("panels/list");
   assert(panelsAfterCreate.some((panel) => panel.id === panelId), "created panel not projected");
   const panel = await rpc("panels/get", { id: panelId });
   assert(panel.title === "Contract Panel", "created panel title mismatch");
-  await rpc("panels/rename", { id: panelId, title: "Contract Panel Renamed" });
+  await rpc("panels/rename", { id: panelId, title: "Contract Panel Renamed", ...(meta ? { meta } : {}) });
   const renamed = await rpc("panels/get", { id: panelId });
   assert(renamed.title === "Contract Panel Renamed", "renamed panel not projected");
-  await rpc("panels/move", { id: panelId, order: 1 });
+  await rpc("panels/move", { id: panelId, order: 1, ...(meta ? { meta } : {}) });
   const moved = await rpc("panels/get", { id: panelId });
   assert(moved.order === 1, "moved panel order not projected");
-  await rpc("panels/close", { id: panelId });
+  await rpc("panels/close", { id: panelId, ...(meta ? { meta } : {}) });
   const panelsAfterClose = await rpc("panels/list");
   assert(!panelsAfterClose.some((candidate) => candidate.id === panelId), "closed panel still projected");
   return { id: created.id, panelId, createEventId: created.id, remainingPanels: panelsAfterClose.length };

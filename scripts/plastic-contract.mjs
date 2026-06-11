@@ -1,7 +1,7 @@
 import { access, rm } from "node:fs/promises";
 import {
   assert, assertArray, buildEventStream, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
-  assertMethodDiscoveryParity, assertPanelLifecycleProjection,
+  assertEventsTagged, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
   assertCapabilityStatuses, assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
   assertMatchingModuleInventories, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
@@ -408,9 +408,10 @@ await check("runtime event stream", async () => {
   assert(buildStream.event, "build event stream did not emit appended event");
   return { runtime: runtimeStream, build: buildStream };
 });
-
 await check("panel lifecycle", async () => {
-  createdPanelEvent = await assertPanelLifecycleProjection({ rpc, panelId });
+  createdPanelEvent = await assertPanelLifecycleProjection({ rpc, panelId, meta: validationMeta });
+  const panelEvents = await rpc("events/list", { types: ["panel.created", "panel.renamed", "panel.moved", "panel.removed"], scope: { panelId }, limit: 10 });
+  assertEventsTagged(assertArray(panelEvents, "panel lifecycle events/list is not an array"), validationTags, "panel lifecycle validation tags not readable");
   return createdPanelEvent;
 });
 
@@ -490,10 +491,8 @@ await check("events list/timeline", async () => {
   assert(timelineItems.some((item) => item.eventId === createdPanelEvent.id), "panel create event missing from timeline");
   return { events: eventItems.length, timeline: timelineItems.length };
 });
-
 await check("plastic/selfTest", async () => assertSelfTestSurface({ assert, selfTest: await rpc("plastic/selfTest") }));
 const failed = results.filter((result) => !result.ok);
 const summary = { ok: failed.length === 0, rpcUrl, checks: results.length, failed: failed.length, results };
 console.log(JSON.stringify(summary, null, 2));
-
 if (failed.length > 0) process.exitCode = 1;
