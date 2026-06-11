@@ -47,6 +47,38 @@ export const buildRpc = async (method, input) => {
   return payload.value;
 };
 
+export const runtimeEventStream = async ({ trigger, timeoutMs = 5000 }) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const response = await fetch(`${runtimeUrl}/events/stream`, { signal: controller.signal });
+  if (!response.ok || !response.body) {
+    clearTimeout(timeout);
+    throw new Error(`runtime /events/stream failed: ${response.statusText}`);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let ready = false;
+  let event = false;
+  try {
+    while (!event) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      text += decoder.decode(chunk.value, { stream: true });
+      if (!ready && text.includes("event: plastic.ready")) {
+        ready = true;
+        await trigger();
+      }
+      event = text.includes("event: plastic.event");
+    }
+  } finally {
+    clearTimeout(timeout);
+    controller.abort();
+    await reader.cancel().catch(() => {});
+  }
+  return { ready, event };
+};
+
 export const check = async (name, fn) => {
   const startedAt = Date.now();
   try {

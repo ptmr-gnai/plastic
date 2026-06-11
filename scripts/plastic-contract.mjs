@@ -9,6 +9,7 @@ import {
   results,
   rpc,
   rpcUrl,
+  runtimeEventStream,
   runtimeGet
 } from "./plastic-contract-helpers.mjs";
 
@@ -326,6 +327,19 @@ await check("events/append", async () => {
   assertArray(appendedEvents, "events/list after append is not an array");
   assert(appendedEvents.some((event) => event.id === appended.id), "appended event not readable");
   return { eventId: appended.id };
+});
+
+await check("runtime event stream", async () => {
+  const streamed = await runtimeEventStream({
+    trigger: () => rpc("events/append", {
+      type: "contract.event_stream.appended",
+      payload: { runId },
+      scope: { workspaceId: "default" }
+    })
+  });
+  assert(streamed.ready, "runtime event stream did not emit ready");
+  assert(streamed.event, "runtime event stream did not emit appended event");
+  return streamed;
 });
 
 await check("panel lifecycle", async () => {
