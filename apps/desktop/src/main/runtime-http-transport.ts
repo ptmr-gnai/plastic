@@ -51,6 +51,26 @@ export const writeSse = (response: ServerResponse, event: string, data: unknown)
   response.write(`data: ${JSON.stringify(data)}\n\n`);
 };
 
+export const handleHttpEventStream = (input: {
+  corsOrigin: string;
+  eventStreamClients: Set<ServerResponse>;
+  request: IncomingMessage;
+  response: ServerResponse;
+}) => {
+  const { corsOrigin, eventStreamClients, request, response } = input;
+  response.writeHead(200, {
+    "access-control-allow-origin": corsOrigin,
+    "cache-control": "no-cache",
+    "connection": "keep-alive",
+    "content-type": "text/event-stream"
+  });
+  eventStreamClients.add(response);
+  writeSse(response, "plastic.ready", { ok: true });
+  request.on("close", () => {
+    eventStreamClients.delete(response);
+  });
+};
+
 export const startRuntimeHttpTransport = async (input: {
   eventStore: EventStore;
   methods: MethodRegistry;
@@ -156,17 +176,7 @@ const handleRuntimeGet = async (context: {
     return true;
   }
   if (request.url === "/events/stream") {
-    response.writeHead(200, {
-      "access-control-allow-origin": corsOrigin,
-      "cache-control": "no-cache",
-      "connection": "keep-alive",
-      "content-type": "text/event-stream"
-    });
-    eventStreamClients.add(response);
-    writeSse(response, "plastic.ready", { ok: true });
-    request.on("close", () => {
-      eventStreamClients.delete(response);
-    });
+    handleHttpEventStream({ corsOrigin, eventStreamClients, request, response });
     return true;
   }
   return false;

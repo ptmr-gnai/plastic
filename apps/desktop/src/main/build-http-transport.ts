@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { EventStore, MethodRegistry } from "@plastic/core";
 import type { RpcRequest } from "../shared/ipc.js";
-import { readJsonBody, sendJson, writeSse } from "./runtime-http-transport.js";
+import { handleHttpEventStream, readJsonBody, sendJson, writeSse } from "./runtime-http-transport.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 export type BuildHttpTransport = {
@@ -72,7 +72,7 @@ const handleBuildRequest = async (context: {
     return;
   }
   if (request.method === "GET" && request.url === "/events/stream") {
-    handleBuildEventStream({ corsOrigin, eventStreamClients, request, response });
+    handleHttpEventStream({ corsOrigin, eventStreamClients, request, response });
     return;
   }
   if (await handleBuildMethodGet({ corsOrigin, input, request, response })) {
@@ -108,26 +108,6 @@ const handleBuildMethodGet = async (context: {
     sendJson(context.response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) }, context.corsOrigin);
   }
   return true;
-};
-
-const handleBuildEventStream = (context: {
-  corsOrigin: string;
-  eventStreamClients: Set<ServerResponse>;
-  request: IncomingMessage;
-  response: ServerResponse;
-}) => {
-  const { corsOrigin, eventStreamClients, request, response } = context;
-  response.writeHead(200, {
-    "access-control-allow-origin": corsOrigin,
-    "cache-control": "no-cache",
-    "connection": "keep-alive",
-    "content-type": "text/event-stream"
-  });
-  eventStreamClients.add(response);
-  writeSse(response, "plastic.ready", { ok: true });
-  request.on("close", () => {
-    eventStreamClients.delete(response);
-  });
 };
 
 const handleBuildRpc = async (context: {
