@@ -16,6 +16,10 @@ import { createWindowCapabilityModule } from "./window-capability-methods.js";
 
 type RuntimeHostConfig = ReturnType<typeof createRuntimeHostConfig>;
 type RuntimeMode = "electron" | "headless";
+type RuntimeHostProjectionInput = Parameters<typeof createRuntimeHostProjectionModules>[0];
+type RuntimeHostAgentInput = Parameters<typeof createRuntimeHostAgentModules>[0];
+type RuntimeHostCapabilityInput = Parameters<typeof createRuntimeHostCapabilityModules>[0];
+type RuntimeHostSupportInput = Parameters<typeof createRuntimeHostSupportBundle>[0];
 
 export const createRuntimeHostProjectionResource = (input: {
   config: RuntimeHostConfig;
@@ -152,3 +156,37 @@ export const createRuntimeHostStartupModules = (input: {
   health: input.health,
   tailModules: [input.support.host]
 });
+
+export const createRuntimeHostStandardModules = (input: {
+  config: RuntimeHostConfig;
+  mode: RuntimeMode;
+  projectionState?: unknown;
+  getHostDetails: RuntimeHostProjectionInput["getHostDetails"];
+  agent: RuntimeHostAgentInput;
+  support: RuntimeHostSupportInput;
+  capability?: RuntimeHostCapabilityInput;
+  agentBackend?: RuntimeModulePlanInput["agentBackend"];
+}) => {
+  const projectionResource = createRuntimeHostProjectionResource({
+    config: input.config,
+    mode: input.mode,
+    state: input.projectionState
+  });
+  const projection = createRuntimeHostProjectionModules({
+    config: input.config,
+    mode: input.mode,
+    ...projectionResource,
+    getHostDetails: input.getHostDetails
+  });
+  const agent = createRuntimeHostAgentModules(input.agent);
+  const support = createRuntimeHostSupportBundle(input.support);
+  const capability = createRuntimeHostCapabilityModules(input.capability);
+  return createRuntimeHostStartupModules({
+    projection,
+    agent,
+    support: support.support,
+    capability,
+    ...(input.agentBackend !== undefined ? { agentBackend: input.agentBackend } : {}),
+    health: support.health
+  });
+};

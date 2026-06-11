@@ -13,14 +13,7 @@ import { startElectronIpcTransport } from "./electron-ipc-transport.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createRuntimeHostBase } from "./runtime-host-base.js";
-import {
-  createRuntimeHostAgentModules,
-  createRuntimeHostCapabilityModules,
-  createRuntimeHostProjectionModules,
-  createRuntimeHostProjectionResource,
-  createRuntimeHostStartupModules,
-  createRuntimeHostSupportBundle
-} from "./runtime-host-modules.js";
+import { createRuntimeHostStandardModules } from "./runtime-host-modules.js";
 import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
@@ -127,26 +120,15 @@ async function createWindow(title = "Plastic") {
 const electronIpcTransport = startElectronIpcTransport({ ipcMain, methods, runPromise });
 
 const electronDeixisHost = createElectronDeixisHost(BrowserWindow);
-const capabilityModules = createRuntimeHostCapabilityModules({
-  rendererControl: {
-    reloadRenderers: () =>
-      BrowserWindow.getAllWindows().map((window) => {
-        window.webContents.reload();
-        return { windowId: window.id, reloaded: true };
-      })
-  },
-  windowCapability: {
-    browserWindow: BrowserWindow,
-    createWindow,
-    scrollRefIntoViewScript: electronDeixisHost.scrollRefIntoViewScript
-  },
-  deixis: electronDeixisHost
-});
-const projectionResource = createRuntimeHostProjectionResource({ config: hostConfig, mode: "electron" });
-const projectionModules = createRuntimeHostProjectionModules({
+const codexAgentBackendModule: RuntimeModule = {
+  id: "agent-backend",
+  register: async () => {
+    await codexAdapter.registerMethods();
+  }
+};
+const startupModules = createRuntimeHostStandardModules({
   config: hostConfig,
   mode: "electron",
-  ...projectionResource,
   getHostDetails: async () => ({
     app: { version: app.getVersion(), ready: app.isReady() },
     build: buildStatus(),
@@ -157,58 +139,60 @@ const projectionModules = createRuntimeHostProjectionModules({
     },
     codex: codexAdapter.status(),
     visibleRefs: await electronDeixisHost.listVisibleRefs()
-  })
-});
-const agentModules = createRuntimeHostAgentModules({
-  workbench: {
-    mode: "electron",
-    workspaceDir,
-    eventPath,
-    getRuntimeStatus: buildStatus,
-    getCodexStatus: () => codexAdapter.status(),
-    readGitStatus,
-    getFocusedElectronWindowId: () => electronDeixisHost.findWindow()?.id,
-    listVisibleRefs: electronDeixisHost.listVisibleRefs,
-    panelIdFromRef: electronDeixisHost.panelIdFromRef,
-    sourceHintsFor: electronDeixisHost.sourceHintsFor,
-    visualActions: ({ ref, panelId }) => [
-      { id: "list-refs", title: "List visible refs", method: "deixis/listVisibleRefs" },
-      { id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: ref ? { ref } : {} },
-      ...(panelId ? [{ id: "focus-panel", title: "Focus panel", method: "windows/focusPanel", input: { panelId } }] : [])
+  }),
+  agent: {
+    workbench: {
+      mode: "electron",
+      workspaceDir,
+      eventPath,
+      getRuntimeStatus: buildStatus,
+      getCodexStatus: () => codexAdapter.status(),
+      readGitStatus,
+      getFocusedElectronWindowId: () => electronDeixisHost.findWindow()?.id,
+      listVisibleRefs: electronDeixisHost.listVisibleRefs,
+      panelIdFromRef: electronDeixisHost.panelIdFromRef,
+      sourceHintsFor: electronDeixisHost.sourceHintsFor,
+      visualActions: ({ ref, panelId }) => [
+        { id: "list-refs", title: "List visible refs", method: "deixis/listVisibleRefs" },
+        { id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: ref ? { ref } : {} },
+        ...(panelId ? [{ id: "focus-panel", title: "Focus panel", method: "windows/focusPanel", input: { panelId } }] : [])
+      ]
+    },
+    orient: {
+      workspaceDir,
+      findFocusedWindowId: (windowId) => electronDeixisHost.findWindow(windowId)?.id,
+      listVisibleRefs: electronDeixisHost.listVisibleRefs
+    }
+  },
+  support: {
+    plasticDir,
+    getBuildStatus: buildStatus,
+    getHost: hostStatus.host,
+    runCommand: runLocalCommand,
+    getDiagnostics: hostStatus.diagnostics,
+    healthChecks: [
+      { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await electronDeixisHost.listVisibleRefs()).length }) },
+      { id: "build:status", run: () => buildStatus() },
+      { id: "codex:status", run: () => codexAdapter.status() },
+      { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
     ]
   },
-  orient: {
-    workspaceDir,
-    findFocusedWindowId: (windowId) => electronDeixisHost.findWindow(windowId)?.id,
-    listVisibleRefs: electronDeixisHost.listVisibleRefs
-  }
-});
-const supportBundle = createRuntimeHostSupportBundle({
-  plasticDir,
-  getBuildStatus: buildStatus,
-  getHost: hostStatus.host,
-  runCommand: runLocalCommand,
-  getDiagnostics: hostStatus.diagnostics,
-  healthChecks: [
-    { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await electronDeixisHost.listVisibleRefs()).length }) },
-    { id: "build:status", run: () => buildStatus() },
-    { id: "codex:status", run: () => codexAdapter.status() },
-    { id: "bridge:status", run: () => runPromise(methods.call("bridge/status", {})) }
-  ]
-});
-const codexAgentBackendModule: RuntimeModule = {
-  id: "agent-backend",
-  register: async () => {
-    await codexAdapter.registerMethods();
-  }
-};
-const startupModules = createRuntimeHostStartupModules({
-  projection: projectionModules,
-  agent: agentModules,
-  support: supportBundle.support,
-  capability: capabilityModules,
+  capability: {
+    rendererControl: {
+      reloadRenderers: () =>
+        BrowserWindow.getAllWindows().map((window) => {
+          window.webContents.reload();
+          return { windowId: window.id, reloaded: true };
+        })
+    },
+    windowCapability: {
+      browserWindow: BrowserWindow,
+      createWindow,
+      scrollRefIntoViewScript: electronDeixisHost.scrollRefIntoViewScript
+    },
+    deixis: electronDeixisHost
+  },
   agentBackend: codexAgentBackendModule,
-  health: supportBundle.health
 });
 const transports = await startRuntimeHostControlPlane({
   workspaceDir,
