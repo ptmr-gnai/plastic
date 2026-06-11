@@ -169,7 +169,7 @@ export const assertReadMethodLegibility = ({ methods, ids }) => {
 export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }) => {
   assertMethodLegibility({
     methods,
-    ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append", "plastic/selfTest", "build/typecheck", "extensions/scan", "extensions/scaffold", "extensions/activate", "extensions/verify", "extensions/verifyAll", "extensions/registerPanel", "extensions/forkBundled", "panels/sendMessage", "panels/markMessageRead"]
+    ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append", "plastic/selfTest", "build/typecheck", "extensions/scan", "extensions/scaffold", "extensions/activate", "extensions/verify", "extensions/verifyAll", "extensions/registerPanel", "extensions/forkBundled", "panels/sendMessage", "panels/markMessageRead", "chats/createCodexChat", "chats/sendToCodex"]
   });
   assertReadMethodLegibility({ methods, ids: ["events/list", "events/timeline"] });
   assertReadMethodLegibility({ methods, ids: ["plastic/methods", "methods/describe", "runtime/capabilities"] });
@@ -179,6 +179,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["extensions/list", "extensions/get"] });
   assertReadMethodLegibility({ methods, ids: ["extensions/verificationStatus"] });
   assertReadMethodLegibility({ methods, ids: ["panels/listMessages", "panels/mailboxes"] });
+  assertReadMethodLegibility({ methods, ids: ["chats/getBinding"] });
   const darkEvent = await rpc("app/setTheme", { theme: "dark" });
   assert(darkEvent?.type === "theme.changed", "app/setTheme did not append theme.changed");
   const darkState = await rpc("plastic/state");

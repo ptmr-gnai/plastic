@@ -5,6 +5,11 @@ import {
   type RuntimeMethodContext,
   type RuntimeModule
 } from "./runtime-method-context.js";
+import {
+  chatBindingMetadata,
+  fallbackCreateCodexChatMetadata,
+  fallbackSendToCodexMetadata
+} from "./chat-method-metadata.js";
 
 type ChatInput = {
   chatId?: string;
@@ -96,6 +101,7 @@ const registerChatBinding = async (context: RuntimeMethodContext, availability: 
       description: "Returns the current agent backend binding for a chat panel.",
       owner: { kind: "runtime", id: "plastic.agent-backend" },
       availability,
+      ...chatBindingMetadata,
       handler: (input) => Effect.succeed({
         chatId: (input as { chatId?: string } | undefined)?.chatId ?? "chat-main",
         runtimeId: "headless",
@@ -116,6 +122,7 @@ const registerCreateChat = async (context: RuntimeMethodContext, availability: C
       description: "Creates a chat panel; Codex thread creation is unavailable without an agent.codex capability.",
       owner: { kind: "runtime", id: "plastic.agent-backend" },
       availability,
+      ...fallbackCreateCodexChatMetadata,
       handler: (input) => Effect.promise(() => createFallbackChat(context, input, availability))
     })
   );
@@ -164,6 +171,7 @@ const registerSendToCodex = async (context: RuntimeMethodContext, availability: 
       description: "Records a chat message; Codex turn start is unavailable without an agent.codex capability.",
       owner: { kind: "runtime", id: "plastic.agent-backend" },
       availability,
+      ...fallbackSendToCodexMetadata,
       handler: (input) => Effect.promise(() => recordFallbackMessage(context, input, availability))
     })
   );
