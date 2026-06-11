@@ -472,6 +472,7 @@ The first unification pass is substantially complete:
 - `runtime/host`, `runtime/capabilities`, `methods/describe`, `runtime/modules`, `agent/workbench`, `agent/orient`, `plastic/state`, and `plastic/snapshot` expose enough host/capability metadata for agents to learn which methods are available, degraded, or unavailable.
 - `runtime.started` durably records the shared host descriptor, capability inventory, module inventory, and control plane, so agents can compare live runtime state with the event log.
 - The shared contract harness validates headless end to end, including state, methods, snapshot, capabilities, modules, panel lifecycle, extension scan/list, event streams, HTTP error contracts, build HTTP surfaces, and self-test.
+- The shared contract harness removes generated scaffold extension directories and closes scaffold extension panels after proving discovery/projection.
 - `pnpm plastic:method-parity` runs `plastic/selfTest` in both hosts and verifies shared runtime health checks are green while permitting host-specific checks to differ.
 
 `pnpm plastic:validate-unified` is the current automation-friendly validation command. It must:
@@ -488,12 +489,11 @@ This command does not replace `pnpm plastic:validate-electron`. Strict Electron 
 
 ## Practical Next Step
 
-Keep shrinking host bootstraps and make Electron/headless drift harder to reintroduce. The next architecture slice should move remaining host-specific callback bags into named factories so entrypoints read as wiring, not assembly.
+Keep the audit loop bounded. The next architecture slice should isolate or compact contract-generated durable validation events so repeated audits do not distort projected panel/extension counts over time.
 
 Proof:
 
-1. `PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS=3000 pnpm plastic:validate-electron` reaches Plastic startup logs.
-2. Electron starts the runtime and build HTTP ports.
-3. `pnpm plastic:contract` passes against Electron's runtime/build URLs.
-4. `pnpm plastic:method-parity` compares Electron against the captured headless baseline.
-5. Any differences are explained only by capability status, not missing shared methods or discovery affordances.
+1. `pnpm plastic:contract` can run repeatedly without increasing active contract panel or workspace extension projections.
+2. `pnpm plastic:method-parity` remains clean after repeated headless/Electron audit runs.
+3. `plastic/selfTest` stays green while reporting stable shared projection health.
+4. Validation events remain durable and inspectable, but are identifiable as validation scope rather than user workspace state.
