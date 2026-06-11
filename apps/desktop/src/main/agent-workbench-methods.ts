@@ -225,7 +225,7 @@ const buildControl = async (input: {
       { id: "read-methods", title: "Read methods", method: "plastic/methods" },
       { id: "read-modules", title: "Read runtime modules", method: "runtime/modules" },
       { id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
-      { id: "read-timeline", title: "Read timeline", method: host.mode === "electron" ? "events/timeline" : "events/list", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } },
+      { id: "read-timeline", title: "Read timeline", method: "events/timeline", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } },
       ...(host.visualActions?.({
         ...(workbenchInput?.ref ? { ref: workbenchInput.ref } : {}),
         ...(panelId ? { panelId } : {})

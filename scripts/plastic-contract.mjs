@@ -1,10 +1,11 @@
 import {
   assert, assertArray, buildEventStream, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
-  assertAgentOrientationPacket, assertAgentWorkbenchPacket, assertControlPlaneEndpointUrls, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
+  assertAgentOrientationPacket, assertAgentWorkbenchPacket, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
   assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
   assertMatchingModuleInventories, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
+import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
 
@@ -40,7 +41,7 @@ await check("plastic/state", async () => {
   assert(state.controlPlane.build.statePath === "/state", "state build control plane statePath mismatch");
   assert(state.controlPlane.build.methodsPath === "/methods", "state build control plane methodsPath mismatch");
   assert(state.controlPlane.build.eventStreamPath === "/events/stream", "state build control plane eventStreamPath mismatch");
-  assertControlPlaneEndpointUrls({ controlPlane: state.controlPlane, source: "state" });
+  assertControlPlaneEndpointUrls({ assert, controlPlane: state.controlPlane, source: "state" });
   assert(runtimeState.value?.controlPlane?.runtime?.transport === "http", "runtime /state missing runtime control plane");
   assert(runtimeState.value.controlPlane.runtime.rpcPath === state.controlPlane.runtime.rpcPath, "runtime /state control plane mismatch");
   assert(buildState.value?.app?.mode === state.app.mode, "build /state mode mismatch");
@@ -91,7 +92,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.controlPlane.build.statePath === "/state", "snapshot build control plane statePath mismatch");
   assert(snapshot.controlPlane.build.methodsPath === "/methods", "snapshot build control plane methodsPath mismatch");
   assert(snapshot.controlPlane.build.eventStreamPath === "/events/stream", "snapshot build control plane eventStreamPath mismatch");
-  assertControlPlaneEndpointUrls({ controlPlane: snapshot.controlPlane, source: "snapshot" });
+  assertControlPlaneEndpointUrls({ assert, controlPlane: snapshot.controlPlane, source: "snapshot" });
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });

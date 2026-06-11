@@ -1,3 +1,5 @@
+import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
+
 export const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
 export const runtimeUrl = rpcUrl.replace(/\/rpc$/, "");
 export const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
@@ -106,23 +108,6 @@ export const assert = (condition, message) => {
 export const assertArray = (value, message) => {
   assert(Array.isArray(value), message);
   return value;
-};
-
-export const assertControlPlaneEndpointUrls = ({ controlPlane, source }) => {
-  assert(controlPlane?.runtime?.baseUrl?.startsWith("http://"), `${source} runtime baseUrl missing`);
-  assert(controlPlane.runtime.rpcUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.rpcPath}`, `${source} runtime rpcUrl mismatch`);
-  assert(controlPlane.runtime.stateUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.statePath}`, `${source} runtime stateUrl mismatch`);
-  assert(controlPlane.runtime.methodsUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.methodsPath}`, `${source} runtime methodsUrl mismatch`);
-  assert(controlPlane.runtime.eventStreamUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.eventStreamPath}`, `${source} runtime eventStreamUrl mismatch`);
-  assert(controlPlane.runtime.healthUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.healthPath}`, `${source} runtime healthUrl mismatch`);
-  assert(controlPlane?.build?.baseUrl?.startsWith("http://"), `${source} build baseUrl missing`);
-  assert(controlPlane.build.rpcUrl === `${controlPlane.build.baseUrl}${controlPlane.build.rpcPath}`, `${source} build rpcUrl mismatch`);
-  assert(controlPlane.build.stateUrl === `${controlPlane.build.baseUrl}${controlPlane.build.statePath}`, `${source} build stateUrl mismatch`);
-  assert(controlPlane.build.methodsUrl === `${controlPlane.build.baseUrl}${controlPlane.build.methodsPath}`, `${source} build methodsUrl mismatch`);
-  assert(controlPlane.build.eventStreamUrl === `${controlPlane.build.baseUrl}${controlPlane.build.eventStreamPath}`, `${source} build eventStreamUrl mismatch`);
-  assert(controlPlane.build.healthUrl === `${controlPlane.build.baseUrl}${controlPlane.build.healthPath}`, `${source} build healthUrl mismatch`);
-  assert(controlPlane.build.statusUrl === `${controlPlane.build.baseUrl}${controlPlane.build.statusPath}`, `${source} build statusUrl mismatch`);
-  assert(controlPlane.build.snapshotUrl === `${controlPlane.build.baseUrl}${controlPlane.build.snapshotPath}`, `${source} build snapshotUrl mismatch`);
 };
 
 export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) => {
@@ -318,7 +303,7 @@ export const assertRuntimeStartedControlPlane = async ({ rpc }) => {
   assert(controlPlane.build.eventStreamPath === "/events/stream", "runtime.started build event stream path mismatch");
   assert(controlPlane.build.statusPath === "/status", "runtime.started build status path mismatch");
   assert(controlPlane.build.snapshotPath === "/snapshot", "runtime.started build snapshot path mismatch");
-  assertControlPlaneEndpointUrls({ controlPlane, source: "runtime.started" });
+  assertControlPlaneEndpointUrls({ assert, controlPlane, source: "runtime.started" });
   return {
     eventId: latest.id,
     runtime: controlPlane.runtime,
@@ -386,7 +371,7 @@ export const assertAgentWorkbenchPacket = ({ workbench, mode }) => {
   assert(workbench.control.controlPlane.build.statePath === "/state", "workbench build control plane statePath mismatch");
   assert(workbench.control.controlPlane.build.methodsPath === "/methods", "workbench build control plane methodsPath mismatch");
   assert(workbench.control.controlPlane.build.eventStreamPath === "/events/stream", "workbench build control plane eventStreamPath mismatch");
-  assertControlPlaneEndpointUrls({ controlPlane: workbench.control.controlPlane, source: "workbench" });
+  assertControlPlaneEndpointUrls({ assert, controlPlane: workbench.control.controlPlane, source: "workbench" });
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assert(
     workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"),
@@ -397,6 +382,12 @@ export const assertAgentWorkbenchPacket = ({ workbench, mode }) => {
       action.method === "events/list" && action.input?.types?.includes("runtime.started")
     ),
     "workbench missing control plane recommended action"
+  );
+  assert(
+    workbench.control.recommendedActions.some((action) =>
+      action.id === "read-timeline" && action.method === "events/timeline"
+    ),
+    "workbench read-timeline action must use shared events/timeline"
   );
   assert(workbench.observability?.timeline, "workbench timeline missing");
   assert(workbench.workspace?.git, "workbench git status missing");
@@ -428,7 +419,7 @@ export const assertAgentOrientationPacket = (orientation) => {
   assert(orientation.capabilities.controlPlane.build.statePath === "/state", "agent/orient build control plane statePath mismatch");
   assert(orientation.capabilities.controlPlane.build.methodsPath === "/methods", "agent/orient build control plane methodsPath mismatch");
   assert(orientation.capabilities.controlPlane.build.eventStreamPath === "/events/stream", "agent/orient build control plane eventStreamPath mismatch");
-  assertControlPlaneEndpointUrls({ controlPlane: orientation.capabilities.controlPlane, source: "agent/orient" });
+  assertControlPlaneEndpointUrls({ assert, controlPlane: orientation.capabilities.controlPlane, source: "agent/orient" });
   assert(
     orientation.capabilities.links?.some((link) => link.method === "runtime/modules"),
     "agent/orient missing runtime/modules link"
