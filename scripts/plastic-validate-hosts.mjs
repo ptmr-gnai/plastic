@@ -10,8 +10,13 @@ const rpcUrl = `${runtimeUrl}/rpc`;
 const parityBaseline = process.env.PLASTIC_METHOD_PARITY_OUT ?? ".plastic/tmp/headless-methods.json";
 const readinessTimeoutMs = Number(process.env.PLASTIC_VALIDATE_READY_TIMEOUT_MS ?? 90_000);
 const electronPreflightTimeoutMs = Number(process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? 10_000);
+const validateScope = process.env.PLASTIC_VALIDATE_SCOPE ?? "all";
 const desktopDir = new URL("../apps/desktop/", import.meta.url).pathname;
 const desktopRequire = createRequire(new URL("../apps/desktop/package.json", import.meta.url));
+
+if (!["all", "headless", "electron"].includes(validateScope)) {
+  throw new Error(`Unknown PLASTIC_VALIDATE_SCOPE=${validateScope}. Expected all, headless, or electron.`);
+}
 
 let activeHost = null;
 
@@ -147,7 +152,17 @@ process.on("SIGTERM", () => {
   void stopHost().finally(() => process.exit(143));
 });
 
-await runHost({ label: "headless", script: "dev-headless.mjs", parity: "capture" });
-await runElectronPreflight();
-await runHost({ label: "electron", script: "dev.mjs", parity: "compare" });
-console.log("[plastic:validate-hosts] headed/headless validation passed");
+if (validateScope === "all" || validateScope === "headless") {
+  await runHost({ label: "headless", script: "dev-headless.mjs", parity: "capture" });
+}
+
+if (validateScope === "all" || validateScope === "electron") {
+  await runElectronPreflight();
+  await runHost({ label: "electron", script: "dev.mjs", parity: validateScope === "all" ? "compare" : "none" });
+}
+
+if (validateScope === "all") {
+  console.log("[plastic:validate-hosts] headed/headless validation passed");
+} else {
+  console.log(`[plastic:validate-hosts] ${validateScope} validation passed`);
+}
