@@ -159,3 +159,32 @@ export const bridgeCallPlasticRpcToolMetadata = {
     notes: "The delegated Plastic RPC method may have its own effects; inspect that method metadata before calling."
   }
 };
+
+export const codexAliasMetadata = (codexMethod: string) => ({
+  inputSchema: {
+    type: "object",
+    properties: {
+      threadId: { type: "string", description: "Codex thread id, when required by the target method." },
+      turnId: { type: "string", description: "Codex turn id, when required by the target method." },
+      input: { type: "array", description: "Codex turn input items, when starting or steering a turn." },
+      cwd: { type: "string", description: "Working directory, when starting a thread." },
+      limit: { type: "number", description: "Optional result limit for list/read methods." }
+    },
+    additionalProperties: true
+  },
+  examples: [
+    {
+      title: `Call Codex ${codexMethod}`,
+      input: {},
+      verifyWith: { method: "codex/status", input: {} }
+    }
+  ],
+  effects: {
+    durableEvents: [],
+    mutatesProjection: []
+  },
+  reversibility: {
+    reversible: false,
+    notes: "Codex alias effects depend on the delegated Codex app-server method."
+  }
+});

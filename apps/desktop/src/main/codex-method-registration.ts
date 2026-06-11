@@ -6,6 +6,7 @@ import {
   bridgeConfigurePlasticMcpMetadata,
   bridgeStatusMetadata,
   bridgeTestMetadata,
+  codexAliasMetadata,
   codexDefaultsMetadata,
   codexRequestMetadata,
   codexSetDefaultsMetadata,
@@ -372,6 +373,7 @@ const registerCodexAliasMethod = async (
       description: `Passthrough to Codex app-server ${definition.codexMethod}.`,
       owner: { kind: "runtime", id: "plastic.codex-adapter" },
       availability: codexBackendAvailability,
+      ...codexAliasMetadata(definition.codexMethod),
       handler: (methodInput) =>
         Effect.promise(async () => {
           await input.ensureInitialized();

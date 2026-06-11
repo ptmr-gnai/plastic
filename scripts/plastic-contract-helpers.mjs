@@ -196,7 +196,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["chats/getBinding"] });
   assertReadMethodLegibility({ methods, ids: ["codex/status", "codex/defaults"] });
   assertReadMethodLegibility({ methods, ids: ["bridge/status"] });
-  assertPassthroughMethodLegibility({ methods, ids: ["codex/request"] });
+  assertPassthroughMethodLegibility({ methods, ids: ["codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList"] });
   const darkEvent = await rpc("app/setTheme", { theme: "dark" });
   assert(darkEvent?.type === "theme.changed", "app/setTheme did not append theme.changed");
   const darkState = await rpc("plastic/state");
