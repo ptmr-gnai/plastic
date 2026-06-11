@@ -8,8 +8,8 @@ import {
   isNoisyEvent,
   type EventScopeInput
 } from "@plastic/core";
-import { ipcChannels, type RpcRequest, type RpcResponse } from "../shared/ipc.js";
 import { createCodexAdapter } from "./codex-adapter.js";
+import { startElectronIpcTransport } from "./electron-ipc-transport.js";
 import { createElectronDeixisHost } from "./electron-deixis-host.js";
 import { createElectronRuntimeCapabilities } from "./runtime-capabilities.js";
 import { createGitStatusReader, createWorkspaceCommandRunner } from "./runtime-host-command.js";
@@ -26,7 +26,6 @@ import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
-import { callRuntimeRpcMethod } from "./runtime-rpc-dispatch.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
@@ -131,14 +130,7 @@ async function createWindow(title = "Plastic") {
   return { id: `electron:${window.id}`, electronWindowId: window.id, title };
 }
 
-ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise<RpcResponse> => {
-  return callRuntimeRpcMethod({
-    methods,
-    runPromise,
-    method: request.method,
-    value: request.input
-  });
-});
+const electronIpcTransport = startElectronIpcTransport({ ipcMain, methods, runPromise });
 
 const electronDeixisHost = createElectronDeixisHost(BrowserWindow);
 const capabilityModules = createRuntimeHostCapabilityModules({
@@ -277,5 +269,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  electronIpcTransport.close();
   transports.close();
 });
