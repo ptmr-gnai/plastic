@@ -23,6 +23,7 @@ export const createRuntimeBuildStatus = (
     dataDir: config.runtimePaths.dataDir,
     eventPath: config.eventPath,
     runtimeRpcUrl,
+    controlPlane: config.controlPlane,
     buildSocket: config.controlPlane.build.baseUrl,
     pid: process.pid,
     startedAt,

@@ -13,6 +13,7 @@ import {
   capabilityBackedMethodExpectationsForMode
 } from "./plastic-capability-expectations.mjs";
 import { assertModuleAvailabilitySummaries } from "./plastic-module-availability.mjs";
+import { stableJson } from "./plastic-stable-json.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
@@ -225,16 +226,21 @@ await check("build/status", async () => {
   assert(status.value?.mode === state.app.mode, "build /status mode mismatch");
   assert(status.value?.workspaceDir === build.workspaceDir, "build /status workspaceDir mismatch");
   assert(build.workspaceDir, "build/status missing workspaceDir");
+  assert(build.controlPlane?.runtime?.transport === "http", "build/status missing runtime control plane");
+  assert(stableJson(status.value.controlPlane) === stableJson(build.controlPlane), "build /status control plane mismatch");
+  assertControlPlaneEndpointUrls({ assert, controlPlane: build.controlPlane, source: "build/status" });
   return {
     mode: build.mode,
     service: build.service,
     runtimeRpcUrl: build.runtimeRpcUrl ?? null,
-    runtimePort: build.runtimePort ?? null
+    runtimePort: build.runtimePort ?? null,
+    controlPlane: build.controlPlane
   };
 });
 
 await check("build HTTP transport", async () => {
   const controlPlane = await assertRuntimeStartedControlPlane({ rpc });
+  const controlPlaneDescriptor = { runtime: controlPlane.runtime, build: controlPlane.build };
   const runtimeHealth = await runtimeGet("/healthz");
   const health = await buildGet("/healthz");
   const status = await buildGet("/status");
@@ -244,6 +250,7 @@ await check("build HTTP transport", async () => {
   assert(health.service === "plastic.build", "build /healthz returned wrong service");
   assert(status.value?.status === "running", "build /status did not report running");
   assert(status.value?.mode === state.app.mode, "build /status mode mismatch");
+  assert(stableJson(status.value.controlPlane) === stableJson(controlPlaneDescriptor), "build /status control plane does not match startup control plane");
   assert(status.value.buildSocket?.endsWith(`:${controlPlane.build.port}`), "build status socket does not match startup control plane");
   assert(buildSnapshot.value?.app?.mode === state.app.mode, "build /snapshot mode mismatch");
   assert(diagnostics?.workspaceDir, "build /rpc app/diagnostics missing workspaceDir");
