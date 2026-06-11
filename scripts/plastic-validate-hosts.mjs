@@ -85,11 +85,12 @@ const runWithTimeout = (command, args, timeoutMs, options = {}) =>
 const runElectronPreflight = async () => {
   const electronExecutable = desktopRequire("electron");
   console.log(`[plastic:validate-hosts] electron preflight ${electronExecutable}`);
-  await runWithTimeout(electronExecutable, ["--version"], electronPreflightTimeoutMs, {
+  await runWithTimeout(electronExecutable, ["-e", "console.log(process.versions.electron ?? 'unknown')"], electronPreflightTimeoutMs, {
     cwd: desktopDir,
     env: {
       ...process.env,
-      ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1"
+      ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1",
+      ELECTRON_RUN_AS_NODE: "1"
     }
   });
 };
