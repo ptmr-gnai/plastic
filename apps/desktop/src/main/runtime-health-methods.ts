@@ -17,6 +17,18 @@ type HostHealthCheck = {
   run: () => Promise<unknown> | unknown;
 };
 
+const requiredRuntimeMethods = [
+  "plastic/state",
+  "plastic/methods",
+  "methods/describe",
+  "rpc/call",
+  "runtime/capabilities",
+  "panels/create",
+  "events/list",
+  "events/timeline",
+  "plastic/selfTest"
+];
+
 const runtimeHealthAvailability = {
   status: "available" as const,
   notes: "Self-test is a shared runtime health primitive in headed and headless modes."
@@ -51,10 +63,15 @@ export const createRuntimeHealthModule = (input: {
               const missingAvailability = methodList
                 .filter((method) => !method.availability?.status)
                 .map((method) => method.id);
+              const methodIds = new Set(methodList.map((method) => method.id));
+              const missingRequiredMethods = requiredRuntimeMethods.filter((id) => !methodIds.has(id));
               if (missingAvailability.length > 0) {
                 throw new Error(`Methods missing availability: ${missingAvailability.join(", ")}`);
               }
-              return { count: methodList.length, missingAvailability };
+              if (missingRequiredMethods.length > 0) {
+                throw new Error(`Required methods missing: ${missingRequiredMethods.join(", ")}`);
+              }
+              return { count: methodList.length, missingAvailability, missingRequiredMethods };
             });
             await record("panels:project", () => ({ count: projectPanels(events).length }));
             await record("windows:project", () => ({ count: projectWindows(events).length }));

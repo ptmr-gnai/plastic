@@ -466,6 +466,7 @@ await check("plastic/selfTest", async () => {
   assert(selfTest.ok === true, "plastic/selfTest failed");
   const methodCheck = selfTest.checks?.find((candidate) => candidate.id === "methods:list");
   assert(methodCheck?.details?.missingAvailability?.length === 0, "plastic/selfTest method availability check failed");
+  assert(methodCheck.details.missingRequiredMethods?.length === 0, "plastic/selfTest required method check failed");
   return {
     checks: selfTest.checks?.length ?? null
   };
