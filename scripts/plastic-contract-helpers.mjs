@@ -270,6 +270,7 @@ export const assertRuntimeStartedModuleInventory = async ({ rpc }) => {
   assert(latest, "runtime.started event missing");
   const modules = latest.payload?.modules;
   assert(Array.isArray(modules), "runtime.started missing module inventory");
+  assert(latest.payload?.beforeStarted === undefined, "runtime.started should not expose beforeStarted side-channel state");
   const ids = modules.map((module) => module.id);
   for (const id of ["runtime-state", "runtime-control", "extension-runtime", "panel-mailbox", "runtime-modules"]) {
     assert(ids.includes(id), `runtime.started module inventory missing ${id}`);

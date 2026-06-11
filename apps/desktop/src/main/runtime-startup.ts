@@ -24,7 +24,6 @@ type CoreRuntimeStartupInput = RuntimeModulePlanInput & {
 export type RuntimeStartupSequenceInput = CoreRuntimeStartupInput & {
   bundledExtensionsDir: string;
   startedPayload: Record<string, unknown>;
-  beforeStarted?: () => Promise<void>;
 };
 
 export const appendRuntimeStartedEvent = (
@@ -76,7 +75,6 @@ export const runRuntimeStartupSequence = async (input: RuntimeStartupSequenceInp
 
   input.onPhase?.("register runtime methods");
   const modules = await registerCoreRuntimeModulesAtStartup(input);
-  await input.beforeStarted?.();
   await appendRuntimeStartedEvent(input.runtime, {
     ...input.startedPayload,
     modules: modules.map((module, index) => ({
