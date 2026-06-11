@@ -1,4 +1,8 @@
 import { spawn } from "node:child_process";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
+
+const outPath = process.env.PLASTIC_RUNTIME_UNIFICATION_AUDIT_OUT ?? ".plastic/tmp/runtime-unification-audit.json";
 
 const steps = [
   { id: "typecheck", command: "pnpm", args: ["typecheck"] },
@@ -70,6 +74,8 @@ const summary = {
   results
 };
 
+await mkdir(dirname(outPath), { recursive: true });
+await writeFile(outPath, `${JSON.stringify(summary, null, 2)}\n`);
 console.log(JSON.stringify(summary, null, 2));
 if (!summary.ok) {
   process.exitCode = 1;
