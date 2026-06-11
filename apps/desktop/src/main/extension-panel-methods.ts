@@ -26,6 +26,32 @@ export const registerExtensionPanelMethods = async (input: {
       description: "Creates a panel from an extension's declared panel contribution.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionPanelAvailability,
+      inputSchema: {
+        type: "object",
+        required: ["extensionId"],
+        properties: {
+          extensionId: { type: "string", description: "Extension id whose panel contribution should be registered." },
+          panelId: { type: "string", description: "Optional declared panel id. Defaults to the first contribution." },
+          order: { type: "number", description: "Optional panel order override." }
+        }
+      },
+      examples: [
+        {
+          title: "Register a bundled chat panel",
+          input: { extensionId: "plastic.chat" },
+          expectedEvents: ["panel.created"],
+          verifyWith: { method: "panels/list", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["panel.created"],
+        mutatesProjection: ["panels"]
+      },
+      reversibility: {
+        reversible: true,
+        method: "panels/close",
+        notes: "Close or remove the created panel by id."
+      },
       handler: (inputValue) =>
         Effect.promise(async () => {
           const input = inputValue as { extensionId?: string; panelId?: string; order?: number };

@@ -209,6 +209,33 @@ export const registerExtensionForkMethods = async (input: {
       description: "Copies a bundled extension into .plastic/extensions with workspace ids so it can be edited and loaded as a user extension.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionForkAvailability,
+      inputSchema: {
+        type: "object",
+        required: ["extensionId"],
+        properties: {
+          extensionId: { type: "string", description: "Bundled extension id to fork." },
+          targetId: { type: "string", description: "Workspace extension id. Must start with workspace." },
+          targetSlug: { type: "string", description: "Folder slug under .plastic/extensions." },
+          overwrite: { type: "boolean", description: "Allow replacing an existing fork target." }
+        }
+      },
+      examples: [
+        {
+          title: "Fork bundled chat",
+          input: { extensionId: "plastic.chat", targetId: "workspace.chat-fork" },
+          expectedEvents: ["extension.discovered", "extension.forked"],
+          verifyWith: { method: "extensions/list", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["extension.discovered", "extension.forked"],
+        mutatesProjection: ["extensions"],
+        touchesFilesystem: true
+      },
+      reversibility: {
+        reversible: false,
+        notes: "The method writes a workspace extension folder and appends events; remove or edit the fork to compensate."
+      },
       handler: (inputValue) =>
         Effect.promise(async () => {
           const payload = inputValue as ForkBundledInput;
