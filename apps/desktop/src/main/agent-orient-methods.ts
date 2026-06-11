@@ -8,7 +8,12 @@ import {
   type PlasticMethod,
   type TimelineInput
 } from "@plastic/core";
-import type { RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
+import type {
+  CapabilityRegistry,
+  RuntimeMethodContext,
+  RuntimeModule,
+  RunPromise
+} from "./runtime-method-context.js";
 
 type AgentOrientInput = {
   agentId?: string;
@@ -39,7 +44,7 @@ const agentOrientAvailability = {
 
 export const createAgentOrientModule = (host: AgentOrientHost): RuntimeModule => ({
   id: "agent-orient",
-  register: async ({ eventStore, methods, runPromise }: RuntimeMethodContext) => {
+  register: async ({ capabilities, eventStore, methods, runPromise }: RuntimeMethodContext) => {
     await runPromise(
       methods.register({
         id: "agent/orient",
@@ -48,13 +53,14 @@ export const createAgentOrientModule = (host: AgentOrientHost): RuntimeModule =>
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: agentOrientAvailability,
         handler: (input) =>
-          Effect.promise(() => buildOrientation({ eventStore, methods, runPromise, host, input }))
+          Effect.promise(() => buildOrientation({ capabilities, eventStore, methods, runPromise, host, input }))
       })
     );
   }
 });
 
 const buildOrientation = async (input: {
+  capabilities: CapabilityRegistry;
   eventStore: EventStore;
   methods: MethodRegistry;
   runPromise: RunPromise;
@@ -99,7 +105,7 @@ const buildOrientation = async (input: {
       visibleRefs: context.localVisibleRefs.slice(0, 40)
     },
     memory: buildMemory(events, globalTimeline),
-    capabilities: buildCapabilities(methodList, panelId, events.at(-1)?.id),
+    capabilities: buildCapabilities(input.capabilities, methodList, panelId, events.at(-1)?.id),
     obligations: {
       orientBeforeMutation: true,
       verifyAfterMutation: true,
@@ -207,7 +213,16 @@ const buildMemory = (
   ).slice(-12)
 });
 
-const buildCapabilities = (methodList: PlasticMethod[], panelId: string | undefined, latestEventId: string | undefined) => ({
+const buildCapabilities = (
+  capabilities: CapabilityRegistry,
+  methodList: PlasticMethod[],
+  panelId: string | undefined,
+  latestEventId: string | undefined
+) => ({
+  host: {
+    count: capabilities.list().length,
+    items: capabilities.list()
+  },
   methods: recommendedMethods(methodList),
   recommendedActions: [
     { id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId, eventCursor: latestEventId } },
@@ -222,6 +237,7 @@ const buildCapabilities = (methodList: PlasticMethod[], panelId: string | undefi
     { rel: "state", href: "plastic/state", method: "plastic/state" },
     { rel: "timeline", href: "events/timeline", method: "events/timeline" },
     { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+    { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },
     { rel: "visible-refs", href: "deixis/listVisibleRefs", method: "deixis/listVisibleRefs" }
   ]
 });

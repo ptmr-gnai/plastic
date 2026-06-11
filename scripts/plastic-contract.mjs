@@ -203,12 +203,12 @@ await check("agent/orient", async () => {
   const orientation = await rpc("agent/orient", { panelId: "chat-main" });
   assert(orientation?.agent?.id, "agent/orient missing agent id");
   assert(orientation.embodiment?.projectDir, "agent/orient missing projectDir");
-  assert(Array.isArray(orientation.capabilities?.recommendedActions), "agent/orient missing recommendedActions");
+  assert(orientation.capabilities.host?.count >= 1, "agent/orient missing host capability count");
+  assertArray(orientation.capabilities.host.items, "agent/orient host capabilities missing"); assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
   assert(orientation.memory?.eventCount >= 1, "agent/orient missing event memory");
   return {
-    agentId: orientation.agent.id,
-    panelId: orientation.embodiment.panelId,
-    visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
+    agentId: orientation.agent.id, panelId: orientation.embodiment.panelId,
+    capabilities: orientation.capabilities.host.count, visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
     recommendedActions: orientation.capabilities.recommendedActions.length
   };
 });
