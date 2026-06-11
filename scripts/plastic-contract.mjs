@@ -9,6 +9,7 @@ import {
   assertMethodDiscoveryParity,
   assertPanelLifecycleProjection,
   assertRpcCallDispatch,
+  assertRuntimeModuleInventory,
   itemsFrom,
   rawRuntimeRequest,
   results,
@@ -21,7 +22,7 @@ import {
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
-const expectedMethodCount = Number(process.env.PLASTIC_EXPECTED_METHOD_COUNT ?? 81);
+const expectedMethodCount = Number(process.env.PLASTIC_EXPECTED_METHOD_COUNT ?? 82);
 const backendMethodIds = [
   "codex/status", "codex/defaults", "codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList",
   "bridge/configurePlasticMcp", "bridge/status", "bridge/test", "bridge/callPlasticRpcTool", "chats/getBinding", "chats/startCodexThread", "chats/createCodexChat", "chats/interrupt", "chats/sendToCodex"
@@ -61,7 +62,7 @@ await check("plastic/methods", async () => {
   assert(JSON.stringify(runtimeMethodIds) === JSON.stringify(methodIds), "runtime /methods ids diverged from plastic/methods");
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   for (const id of [
-    "plastic/state", "plastic/methods", "methods/describe", "rpc/call", "runtime/capabilities", "agent/orient",
+    "plastic/state", "plastic/methods", "methods/describe", "rpc/call", "runtime/capabilities", "runtime/modules", "agent/orient",
     ...backendMethodIds,
     "panels/create", "extensions/list", "extensions/scaffold", "build/status", "app/diagnostics",
     "renderer/reload", "windows/list", "windows/create", "windows/focusPanel", "windows/scrollToRef",
@@ -131,6 +132,10 @@ await check("runtime/capabilities", async () => {
   const description = await rpc("methods/describe", { id: "runtime/capabilities" });
   assert(description.availability?.status === "available", "runtime/capabilities availability mismatch");
   return { count: capabilities.count, hostCapabilityStatus: expectedHostCapability };
+});
+
+await check("runtime/modules", async () => {
+  return assertRuntimeModuleInventory({ rpc });
 });
 
 await check("agent/workbench", async () => {

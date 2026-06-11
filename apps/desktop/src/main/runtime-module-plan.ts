@@ -4,6 +4,7 @@ import type { RuntimeModule } from "./runtime-method-context.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
+import { createRuntimeModulesModule } from "./runtime-modules-method.js";
 
 export type RuntimeModulePlanInput = {
   state: RuntimeModule;
@@ -23,7 +24,7 @@ export type RuntimeModulePlanInput = {
 export const createRuntimeModulePlan = (input: RuntimeModulePlanInput): RuntimeModule[] => {
   const agentBackend = input.agentBackend === undefined ? agentBackendFallbackModule : input.agentBackend;
   const health = input.health === undefined ? createRuntimeHealthModule() : input.health;
-  return [
+  const modules = [
     input.state,
     input.snapshot,
     input.agentWorkbench,
@@ -39,6 +40,15 @@ export const createRuntimeModulePlan = (input: RuntimeModulePlanInput): RuntimeM
     input.deixis,
     health
   ].filter((module): module is RuntimeModule => Boolean(module));
+  return [
+    ...modules,
+    createRuntimeModulesModule(() =>
+      modules.map((module, index) => ({
+        id: module.id,
+        order: index
+      }))
+    )
+  ];
 };
 
 export const registerRuntimeModulePlan = (

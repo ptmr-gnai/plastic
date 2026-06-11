@@ -186,7 +186,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
     ids: ["panels/create", "panels/rename", "panels/move", "panels/close", "app/setTheme", "events/append", "plastic/selfTest", "build/typecheck", "extensions/scan", "extensions/scaffold", "extensions/activate", "extensions/verify", "extensions/verifyAll", "extensions/registerPanel", "extensions/forkBundled", "panels/sendMessage", "panels/markMessageRead", "chats/createCodexChat", "chats/sendToCodex", "codex/setDefaults", "bridge/configurePlasticMcp", "bridge/test", "bridge/callPlasticRpcTool"]
   });
   assertReadMethodLegibility({ methods, ids: ["events/list", "events/timeline"] });
-  assertReadMethodLegibility({ methods, ids: ["plastic/methods", "methods/describe", "runtime/capabilities"] });
+  assertReadMethodLegibility({ methods, ids: ["plastic/methods", "methods/describe", "runtime/capabilities", "runtime/modules"] });
   assertReadMethodLegibility({ methods, ids: ["plastic/state", "plastic/snapshot"] });
   assertReadMethodLegibility({ methods, ids: ["agent/orient", "agent/workbench"] });
   assertReadMethodLegibility({ methods, ids: ["app/diagnostics", "build/status"] });
@@ -242,6 +242,21 @@ export const assertRpcCallDispatch = async ({ rpc }) => {
     assert(String(error.message ?? error).includes("cannot call itself"), "rpc/call self-call error mismatch");
   }
   return { delegatedMethod: "panels/list", panels: panels.length };
+};
+
+export const assertRuntimeModuleInventory = async ({ rpc }) => {
+  const modules = await rpc("runtime/modules");
+  const items = assertArray(modules.items, "runtime/modules.items is not an array");
+  const ids = items.map((module) => module.id);
+  for (const id of [
+    "runtime-state", "runtime-snapshot", "agent-workbench", "agent-orient", "runtime-build",
+    "runtime-diagnostics", "extension-authoring", "renderer-control", "runtime-control",
+    "panel-control", "window-capability", "deixis", "runtime-health"
+  ]) {
+    assert(ids.includes(id), `runtime/modules missing ${id}`);
+  }
+  assert(items.every((module, index) => module.order === index), "runtime/modules order is not stable");
+  return { count: modules.count, ids };
 };
 
 export const itemsFrom = (value, message) => {
