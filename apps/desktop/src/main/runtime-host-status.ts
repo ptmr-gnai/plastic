@@ -92,7 +92,7 @@ export const decorateRuntimeState = (input: {
   };
 }) => ({
   ...input.state,
-  app: { ...input.state.app, mode: input.mode },
+  app: { ...input.state.app, mode: input.mode, hostBase: runtimeHostBaseDescriptor },
   bus: input.bus,
   resources: [
     ...input.state.resources,
@@ -121,6 +121,7 @@ export const createSnapshotAppDetails = (
   return {
     name: "Plastic",
     mode,
+    hostBase: runtimeHostBaseDescriptor,
     workspaceDir: config.workspaceDir,
     eventPath: config.eventPath,
     ...extra

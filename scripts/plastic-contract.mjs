@@ -36,6 +36,7 @@ await check("plastic/state", async () => {
   assert(runtimeState.value?.app?.name === "Plastic", "runtime /state did not return Plastic state");
   assert(buildState.value?.app?.name === "Plastic", "build /state did not return Plastic state");
   assert(state.app?.name === "Plastic", "state.app.name is not Plastic");
+  assert(state.app.hostBase?.id === "runtime-host-base" && state.app.hostBase?.version === 1, "plastic/state shared host base marker mismatch");
   assert(state.controlPlane?.runtime?.transport === "http", "state missing runtime control plane");
   assert(state.controlPlane.runtime.rpcPath === "/rpc", "state runtime control plane rpcPath mismatch");
   assert(state.controlPlane.runtime.statePath === "/state", "state runtime control plane statePath mismatch");
@@ -87,6 +88,7 @@ await check("plastic/snapshot", async () => {
   snapshot = await rpc("plastic/snapshot");
   assert(snapshot?.app?.name === "Plastic", "snapshot.app.name is not Plastic");
   assert(snapshot.app.mode === "electron" || snapshot.app.mode === "headless", "snapshot.app.mode must identify the host");
+  assert(snapshot.app.hostBase?.id === "runtime-host-base" && snapshot.app.hostBase?.version === 1, "plastic/snapshot shared host base marker mismatch");
   assertArray(snapshot.panels, "snapshot.panels is not an array");
   assertArray(snapshot.windows, "snapshot.windows is not an array");
   assertArray(snapshot.extensions, "snapshot.extensions is not an array");
