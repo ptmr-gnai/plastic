@@ -167,6 +167,32 @@ const checkImportBoundaries = (file, text) => {
   }
 };
 
+const checkRuntimeBootstrap = (file, text) => {
+  const repoPath = toRepoPath(file);
+  const expectedFactoryByFile = {
+    "apps/desktop/src/main/main.ts": "createElectronRuntimeHostStandardModules",
+    "apps/desktop/src/main/headless.ts": "createHeadlessRuntimeHostStandardModules"
+  };
+  const expectedFactory = expectedFactoryByFile[repoPath];
+  if (!expectedFactory) {
+    return;
+  }
+  if (!text.includes(expectedFactory)) {
+    addFailure("runtime-bootstrap", repoPath, `Host entrypoint must use ${expectedFactory}.`);
+  }
+  for (const forbidden of [
+    "createRuntimeHostProjectionModules",
+    "createRuntimeHostAgentModules",
+    "createRuntimeHostCapabilityModules",
+    "createRuntimeHostSupportBundle",
+    "createRuntimeHostStartupModules"
+  ]) {
+    if (text.includes(forbidden)) {
+      addFailure("runtime-bootstrap", repoPath, `Host entrypoint must not directly assemble ${forbidden}.`);
+    }
+  }
+};
+
 const checkExtensionManifest = async (file, text) => {
   if (basename(file) !== "plastic.extension.json") {
     return;
@@ -249,6 +275,7 @@ for (const file of files) {
   checkPublicClayNames(file, text);
   checkMethodRegistration(file, text);
   checkImportBoundaries(file, text);
+  checkRuntimeBootstrap(file, text);
   await checkExtensionManifest(file, text);
 }
 checkStagedArtifacts();

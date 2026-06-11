@@ -466,6 +466,7 @@ The first unification pass is substantially complete:
 - `createRuntimeHostStandardModules` assembles projection, agent, capability, support, health, and startup module plans for both Electron and headless hosts.
 - `createHeadlessRuntimeHostStandardModules` keeps headless unavailable-Codex, no-window, and no-visible-ref policy out of the entrypoint.
 - `createElectronRuntimeHostStandardModules` keeps Electron Codex, window, renderer, visible-ref, and health callback policy out of the entrypoint.
+- `pnpm guardrails` prevents host entrypoints from directly reassembling lower-level runtime modules.
 - Electron and headless both use shared runtime modules for state, snapshot, agent workbench/orientation, build, diagnostics, extension authoring/runtime, renderer/window/deixis capability-backed methods, runtime control, panel control, panel mailbox, runtime modules, and health.
 - The runtime/build HTTP transports share request helpers, RPC dispatch, method GET dispatch, `/host`, `/state`, `/methods`, `/capabilities`, `/snapshot`, SSE event streams, CORS behavior, and error envelopes.
 - `runtime/host`, `runtime/capabilities`, `methods/describe`, `runtime/modules`, `agent/workbench`, `agent/orient`, `plastic/state`, and `plastic/snapshot` expose enough host/capability metadata for agents to learn which methods are available, degraded, or unavailable.
