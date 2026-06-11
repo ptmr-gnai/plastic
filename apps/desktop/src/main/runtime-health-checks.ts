@@ -126,6 +126,13 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
   const missingMethodIds = items
     .filter((item) => !Array.isArray((item as { methodIds?: unknown }).methodIds))
     .map((item) => (item as { id?: string }).id ?? "<missing-id>");
+  const missingAvailabilitySummary = items
+    .filter((item) => !hasModuleAvailabilitySummary(item))
+    .map((item) => (item as { id?: string }).id ?? "<missing-id>");
+  const invalidAvailabilityCounts = items
+    .filter((item) => hasModuleAvailabilitySummary(item))
+    .filter((item) => !moduleAvailabilityCountsMatch(item))
+    .map((item) => (item as { id?: string }).id ?? "<missing-id>");
   const missingContributions = [
     moduleMethodMissing(items, "runtime-control", "plastic/methods"),
     moduleMethodMissing(items, "panel-control", "panels/create"),
@@ -140,6 +147,12 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
   if (missingMethodIds.length > 0) {
     throw new Error(`Runtime modules missing methodIds: ${missingMethodIds.join(", ")}`);
   }
+  if (missingAvailabilitySummary.length > 0) {
+    throw new Error(`Runtime modules missing availability summaries: ${missingAvailabilitySummary.join(", ")}`);
+  }
+  if (invalidAvailabilityCounts.length > 0) {
+    throw new Error(`Runtime module availability counts mismatch: ${invalidAvailabilityCounts.join(", ")}`);
+  }
   if (missingContributions.length > 0) {
     throw new Error(`Runtime module method contributions missing: ${missingContributions.join(", ")}`);
   }
@@ -148,8 +161,29 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
     missingRequiredModules,
     missingAgentBackend,
     missingMethodIds,
+    missingAvailabilitySummary,
+    invalidAvailabilityCounts,
     missingContributions
   };
+};
+
+const hasModuleAvailabilitySummary = (item: unknown) => {
+  const availability = (item as { availability?: Record<string, unknown> }).availability;
+  return typeof availability?.available === "number"
+    && typeof availability.degraded === "number"
+    && typeof availability.unavailable === "number"
+    && Array.isArray(availability.requiredCapabilities)
+    && Array.isArray(availability.missingCapabilities);
+};
+
+const moduleAvailabilityCountsMatch = (item: unknown) => {
+  const module = item as {
+    methodIds?: unknown[];
+    availability?: { available: number; degraded: number; unavailable: number };
+  };
+  return module.availability !== undefined
+    && module.availability.available + module.availability.degraded + module.availability.unavailable
+      === (module.methodIds?.length ?? 0);
 };
 
 const moduleMethodMissing = (items: unknown[], moduleId: string, methodId: string) => {
