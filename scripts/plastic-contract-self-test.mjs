@@ -1,0 +1,21 @@
+export const assertSelfTestSurface = ({ assert, selfTest }) => {
+  assert(selfTest.ok === true, "plastic/selfTest failed");
+  const methodCheck = selfTest.checks?.find((candidate) => candidate.id === "methods:list");
+  assert(methodCheck?.details?.invalidIdentity?.length === 0, "plastic/selfTest method identity check failed");
+  assert(methodCheck?.details?.missingAvailability?.length === 0, "plastic/selfTest method availability check failed");
+  assert(methodCheck.details.invalidAvailabilityStatuses?.length === 0, "plastic/selfTest method availability status check failed");
+  assert(methodCheck.details.missingReferencedCapabilities?.length === 0, "plastic/selfTest method capability reference check failed");
+  assert(methodCheck.details.missingRequiredMethods?.length === 0, "plastic/selfTest required method check failed");
+  const capabilityCheck = selfTest.checks?.find((candidate) => candidate.id === "capabilities:list");
+  assert(capabilityCheck?.details?.missingRequiredCapabilities?.length === 0, "plastic/selfTest required capability check failed");
+  assert(capabilityCheck.details.invalidStatuses?.length === 0, "plastic/selfTest capability status check failed");
+  const moduleCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-modules:map");
+  assert(moduleCheck?.details?.missingRequiredModules?.length === 0, "plastic/selfTest required module check failed");
+  assert(moduleCheck.details.missingAgentBackend === false, "plastic/selfTest agent backend module check failed");
+  assert(moduleCheck.details.requiredHostModule === true, "plastic/selfTest host module check failed");
+  assert(moduleCheck.details.missingMethodIds?.length === 0, "plastic/selfTest module methodIds check failed");
+  assert(moduleCheck.details.missingAvailabilitySummary?.length === 0, "plastic/selfTest module availability summary check failed");
+  assert(moduleCheck.details.invalidAvailabilityCounts?.length === 0, "plastic/selfTest module availability count check failed");
+  assert(moduleCheck.details.missingContributions?.length === 0, "plastic/selfTest module contribution check failed");
+  return { checks: selfTest.checks?.length ?? null };
+};

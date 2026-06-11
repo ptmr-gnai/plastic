@@ -7,6 +7,7 @@ export const requiredRuntimeMethods = [
   "methods/describe",
   "rpc/call",
   "runtime/capabilities",
+  "runtime/host",
   "runtime/modules",
   "panels/create",
   "events/list",
@@ -30,6 +31,7 @@ const requiredRuntimeModules = [
   "runtime-health",
   "extension-runtime",
   "panel-mailbox",
+  "runtime-host",
   "runtime-modules"
 ];
 
@@ -134,6 +136,7 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
   const missingContributions = [
     moduleMethodMissing(items, "runtime-control", "plastic/methods"),
     moduleMethodMissing(items, "panel-control", "panels/create"),
+    moduleMethodMissing(items, "runtime-host", "runtime/host"),
     moduleMethodMissing(items, "runtime-modules", "runtime/modules")
   ].filter((item): item is string => Boolean(item));
   if (missingRequiredModules.length > 0) {
@@ -158,6 +161,7 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
     count: items.length,
     missingRequiredModules,
     missingAgentBackend,
+    requiredHostModule: ids.has("runtime-host"),
     missingMethodIds,
     missingAvailabilitySummary,
     invalidAvailabilityCounts,
