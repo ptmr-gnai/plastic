@@ -425,24 +425,23 @@ await check("extensions/scaffold", async () => {
   assert(scaffold?.extensionId === `workspace.${extensionId}`, "scaffold returned wrong extension id");
   assert(scaffold.manifestPath, "scaffold missing manifestPath");
   assert(scaffold.eventId, "scaffold missing eventId");
-  const scan = await rpc("extensions/scan");
+  const scan = await rpc("extensions/scan", { meta: validationMeta });
   const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
   assert(discovered.some((extension) => extension.id === scaffold.extensionId), "scaffolded extension not discovered");
+  assertEventsTagged(assertArray(await rpc("events/list", { types: ["extension.discovered"], scope: { extensionId: scaffold.extensionId }, limit: 10 }), "extension discovered events/list is not an array"), validationTags, "extension discovered validation tags not readable");
   assertEventsTagged(assertArray(await rpc("events/list", { types: ["extension.scaffolded"], scope: { extensionId: scaffold.extensionId }, limit: 10 }), "extension scaffold events/list is not an array"), validationTags, "extension scaffold validation tags not readable");
   scaffoldedExtensionDir = scaffold.extensionDir;
   scaffoldedExtensionId = scaffold.extensionId;
   scaffoldedExtensionPanelId = scaffold.panelId;
   return { extensionId: scaffold.extensionId, panelId: scaffold.panelId, extensionDir: scaffold.extensionDir, eventId: scaffold.eventId };
 });
-
 await check("extensions scan/list", async () => {
-  const scan = await rpc("extensions/scan");
+  const scan = await rpc("extensions/scan", { meta: validationMeta });
   extensions = await rpc("extensions/list");
   const items = assertArray(extensions, "extensions/list is not an array");
   assert(items.some((extension) => extension.id === "plastic.chat"), "bundled chat extension missing");
   return { scanDiscovered: scan.discovered?.length ?? scan.count ?? null, count: items.length };
 });
-
 await check("contract scaffold cleanup", async () => {
   assert(scaffoldedExtensionDir, "no scaffolded extension dir recorded");
   assert(scaffoldedExtensionId, "no scaffolded extension id recorded");
@@ -453,9 +452,10 @@ await check("contract scaffold cleanup", async () => {
       throw new Error("scaffolded extension dir still exists after cleanup");
     })
     .catch((error) => { if (error?.code !== "ENOENT") throw error; });
-  const scan = await rpc("extensions/scan");
+  const scan = await rpc("extensions/scan", { meta: validationMeta });
   const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
   assert(!discovered.some((extension) => extension.id === scaffoldedExtensionId), "scaffolded extension still discovered after cleanup");
+  assertEventsTagged(assertArray(await rpc("events/list", { types: ["extension.removed"], scope: { extensionId: scaffoldedExtensionId }, limit: 10 }), "extension removed events/list is not an array"), validationTags, "extension removed validation tags not readable");
   await rpc("panels/close", { id: scaffoldedExtensionPanelId });
   const panels = await rpc("panels/list");
   assert(!panels.some((panel) => panel.id === scaffoldedExtensionPanelId), "scaffolded extension panel still projected after cleanup");
@@ -481,7 +481,6 @@ await check("bundled extension projections", async () => {
     rendererBoundPanels: bundledPanels.filter((panel) => panel.rendererId).length
   };
 });
-
 await check("events list/timeline", async () => {
   events = await rpc("events/list", { types: ["panel.created"], scope: { panelId }, limit: 100 });
   const eventItems = assertArray(events, "events/list is not an array");

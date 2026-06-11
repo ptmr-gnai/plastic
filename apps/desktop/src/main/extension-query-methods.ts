@@ -3,6 +3,8 @@ import {
   createEvent,
   projectExtensions,
   type EventStore,
+  type PlasticEventMeta,
+  type PlasticLink,
   type MethodRegistry
 } from "@plastic/core";
 import { scanWorkspaceExtensions } from "./extension-discovery.js";
@@ -13,6 +15,30 @@ const extensionRuntimeAvailability = {
   status: "available" as const,
   notes: "Extension discovery is a shared runtime primitive available in headed and headless modes."
 };
+
+type ExtensionScanInput = {
+  meta?: PlasticEventMeta;
+};
+
+const eventMetaSchema = {
+  type: "object",
+  description: "Optional event metadata, such as tags for validation or agent-scoped actions.",
+  properties: {
+    tags: { type: "array", items: { type: "string" } }
+  }
+};
+
+const scanInputSchema = {
+  type: "object",
+  properties: {
+    meta: eventMetaSchema
+  }
+};
+
+const withLinks = (meta: PlasticEventMeta | undefined, links: PlasticLink[]): PlasticEventMeta => ({
+  ...(meta ?? {}),
+  links: [...(meta?.links ?? []), ...links]
+});
 
 export const registerExtensionQueryMethods = async (input: {
   workspaceDir: string;
@@ -40,7 +66,7 @@ const registerExtensionScan = async (input: {
       description: "Discovers extensions under .plastic/extensions and writes durable extension.discovered events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionRuntimeAvailability,
-      inputSchema: noInputSchema,
+      inputSchema: scanInputSchema,
       examples: [
         {
           title: "Scan workspace extensions",
@@ -57,8 +83,9 @@ const registerExtensionScan = async (input: {
         reversible: false,
         notes: "The extension read model is append-only; compensate with a later scan or extension event."
       },
-      handler: () =>
+      handler: (methodInput) =>
         Effect.promise(async () => {
+          const scanInput = methodInput as ExtensionScanInput;
           const discovered = await scanWorkspaceExtensions(workspaceDir);
           const current = projectExtensions(await runPromise(eventStore.list()));
           const currentIds = new Set(current.map((extension) => extension.id));
@@ -88,12 +115,10 @@ const registerExtensionScan = async (input: {
                       errors: extension.errors
                     },
                     scope: { extensionId: extension.id },
-                    meta: {
-                      links: [
-                        { rel: "self", href: "extensions/get", method: "extensions/get", target: extension.id },
-                        { rel: "extensions", href: "extensions/list", method: "extensions/list" }
-                      ]
-                    }
+                    meta: withLinks(scanInput.meta, [
+                      { rel: "self", href: "extensions/get", method: "extensions/get", target: extension.id },
+                      { rel: "extensions", href: "extensions/list", method: "extensions/list" }
+                    ])
                   })
                 )
               )
@@ -110,7 +135,8 @@ const registerExtensionScan = async (input: {
                   createEvent({
                     type: "extension.removed",
                     payload: { id: extensionId, reason: "not found during scan" },
-                    scope: { extensionId }
+                    scope: { extensionId },
+                    ...(scanInput.meta ? { meta: scanInput.meta } : {})
                   })
                 )
               )
