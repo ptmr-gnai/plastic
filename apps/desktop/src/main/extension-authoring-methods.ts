@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { Effect } from "effect";
 import type { PlasticEventMeta } from "@plastic/core";
 import type { RuntimeModule } from "./runtime-method-context.js";
+import { eventMetaSchema } from "./runtime-method-metadata.js";
 
 type ScaffoldExtensionInput = {
   id?: string;
@@ -17,14 +18,6 @@ type ScaffoldExtensionInput = {
 const extensionAuthoringAvailability = {
   status: "available" as const,
   notes: "Extension authoring writes workspace files and durable events through the shared runtime."
-};
-
-const eventMetaSchema = {
-  type: "object",
-  description: "Optional event metadata, such as tags for validation or agent-scoped actions.",
-  properties: {
-    tags: { type: "array", items: { type: "string" } }
-  }
 };
 
 export const createExtensionAuthoringModule = (input: {

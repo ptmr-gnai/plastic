@@ -6,6 +6,7 @@ import {
   type MethodRegistry
 } from "@plastic/core";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
+import { eventMetaSchema } from "./runtime-method-metadata.js";
 
 type PanelCreateInput = {
   id?: string;
@@ -33,14 +34,6 @@ type PanelMutationInput = {
 const panelControlAvailability = {
   status: "available" as const,
   notes: "Panel control is a host-agnostic runtime primitive available in headed and headless modes."
-};
-
-const eventMetaSchema = {
-  type: "object",
-  description: "Optional event metadata, such as tags for validation or agent-scoped actions.",
-  properties: {
-    tags: { type: "array", items: { type: "string" } }
-  }
 };
 
 export const registerPanelControlMethods = async (input: RuntimeMethodContext) => {

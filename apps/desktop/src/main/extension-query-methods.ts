@@ -4,11 +4,10 @@ import {
   projectExtensions,
   type EventStore,
   type PlasticEventMeta,
-  type PlasticLink,
   type MethodRegistry
 } from "@plastic/core";
 import { scanWorkspaceExtensions } from "./extension-discovery.js";
-import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { eventMetaSchema, mergeEventMetaLinks, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 const extensionRuntimeAvailability = {
@@ -20,25 +19,12 @@ type ExtensionScanInput = {
   meta?: PlasticEventMeta;
 };
 
-const eventMetaSchema = {
-  type: "object",
-  description: "Optional event metadata, such as tags for validation or agent-scoped actions.",
-  properties: {
-    tags: { type: "array", items: { type: "string" } }
-  }
-};
-
 const scanInputSchema = {
   type: "object",
   properties: {
     meta: eventMetaSchema
   }
 };
-
-const withLinks = (meta: PlasticEventMeta | undefined, links: PlasticLink[]): PlasticEventMeta => ({
-  ...(meta ?? {}),
-  links: [...(meta?.links ?? []), ...links]
-});
 
 export const registerExtensionQueryMethods = async (input: {
   workspaceDir: string;
@@ -115,7 +101,7 @@ const registerExtensionScan = async (input: {
                       errors: extension.errors
                     },
                     scope: { extensionId: extension.id },
-                    meta: withLinks(scanInput.meta, [
+                    meta: mergeEventMetaLinks(scanInput.meta, [
                       { rel: "self", href: "extensions/get", method: "extensions/get", target: extension.id },
                       { rel: "extensions", href: "extensions/list", method: "extensions/list" }
                     ])

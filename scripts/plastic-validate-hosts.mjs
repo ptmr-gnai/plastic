@@ -1,8 +1,7 @@
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 const runtimeUrl = process.env.PLASTIC_RUNTIME_URL ?? "http://127.0.0.1:7331";
@@ -108,34 +107,6 @@ const runCaptured = (command, args, options = {}) =>
     });
   });
 
-const syncCommand = (command, args) => {
-  try {
-    return execFileSync(command, args, { encoding: "utf8" }).trim() || "<empty>";
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error);
-  }
-};
-
-const matchingProcessLines = (pattern) =>
-  syncCommand("ps", ["-axo", "pid,ppid,state,etime,command"])
-    .split("\n")
-    .filter((line) => pattern.test(line))
-    .join("\n") || "<none>";
-
-const electronPreflightFailureDetails = ({ child, electronExecutable, probeDir }) => {
-  if (process.platform === "win32") {
-    return [`electronExecutable: ${electronExecutable}`, `probeDir: ${probeDir}`];
-  }
-  return [
-    `electronExecutable: ${electronExecutable}`,
-    `electronChildPid: ${child.pid ?? "unknown"}`,
-    `probeDir: ${probeDir}`,
-    "expectedProbeStdout: plastic-electron-app-probe:module, plastic-electron-app-probe:electron-required",
-    `childProcess:\n${child.pid ? syncCommand("ps", ["-p", String(child.pid), "-o", "pid,ppid,state,etime,command"]) : "<no pid>"}`,
-    `matchingElectronProcesses:\n${matchingProcessLines(/Electron|electron/)}`
-  ];
-};
-
 const runElectronPreflight = async () => {
   const electronExecutable = desktopRequire("electron");
   console.log(`[plastic:validate-hosts] electron preflight ${electronExecutable}`);
@@ -147,30 +118,6 @@ const runElectronPreflight = async () => {
       ELECTRON_RUN_AS_NODE: "1"
     }
   });
-  const probeDir = await mkdtemp(join(tmpdir(), "plastic-electron-preflight-"));
-  try {
-    await writeFile(join(probeDir, "package.json"), JSON.stringify({ main: "main.js" }), "utf8");
-    await writeFile(
-      join(probeDir, "main.js"),
-      [
-        "console.log('plastic-electron-app-probe:module');",
-        "const { app } = require('electron');",
-        "console.log('plastic-electron-app-probe:electron-required');",
-        "app.whenReady().then(() => app.quit());"
-      ].join("\n"),
-      "utf8"
-    );
-    await runWithTimeout(electronExecutable, [probeDir], electronPreflightTimeoutMs, {
-      cwd: desktopDir,
-      env: {
-        ...process.env,
-        ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1"
-      },
-      failureDetails: (child) => electronPreflightFailureDetails({ child, electronExecutable, probeDir })
-    });
-  } finally {
-    await rm(probeDir, { force: true, recursive: true });
-  }
 };
 
 const startHost = (script) => {

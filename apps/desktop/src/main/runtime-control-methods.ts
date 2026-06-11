@@ -9,7 +9,7 @@ import {
   type MethodRegistry,
   type TimelineInput
 } from "@plastic/core";
-import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { eventMetaSchema, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
 const runtimeControlAvailability = {
@@ -286,13 +286,7 @@ const registerEventAppend = async (input: {
               projectDir: { type: "string" }
             }
           },
-          meta: {
-            type: "object",
-            description: "Optional event metadata such as validation tags.",
-            properties: {
-              tags: { type: "array", items: { type: "string" } }
-            }
-          }
+          meta: eventMetaSchema
         }
       },
       examples: [
