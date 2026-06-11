@@ -30,8 +30,7 @@ let createdPanelEvent;
 let extensions;
 let events;
 let runtimeStartedControlPlane;
-let scaffoldedExtensionDir;
-let scaffoldedExtensionId;
+let scaffoldedExtensionDir, scaffoldedExtensionId, scaffoldedExtensionPanelId;
 
 await check("plastic/state", async () => {
   state = await rpc("plastic/state");
@@ -425,6 +424,7 @@ await check("extensions/scaffold", async () => {
   assert(discovered.some((extension) => extension.id === scaffold.extensionId), "scaffolded extension not discovered");
   scaffoldedExtensionDir = scaffold.extensionDir;
   scaffoldedExtensionId = scaffold.extensionId;
+  scaffoldedExtensionPanelId = scaffold.panelId;
   return { extensionId: scaffold.extensionId, panelId: scaffold.panelId, extensionDir: scaffold.extensionDir, eventId: scaffold.eventId };
 });
 
@@ -439,6 +439,7 @@ await check("extensions scan/list", async () => {
 await check("contract scaffold cleanup", async () => {
   assert(scaffoldedExtensionDir, "no scaffolded extension dir recorded");
   assert(scaffoldedExtensionId, "no scaffolded extension id recorded");
+  assert(scaffoldedExtensionPanelId, "no scaffolded extension panel id recorded");
   await rm(scaffoldedExtensionDir, { recursive: true, force: true });
   await access(scaffoldedExtensionDir)
     .then(() => {
@@ -448,8 +449,11 @@ await check("contract scaffold cleanup", async () => {
   const scan = await rpc("extensions/scan");
   const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
   assert(!discovered.some((extension) => extension.id === scaffoldedExtensionId), "scaffolded extension still discovered after cleanup");
+  await rpc("panels/close", { id: scaffoldedExtensionPanelId });
+  const panels = await rpc("panels/list");
+  assert(!panels.some((panel) => panel.id === scaffoldedExtensionPanelId), "scaffolded extension panel still projected after cleanup");
   extensions = await rpc("extensions/list");
-  return { extensionId: scaffoldedExtensionId, removed: true, scanDiscovered: scan.discovered?.length ?? scan.count ?? null };
+  return { extensionId: scaffoldedExtensionId, panelId: scaffoldedExtensionPanelId, removed: true, scanDiscovered: scan.discovered?.length ?? scan.count ?? null };
 });
 
 await check("bundled extension projections", async () => {
@@ -479,10 +483,7 @@ await check("events list/timeline", async () => {
   const timeline = await rpc("events/timeline", { scope: { panelId }, limit: 10 });
   const timelineItems = itemsFrom(timeline, "events/timeline returned no items");
   assert(timelineItems.some((item) => item.eventId === createdPanelEvent.id), "panel create event missing from timeline");
-  return {
-    events: eventItems.length,
-    timeline: timelineItems.length
-  };
+  return { events: eventItems.length, timeline: timelineItems.length };
 });
 
 await check("plastic/selfTest", async () => assertSelfTestSurface({ assert, selfTest: await rpc("plastic/selfTest") }));
@@ -491,6 +492,4 @@ const failed = results.filter((result) => !result.ok);
 const summary = { ok: failed.length === 0, rpcUrl, checks: results.length, failed: failed.length, results };
 console.log(JSON.stringify(summary, null, 2));
 
-if (failed.length > 0) {
-  process.exitCode = 1;
-}
+if (failed.length > 0) process.exitCode = 1;
