@@ -70,6 +70,7 @@ const handleBuildRequest = async (context: {
 };
 
 const buildMethodByPath: Record<string, string> = {
+  "/capabilities": "runtime/capabilities",
   "/methods": "plastic/methods",
   "/snapshot": "plastic/snapshot",
   "/state": "plastic/state",

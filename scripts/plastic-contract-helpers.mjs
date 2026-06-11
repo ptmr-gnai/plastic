@@ -307,12 +307,13 @@ export const assertRuntimeStartedControlPlane = async ({ rpc }) => {
   assert(controlPlane.runtime.rpcPath === "/rpc", "runtime.started runtime rpcPath mismatch");
   assert(controlPlane.runtime.statePath === "/state", "runtime.started runtime statePath mismatch");
   assert(controlPlane.runtime.methodsPath === "/methods", "runtime.started runtime methodsPath mismatch");
+  assert(controlPlane.runtime.capabilitiesPath === "/capabilities" && controlPlane.runtime.snapshotPath === "/snapshot", "runtime.started runtime discovery paths mismatch");
   assert(controlPlane.runtime.eventStreamPath === "/events/stream", "runtime.started runtime event stream path mismatch");
   assert(controlPlane.runtime.healthPath === "/healthz", "runtime.started runtime health path mismatch");
   assert(controlPlane?.build?.transport === "http", "runtime.started missing build HTTP transport");
   assert(controlPlane.build.rpcPath === "/rpc", "runtime.started build rpcPath mismatch");
   assert(controlPlane.build.statePath === "/state", "runtime.started build statePath mismatch");
-  assert(controlPlane.build.methodsPath === "/methods", "runtime.started build methodsPath mismatch");
+  assert(controlPlane.build.methodsPath === "/methods" && controlPlane.build.capabilitiesPath === "/capabilities", "runtime.started build discovery paths mismatch");
   assert(controlPlane.build.eventStreamPath === "/events/stream", "runtime.started build event stream path mismatch");
   assert(controlPlane.build.statusPath === "/status", "runtime.started build status path mismatch");
   assert(controlPlane.build.snapshotPath === "/snapshot", "runtime.started build snapshot path mismatch");

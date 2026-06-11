@@ -245,6 +245,8 @@ const handleRuntimeGet = async (context: {
 };
 
 const runtimeMethodByPath: Record<string, string> = {
+  "/capabilities": "runtime/capabilities",
   "/methods": "plastic/methods",
+  "/snapshot": "plastic/snapshot",
   "/state": "plastic/state"
 };

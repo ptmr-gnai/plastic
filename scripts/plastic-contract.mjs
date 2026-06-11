@@ -257,15 +257,15 @@ await check("build/status", async () => {
 await check("build HTTP transport", async () => {
   const controlPlane = await assertRuntimeStartedControlPlane({ rpc });
   const controlPlaneDescriptor = { runtime: controlPlane.runtime, build: controlPlane.build };
-  const runtimeHealth = await runtimeGet("/healthz");
-  const health = await buildGet("/healthz");
-  const status = await buildGet("/status");
-  const buildSnapshot = await buildGet("/snapshot");
+  const runtimeHealth = await runtimeGet("/healthz"), runtimeCapabilities = await runtimeGet("/capabilities"), runtimeSnapshot = await runtimeGet("/snapshot");
+  const health = await buildGet("/healthz"), buildCapabilities = await buildGet("/capabilities"), status = await buildGet("/status"), buildSnapshot = await buildGet("/snapshot");
   const diagnostics = await buildRpc("app/diagnostics", {});
   assert(runtimeHealth.service === "plastic.runtime", "runtime /healthz returned wrong service");
+  assert(runtimeCapabilities.value?.count >= 1, "runtime /capabilities returned no capabilities");
+  assert(runtimeSnapshot.value?.app?.mode === state.app.mode, "runtime /snapshot mode mismatch");
   assert(health.service === "plastic.build", "build /healthz returned wrong service");
-  assert(status.value?.status === "running", "build /status did not report running");
-  assert(status.value?.mode === state.app.mode, "build /status mode mismatch");
+  assert(buildCapabilities.value?.count === runtimeCapabilities.value.count, "build /capabilities count mismatch");
+  assert(status.value?.status === "running" && status.value?.mode === state.app.mode, "build /status state mismatch");
   assert(status.value?.hostBase?.id === "runtime-host-base", "build /status missing shared host base marker");
   assert(stableJson(status.value.controlPlane) === stableJson(controlPlaneDescriptor), "build /status control plane does not match startup control plane");
   assert(status.value.buildSocket?.endsWith(`:${controlPlane.build.port}`), "build status socket does not match startup control plane");
@@ -485,13 +485,7 @@ await check("plastic/selfTest", async () => {
 });
 
 const failed = results.filter((result) => !result.ok);
-const summary = {
-  ok: failed.length === 0,
-  rpcUrl,
-  checks: results.length,
-  failed: failed.length,
-  results
-};
+const summary = { ok: failed.length === 0, rpcUrl, checks: results.length, failed: failed.length, results };
 console.log(JSON.stringify(summary, null, 2));
 
 if (failed.length > 0) {
