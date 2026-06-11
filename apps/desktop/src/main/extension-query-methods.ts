@@ -6,6 +6,7 @@ import {
   type MethodRegistry
 } from "@plastic/core";
 import { scanWorkspaceExtensions } from "./extension-discovery.js";
+import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 const extensionRuntimeAvailability = {
@@ -14,6 +15,17 @@ const extensionRuntimeAvailability = {
 };
 
 export const registerExtensionQueryMethods = async (input: {
+  workspaceDir: string;
+  eventStore: EventStore;
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+}) => {
+  await registerExtensionScan(input);
+  await registerExtensionList(input);
+  await registerExtensionGet(input);
+};
+
+const registerExtensionScan = async (input: {
   workspaceDir: string;
   eventStore: EventStore;
   methods: MethodRegistry;
@@ -28,6 +40,23 @@ export const registerExtensionQueryMethods = async (input: {
       description: "Discovers extensions under .plastic/extensions and writes durable extension.discovered events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionRuntimeAvailability,
+      inputSchema: noInputSchema,
+      examples: [
+        {
+          title: "Scan workspace extensions",
+          input: {},
+          expectedEvents: ["extension.discovered", "extension.removed"],
+          verifyWith: { method: "extensions/list", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["extension.discovered", "extension.removed"],
+        mutatesProjection: ["extensions"]
+      },
+      reversibility: {
+        reversible: false,
+        notes: "The extension read model is append-only; compensate with a later scan or extension event."
+      },
       handler: () =>
         Effect.promise(async () => {
           const discovered = await scanWorkspaceExtensions(workspaceDir);
@@ -95,23 +124,67 @@ export const registerExtensionQueryMethods = async (input: {
         })
     })
   );
+};
+
+const registerExtensionList = async (input: {
+  eventStore: EventStore;
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+}) => {
+  const { eventStore, methods, runPromise } = input;
 
   await runPromise(
     methods.register({
       id: "extensions/list",
       title: "List extensions",
+      description: "Returns the extension read model rebuilt from durable extension events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionRuntimeAvailability,
+      inputSchema: noInputSchema,
+      examples: [
+        {
+          title: "List known extensions",
+          input: {},
+          verifyWith: { method: "extensions/scan", input: {} }
+        }
+      ],
+      effects: readOnlyEffects,
+      reversibility: readOnlyReversibility,
       handler: () => Effect.map(eventStore.list(), projectExtensions)
     })
   );
+};
+
+const registerExtensionGet = async (input: {
+  eventStore: EventStore;
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+}) => {
+  const { eventStore, methods, runPromise } = input;
 
   await runPromise(
     methods.register({
       id: "extensions/get",
       title: "Get extension",
+      description: "Returns one extension from the event-projected extension read model.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionRuntimeAvailability,
+      inputSchema: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: { type: "string", description: "Extension id to read." }
+        }
+      },
+      examples: [
+        {
+          title: "Read a bundled extension",
+          input: { id: "plastic.chat" },
+          verifyWith: { method: "extensions/list", input: {} }
+        }
+      ],
+      effects: readOnlyEffects,
+      reversibility: readOnlyReversibility,
       handler: (inputValue) =>
         Effect.map(eventStore.list(), (events) => {
           const id = (inputValue as { id?: string }).id;

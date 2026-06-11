@@ -29,6 +29,34 @@ export const createExtensionAuthoringModule = (input: {
         description: "Creates a simple workspace extension under .plastic/extensions and records the scaffold event.",
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: extensionAuthoringAvailability,
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Workspace extension id suffix. The runtime prefixes workspace." },
+            title: { type: "string", description: "Extension title." },
+            panelId: { type: "string", description: "Panel id declared by the generated extension." },
+            panelTitle: { type: "string", description: "Panel title declared by the generated extension." },
+            body: { type: "string", description: "Initial generated panel body." },
+            kind: { type: "string", description: "Panel kind. Defaults to extension." }
+          }
+        },
+        examples: [
+          {
+            title: "Create a simple workspace extension",
+            input: { id: "agent-notes", title: "Agent Notes", panelId: "agent-notes.panel" },
+            expectedEvents: ["extension.scaffolded"],
+            verifyWith: { method: "extensions/scan", input: {} }
+          }
+        ],
+        effects: {
+          durableEvents: ["extension.scaffolded"],
+          mutatesProjection: ["extensions"],
+          touchesFilesystem: true
+        },
+        reversibility: {
+          reversible: false,
+          notes: "The method writes files under .plastic/extensions and appends an event; remove or edit the generated extension to compensate."
+        },
         handler: (methodInput) =>
           Effect.promise(async () => {
             const extensionInput = methodInput as ScaffoldExtensionInput;
