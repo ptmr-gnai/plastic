@@ -16,7 +16,13 @@ export const requiredRuntimeMethods = [
 export const requiredRuntimeCapabilities = [
   "runtime.capabilities",
   "window.projection",
-  "event.projection"
+  "event.projection",
+  "electron.window",
+  "dom.refs",
+  "dom.eval",
+  "dom.input",
+  "screenshot",
+  "agent.codex"
 ];
 
 export const checkMethodRegistryHealth = (
