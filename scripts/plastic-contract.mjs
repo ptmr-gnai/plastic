@@ -4,7 +4,7 @@ import {
   assertEventsTagged, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
   assertCapabilityStatuses, assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
-  assertMatchingModuleInventories, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
+  assertMatchingModuleInventories, assertRuntimeAuditStatus, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 import { assertAgentOrientationPacket, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
@@ -302,7 +302,6 @@ await check("build HTTP transport", async () => {
 await check("runtime HTTP error contract", async () => {
   return assertHttpErrorContract({ label: "runtime", rawRequest: rawRuntimeRequest, runId });
 });
-
 await check("build HTTP error contract", async () => {
   return assertHttpErrorContract({ label: "build", rawRequest: rawBuildRequest, runId });
 });
@@ -320,7 +319,9 @@ await check("app/diagnostics", async () => {
     appReady: diagnostics.appReady
   };
 });
-
+await check("runtime/auditStatus", async () => {
+  return assertRuntimeAuditStatus(await rpc("runtime/auditStatus"));
+});
 await check("renderer/reload metadata", async () => {
   const expectations = capabilityBackedMethodExpectationsForMode(state.app.mode);
   const description = await rpc("methods/describe", { id: "renderer/reload" });

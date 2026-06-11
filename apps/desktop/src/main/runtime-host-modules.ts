@@ -168,7 +168,8 @@ export const createRuntimeHostSupportModules = (input: {
     runCommand: input.runCommand
   }),
   diagnostics: createRuntimeDiagnosticsModule({
-    getDiagnostics: input.getDiagnostics
+    getDiagnostics: input.getDiagnostics,
+    plasticDir: input.plasticDir
   }),
   extensionAuthoring: createExtensionAuthoringModule({ plasticDir: input.plasticDir })
 });

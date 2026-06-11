@@ -112,6 +112,15 @@ export const assertEventsTagged = (events, tags, message) => {
   assert(events.every((event) => tags.every((tag) => event.meta?.tags?.includes(tag))), message);
 };
 
+export const assertRuntimeAuditStatus = (auditStatus) => {
+  assert(typeof auditStatus?.available === "boolean", "runtime/auditStatus missing availability");
+  assert(typeof auditStatus.path === "string" && auditStatus.path.includes("runtime-unification-audit.json"), "runtime/auditStatus missing audit path");
+  if (auditStatus.available) {
+    assert(typeof auditStatus.summary?.runtimeUnification?.usable === "boolean", "runtime/auditStatus missing structured verdict");
+  }
+  return { available: auditStatus.available, path: auditStatus.path, usable: auditStatus.summary?.runtimeUnification?.usable ?? null };
+};
+
 export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) => {
   const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
   for (const id of sampleIds) {
@@ -188,7 +197,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["plastic/methods", "methods/describe", "runtime/capabilities", "runtime/modules"] });
   assertReadMethodLegibility({ methods, ids: ["plastic/state", "plastic/snapshot"] });
   assertReadMethodLegibility({ methods, ids: ["agent/orient", "agent/workbench"] });
-  assertReadMethodLegibility({ methods, ids: ["app/diagnostics", "build/status"] });
+  assertReadMethodLegibility({ methods, ids: ["app/diagnostics", "build/status", "runtime/auditStatus"] });
   assertReadMethodLegibility({ methods, ids: ["extensions/list", "extensions/get"] });
   assertReadMethodLegibility({ methods, ids: ["extensions/verificationStatus"] });
   assertReadMethodLegibility({ methods, ids: ["panels/listMessages", "panels/mailboxes"] });
