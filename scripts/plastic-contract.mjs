@@ -5,8 +5,7 @@ const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
 const backendMethodIds = [
   "codex/status", "codex/defaults", "codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList",
-  "bridge/configurePlasticMcp", "bridge/status", "bridge/test", "bridge/callPlasticRpcTool",
-  "chats/getBinding", "chats/startCodexThread", "chats/createCodexChat", "chats/interrupt", "chats/sendToCodex"
+  "bridge/configurePlasticMcp", "bridge/status", "bridge/test", "bridge/callPlasticRpcTool", "chats/getBinding", "chats/startCodexThread", "chats/createCodexChat", "chats/interrupt", "chats/sendToCodex"
 ];
 const results = [];
 
@@ -110,6 +109,7 @@ await check("plastic/state", async () => {
 await check("plastic/methods", async () => {
   methods = await rpc("plastic/methods");
   const items = assertArray(methods, "plastic/methods is not an array");
+  const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   for (const id of [
     "plastic/state",
     "plastic/methods",
@@ -154,7 +154,7 @@ await check("plastic/snapshot", async () => {
   assertArray(snapshot.visibleRefs, "snapshot.visibleRefs is not an array");
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
-  assert(snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing capabilities link");
+  assert(snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing capabilities link"); assert(snapshot.methods.items?.every((method) => method.availability?.status), "snapshot methods missing availability");
   return {
     mode: snapshot.app.mode, methods: snapshot.methods.count, panels: snapshot.panels.length,
     windows: snapshot.windows.length, extensions: snapshot.extensions.length

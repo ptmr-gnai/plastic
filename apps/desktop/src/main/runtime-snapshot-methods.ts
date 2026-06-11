@@ -50,6 +50,7 @@ export const createRuntimeSnapshotModule = (input: {
                   title: method.title,
                   owner: method.owner,
                   description: method.description,
+                  availability: method.availability,
                   links: method.links ?? []
                 }))
               },
