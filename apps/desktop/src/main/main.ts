@@ -26,6 +26,7 @@ import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createPlasticRuntime } from "./runtime-kernel.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
+import { callRuntimeRpcMethod } from "./runtime-rpc-dispatch.js";
 
 const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
@@ -131,15 +132,12 @@ async function createWindow(title = "Plastic") {
 }
 
 ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise<RpcResponse> => {
-  try {
-    const value = await runPromise(methods.call(request.method, request.input));
-    return { ok: true, value };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error)
-    };
-  }
+  return callRuntimeRpcMethod({
+    methods,
+    runPromise,
+    method: request.method,
+    value: request.input
+  });
 });
 
 const electronDeixisHost = createElectronDeixisHost(BrowserWindow);

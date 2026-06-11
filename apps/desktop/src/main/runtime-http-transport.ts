@@ -4,6 +4,7 @@ import {
   type MethodRegistry
 } from "@plastic/core";
 import type { RunPromise } from "./runtime-method-context.js";
+import { callRuntimeRpcMethod } from "./runtime-rpc-dispatch.js";
 
 export type RuntimeHttpTransport = {
   server: Server;
@@ -101,8 +102,13 @@ export const handleHttpRpc = async (input: {
     if (!body.method) {
       throw new Error("RPC request requires method");
     }
-    const value = await input.runPromise(input.methods.call(body.method, body.input));
-    sendJson(input.response, 200, { ok: true, value }, input.corsOrigin);
+    const result = await callRuntimeRpcMethod({
+      methods: input.methods,
+      runPromise: input.runPromise,
+      method: body.method,
+      value: body.input
+    });
+    sendJson(input.response, result.ok ? 200 : 500, result, input.corsOrigin);
   } catch (error) {
     sendJson(input.response, 500, {
       ok: false,
@@ -123,15 +129,13 @@ export const handleHttpMethodGet = async (input: {
   if (!method) {
     return false;
   }
-  try {
-    const value = await input.runPromise(input.methods.call(method, {}));
-    sendJson(input.response, 200, { ok: true, value }, input.corsOrigin);
-  } catch (error) {
-    sendJson(input.response, 500, {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error)
-    }, input.corsOrigin);
-  }
+  const result = await callRuntimeRpcMethod({
+    methods: input.methods,
+    runPromise: input.runPromise,
+    method,
+    value: {}
+  });
+  sendJson(input.response, result.ok ? 200 : 500, result, input.corsOrigin);
   return true;
 };
 
