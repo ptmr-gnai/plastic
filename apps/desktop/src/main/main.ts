@@ -19,10 +19,9 @@ import {
   createRuntimeHostProjectionModules,
   createRuntimeHostProjectionResource,
   createRuntimeHostStartupModules,
-  createRuntimeHostSupportModules
+  createRuntimeHostSupportBundle
 } from "./runtime-host-modules.js";
 import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
-import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
 const require = createRequire(import.meta.url);
@@ -184,15 +183,13 @@ const agentModules = createRuntimeHostAgentModules({
     listVisibleRefs: electronDeixisHost.listVisibleRefs
   }
 });
-const supportModules = createRuntimeHostSupportModules({
+const supportBundle = createRuntimeHostSupportBundle({
   plasticDir,
   getBuildStatus: buildStatus,
   getHost: hostStatus.host,
   runCommand: runLocalCommand,
-  getDiagnostics: hostStatus.diagnostics
-});
-const runtimeHealthModule = createRuntimeHealthModule({
-  hostChecks: [
+  getDiagnostics: hostStatus.diagnostics,
+  healthChecks: [
     { id: "deixis:listVisibleRefs", run: async () => ({ windows: (await electronDeixisHost.listVisibleRefs()).length }) },
     { id: "build:status", run: () => buildStatus() },
     { id: "codex:status", run: () => codexAdapter.status() },
@@ -208,10 +205,10 @@ const codexAgentBackendModule: RuntimeModule = {
 const startupModules = createRuntimeHostStartupModules({
   projection: projectionModules,
   agent: agentModules,
-  support: supportModules,
+  support: supportBundle.support,
   capability: capabilityModules,
   agentBackend: codexAgentBackendModule,
-  health: runtimeHealthModule
+  health: supportBundle.health
 });
 const transports = await startRuntimeHostControlPlane({
   workspaceDir,

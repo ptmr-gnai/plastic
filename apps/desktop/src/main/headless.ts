@@ -6,10 +6,9 @@ import {
   createRuntimeHostProjectionModules,
   createRuntimeHostProjectionResource,
   createRuntimeHostStartupModules,
-  createRuntimeHostSupportModules
+  createRuntimeHostSupportBundle
 } from "./runtime-host-modules.js";
 import { startRuntimeHostControlPlane } from "./runtime-host-control-plane.js";
-import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 
 const {
   hostConfig,
@@ -68,15 +67,13 @@ const agentModules = createRuntimeHostAgentModules({
   orient: { workspaceDir }
 });
 const headlessDiagnostics = hostStatus.diagnostics;
-const supportModules = createRuntimeHostSupportModules({
+const supportBundle = createRuntimeHostSupportBundle({
   plasticDir,
   getBuildStatus: buildStatus,
   getHost: hostStatus.host,
   runCommand: runLocalCommand,
-  getDiagnostics: () => headlessDiagnostics()
-});
-const runtimeHealthModule = createRuntimeHealthModule({
-  hostChecks: [
+  getDiagnostics: () => headlessDiagnostics(),
+  healthChecks: [
     { id: "build:status", run: () => buildStatus() },
     { id: "diagnostics:status", run: () => headlessDiagnostics() },
     { id: "agent-backend:fallback", run: () => runPromise(methods.call("codex/status", {})) }
@@ -86,9 +83,9 @@ const capabilityModules = createRuntimeHostCapabilityModules();
 const startupModules = createRuntimeHostStartupModules({
   projection: projectionModules,
   agent: agentModules,
-  support: supportModules,
+  support: supportBundle.support,
   capability: capabilityModules,
-  health: runtimeHealthModule
+  health: supportBundle.health
 });
 const transports = await startRuntimeHostControlPlane({
   workspaceDir,

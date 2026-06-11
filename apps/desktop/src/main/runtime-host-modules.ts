@@ -5,6 +5,7 @@ import { createExtensionAuthoringModule } from "./extension-authoring-methods.js
 import { createRendererControlModule } from "./renderer-control-methods.js";
 import { createRuntimeBuildModule, type RuntimeCommandResult } from "./runtime-build-methods.js";
 import { createRuntimeDiagnosticsModule } from "./runtime-diagnostics-methods.js";
+import { createRuntimeHealthModule } from "./runtime-health-methods.js";
 import { createSnapshotAppDetails, decorateRuntimeState } from "./runtime-host-status.js";
 import type { createRuntimeHostConfig } from "./runtime-host-config.js";
 import { createRuntimeHostModule } from "./runtime-host-methods.js";
@@ -120,6 +121,13 @@ export const createRuntimeHostSupportModules = (input: {
     getDiagnostics: input.getDiagnostics
   }),
   extensionAuthoring: createExtensionAuthoringModule({ plasticDir: input.plasticDir })
+});
+
+export const createRuntimeHostSupportBundle = (input: Parameters<typeof createRuntimeHostSupportModules>[0] & {
+  healthChecks?: NonNullable<Parameters<typeof createRuntimeHealthModule>[0]>["hostChecks"];
+}) => ({
+  support: createRuntimeHostSupportModules(input),
+  health: createRuntimeHealthModule({ hostChecks: input.healthChecks ?? [] })
 });
 
 export const createRuntimeHostStartupModules = (input: {
