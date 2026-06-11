@@ -31,6 +31,14 @@ export const checkMethodRegistryHealth = (
 ) => {
   const capabilityIds = new Set(capabilities.map((capability) => capability.id));
   const methodIds = new Set(methods.map((method) => method.id));
+  const invalidIdentity = methods
+    .filter((method) =>
+      !method.id
+      || !method.title
+      || !method.owner?.kind
+      || !method.owner?.id
+    )
+    .map((method) => method.id || "<missing-id>");
   const missingAvailability = methods
     .filter((method) => !method.availability?.status)
     .map((method) => method.id);
@@ -46,6 +54,9 @@ export const checkMethodRegistryHealth = (
       .map((capabilityId) => `${method.id}:${capabilityId}`)
   );
   const missingRequiredMethods = requiredRuntimeMethods.filter((id) => !methodIds.has(id));
+  if (invalidIdentity.length > 0) {
+    throw new Error(`Methods with invalid identity metadata: ${invalidIdentity.join(", ")}`);
+  }
   if (missingAvailability.length > 0) {
     throw new Error(`Methods missing availability: ${missingAvailability.join(", ")}`);
   }
@@ -60,6 +71,7 @@ export const checkMethodRegistryHealth = (
   }
   return {
     count: methods.length,
+    invalidIdentity,
     missingAvailability,
     invalidAvailabilityStatuses,
     missingReferencedCapabilities,

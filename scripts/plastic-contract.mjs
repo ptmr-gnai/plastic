@@ -465,6 +465,7 @@ await check("plastic/selfTest", async () => {
   const selfTest = await rpc("plastic/selfTest");
   assert(selfTest.ok === true, "plastic/selfTest failed");
   const methodCheck = selfTest.checks?.find((candidate) => candidate.id === "methods:list");
+  assert(methodCheck?.details?.invalidIdentity?.length === 0, "plastic/selfTest method identity check failed");
   assert(methodCheck?.details?.missingAvailability?.length === 0, "plastic/selfTest method availability check failed");
   assert(methodCheck.details.invalidAvailabilityStatuses?.length === 0, "plastic/selfTest method availability status check failed");
   assert(methodCheck.details.missingReferencedCapabilities?.length === 0, "plastic/selfTest method capability reference check failed");
