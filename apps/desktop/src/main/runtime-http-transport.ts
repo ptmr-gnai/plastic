@@ -1,6 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
-  buildPlasticState,
   type EventStore,
   type MethodRegistry
 } from "@plastic/core";
@@ -147,12 +146,12 @@ const handleRuntimeGet = async (context: {
     return true;
   }
   if (request.url === "/state") {
-    const state = await input.runPromise(buildPlasticState(input.eventStore, input.methods));
+    const state = await input.runPromise(input.methods.call("plastic/state", {}));
     sendJson(response, 200, { ok: true, value: state }, corsOrigin);
     return true;
   }
   if (request.url === "/methods") {
-    const value = await input.runPromise(input.methods.list());
+    const value = await input.runPromise(input.methods.call("plastic/methods", {}));
     sendJson(response, 200, { ok: true, value }, corsOrigin);
     return true;
   }

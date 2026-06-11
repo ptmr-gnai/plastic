@@ -32,6 +32,8 @@ await check("plastic/state", async () => {
   assert(state.controlPlane.runtime.rpcPath === "/rpc", "state runtime control plane rpcPath mismatch");
   assert(state.controlPlane?.build?.transport === "http", "state missing build control plane");
   assert(state.controlPlane.build.rpcPath === "/rpc", "state build control plane rpcPath mismatch");
+  assert(runtimeState.value?.controlPlane?.runtime?.transport === "http", "runtime /state missing runtime control plane");
+  assert(runtimeState.value.controlPlane.runtime.rpcPath === state.controlPlane.runtime.rpcPath, "runtime /state control plane mismatch");
   const panelResources = Array.isArray(state.panels)
     ? state.panels
     : assertArray(state.resources, "state.resources is not an array")
@@ -54,6 +56,10 @@ await check("plastic/methods", async () => {
   );
   const runtimeMethodIds = runtimeItems.map((method) => method.id).sort();
   assert(JSON.stringify(runtimeMethodIds) === JSON.stringify(methodIds), "runtime /methods ids diverged from plastic/methods");
+  for (const method of runtimeItems.slice(0, 12)) {
+    assert(method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id), `/methods ${method.id} missing describe link`);
+    assert(method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id), `/methods ${method.id} missing invoke link`);
+  }
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   for (const method of items.slice(0, 12)) {
     assert(method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id), `${method.id} missing describe link`);
