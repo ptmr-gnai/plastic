@@ -112,6 +112,20 @@ export const assertArray = (value, message) => {
 
 export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) => {
   const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
+  const stableValue = (value) => {
+    if (Array.isArray(value)) {
+      return value.map(stableValue);
+    }
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([key, nested]) => [key, stableValue(nested)])
+      );
+    }
+    return value;
+  };
+  const stableJson = (value) => JSON.stringify(stableValue(value));
   for (const id of sampleIds) {
     const listed = byId[id];
     assert(listed, `plastic/methods missing ${id}`);
@@ -124,6 +138,12 @@ export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) =
       described.availability?.status === listed.availability?.status,
       `${id} describe availability mismatch`
     );
+    assert(stableJson(described.inputSchema) === stableJson(listed.inputSchema), `${id} describe inputSchema mismatch`);
+    assert(stableJson(described.outputSchema) === stableJson(listed.outputSchema), `${id} describe outputSchema mismatch`);
+    assert(stableJson(described.examples) === stableJson(listed.examples), `${id} describe examples mismatch`);
+    assert(stableJson(described.effects) === stableJson(listed.effects), `${id} describe effects mismatch`);
+    assert(stableJson(described.reversibility) === stableJson(listed.reversibility), `${id} describe reversibility mismatch`);
+    assert(stableJson(described.links) === stableJson(listed.links), `${id} describe links mismatch`);
   }
 };
 

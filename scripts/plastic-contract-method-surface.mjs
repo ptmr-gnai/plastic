@@ -97,7 +97,7 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
     JSON.stringify(methodIds) === JSON.stringify(expectedMethodIds),
     `${label} method id surface changed: ${methodSurfaceDiff(methodIds, expectedMethodIds)}`
   );
-  for (const method of methods.slice(0, 12)) {
+  for (const method of methods) {
     assert(
       method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id),
       `${label} ${method.id} missing describe link`
