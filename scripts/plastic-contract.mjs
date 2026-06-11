@@ -467,6 +467,11 @@ await check("plastic/selfTest", async () => {
   const capabilityCheck = selfTest.checks?.find((candidate) => candidate.id === "capabilities:list");
   assert(capabilityCheck?.details?.missingRequiredCapabilities?.length === 0, "plastic/selfTest required capability check failed");
   assert(capabilityCheck.details.invalidStatuses?.length === 0, "plastic/selfTest capability status check failed");
+  const moduleCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-modules:map");
+  assert(moduleCheck?.details?.missingRequiredModules?.length === 0, "plastic/selfTest required module check failed");
+  assert(moduleCheck.details.missingAgentBackend === false, "plastic/selfTest agent backend module check failed");
+  assert(moduleCheck.details.missingMethodIds?.length === 0, "plastic/selfTest module methodIds check failed");
+  assert(moduleCheck.details.missingContributions?.length === 0, "plastic/selfTest module contribution check failed");
   return {
     checks: selfTest.checks?.length ?? null
   };

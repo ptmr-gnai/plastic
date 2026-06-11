@@ -7,10 +7,30 @@ export const requiredRuntimeMethods = [
   "methods/describe",
   "rpc/call",
   "runtime/capabilities",
+  "runtime/modules",
   "panels/create",
   "events/list",
   "events/timeline",
   "plastic/selfTest"
+];
+
+const requiredRuntimeModules = [
+  "runtime-state",
+  "runtime-snapshot",
+  "agent-workbench",
+  "agent-orient",
+  "runtime-build",
+  "runtime-diagnostics",
+  "extension-authoring",
+  "renderer-control",
+  "runtime-control",
+  "panel-control",
+  "window-capability",
+  "deixis",
+  "runtime-health",
+  "extension-runtime",
+  "panel-mailbox",
+  "runtime-modules"
 ];
 
 export const requiredRuntimeCapabilities = [
@@ -92,4 +112,49 @@ export const checkCapabilityRegistryHealth = (capabilities: RuntimeCapability[])
     throw new Error(`Required capabilities missing: ${missingRequiredCapabilities.join(", ")}`);
   }
   return { count: capabilities.length, invalidStatuses, missingRequiredCapabilities };
+};
+
+export const checkRuntimeModuleMapHealth = (modules: unknown) => {
+  const items = Array.isArray((modules as { items?: unknown })?.items)
+    ? (modules as { items: unknown[] }).items
+    : [];
+  const ids = new Set(items.map((item) => (item as { id?: string }).id).filter(Boolean));
+  const missingRequiredModules = requiredRuntimeModules.filter((id) => !ids.has(id));
+  const missingAgentBackend = !items.some((item) =>
+    ["agent-backend-codex", "agent-backend-fallback"].includes((item as { id?: string }).id ?? "")
+  );
+  const missingMethodIds = items
+    .filter((item) => !Array.isArray((item as { methodIds?: unknown }).methodIds))
+    .map((item) => (item as { id?: string }).id ?? "<missing-id>");
+  const missingContributions = [
+    moduleMethodMissing(items, "runtime-control", "plastic/methods"),
+    moduleMethodMissing(items, "panel-control", "panels/create"),
+    moduleMethodMissing(items, "runtime-modules", "runtime/modules")
+  ].filter((item): item is string => Boolean(item));
+  if (missingRequiredModules.length > 0) {
+    throw new Error(`Required runtime modules missing: ${missingRequiredModules.join(", ")}`);
+  }
+  if (missingAgentBackend) {
+    throw new Error("Runtime module map missing agent backend module");
+  }
+  if (missingMethodIds.length > 0) {
+    throw new Error(`Runtime modules missing methodIds: ${missingMethodIds.join(", ")}`);
+  }
+  if (missingContributions.length > 0) {
+    throw new Error(`Runtime module method contributions missing: ${missingContributions.join(", ")}`);
+  }
+  return {
+    count: items.length,
+    missingRequiredModules,
+    missingAgentBackend,
+    missingMethodIds,
+    missingContributions
+  };
+};
+
+const moduleMethodMissing = (items: unknown[], moduleId: string, methodId: string) => {
+  const module = items.find((item) => (item as { id?: string }).id === moduleId) as { methodIds?: unknown } | undefined;
+  return Array.isArray(module?.methodIds) && module.methodIds.includes(methodId)
+    ? null
+    : `${moduleId}:${methodId}`;
 };

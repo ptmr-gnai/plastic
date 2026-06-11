@@ -6,6 +6,7 @@ import {
 } from "@plastic/core";
 import {
   checkCapabilityRegistryHealth,
+  checkRuntimeModuleMapHealth,
   checkMethodRegistryHealth
 } from "./runtime-health-checks.js";
 import { noInputSchema } from "./runtime-method-metadata.js";
@@ -72,6 +73,9 @@ export const createRuntimeHealthModule = (input: {
             await record("event-store:list", () => ({ count: events.length }));
             await record("methods:list", () => checkMethodRegistryHealth(methodList, capabilityList));
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
+            await record("runtime-modules:map", async () =>
+              checkRuntimeModuleMapHealth(await runPromise(methods.call("runtime/modules", {})))
+            );
             await record("panels:project", () => ({ count: projectPanels(events).length }));
             await record("windows:project", () => ({ count: projectWindows(events).length }));
             await record("extensions:project", () => ({ count: projectExtensions(events).length }));
