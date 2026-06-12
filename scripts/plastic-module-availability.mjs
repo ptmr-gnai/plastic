@@ -1,4 +1,4 @@
-export const expectedRuntimeModuleIds = [
+const fallbackRuntimeModuleIds = [
   "runtime-state",
   "runtime-snapshot",
   "agent-workbench",
@@ -19,9 +19,21 @@ export const expectedRuntimeModuleIds = [
   "runtime-modules"
 ];
 
-export const assertRuntimeModuleOrder = ({ assert, modules, source }) => {
+let runtimeModuleIdsPromise;
+
+export const expectedRuntimeModuleIds = async () => {
+  if (!runtimeModuleIdsPromise) {
+    runtimeModuleIdsPromise = import("../apps/desktop/dist-electron/main/runtime-module-plan.js")
+      .then((module) => module.standardRuntimeModuleIds ?? fallbackRuntimeModuleIds)
+      .catch(() => fallbackRuntimeModuleIds);
+  }
+  return runtimeModuleIdsPromise;
+};
+
+export const assertRuntimeModuleOrder = async ({ assert, modules, source }) => {
+  const expectedIds = await expectedRuntimeModuleIds();
   assert(
-    JSON.stringify(modules.ids) === JSON.stringify(expectedRuntimeModuleIds),
+    JSON.stringify(modules.ids) === JSON.stringify(expectedIds),
     `${source} module order diverged from shared runtime plan`
   );
   for (const [index, module] of modules.items.entries()) {

@@ -232,8 +232,8 @@ await check("runtime/modules", async () => {
   const durable = await assertRuntimeStartedModuleInventory({ rpc });
   runtimeModules = live;
   assertMatchingModuleInventories({ live, durable });
-  assertRuntimeModuleOrder({ assert, modules: live, source: "runtime/modules" });
-  assertRuntimeModuleOrder({ assert, modules: durable, source: "runtime.started modules" });
+  await assertRuntimeModuleOrder({ assert, modules: live, source: "runtime/modules" });
+  await assertRuntimeModuleOrder({ assert, modules: durable, source: "runtime.started modules" });
   assertModuleAvailabilitySummaries({ assert, modules: live, methods, source: "runtime/modules" });
   assertModuleAvailabilitySummaries({ assert, modules: durable, methods, source: "runtime.started modules" });
   await assertModuleMethodDiscoveryParity({ methods, modules: live, rpc });
