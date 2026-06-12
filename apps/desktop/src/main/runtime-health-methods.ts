@@ -23,6 +23,24 @@ type HostHealthCheck = {
   run: () => Promise<unknown> | unknown;
 };
 
+const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
+  const verdict = (auditStatus as { verdict?: Record<string, unknown> })?.verdict;
+  const status = verdict?.status;
+  const actions = verdict?.actions;
+  if (!["missing", "passed", "degraded", "failed"].includes(String(status))) {
+    throw new Error("runtime/auditStatus returned an invalid verdict status");
+  }
+  if (!Array.isArray(actions)) {
+    throw new Error("runtime/auditStatus verdict actions are missing");
+  }
+  return {
+    available: (auditStatus as { available?: unknown }).available === true,
+    status,
+    diagnosisCode: (verdict?.diagnosis as { code?: unknown } | undefined)?.code ?? null,
+    actions: actions.length
+  };
+};
+
 const runtimeHealthAvailability = {
   status: "available" as const,
   notes: "Self-test is a shared runtime health primitive in headed and headless modes."
@@ -75,6 +93,9 @@ export const createRuntimeHealthModule = (input: {
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
             await record("runtime-modules:map", async () =>
               checkRuntimeModuleMapHealth(await runPromise(methods.call("runtime/modules", {})))
+            );
+            await record("runtime-audit:status", async () =>
+              checkRuntimeAuditStatusHealth(await runPromise(methods.call("runtime/auditStatus", {})))
             );
             await record("panels:project", () => ({ count: projectPanels(events).length }));
             await record("windows:project", () => ({ count: projectWindows(events).length }));
