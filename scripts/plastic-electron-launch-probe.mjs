@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 
@@ -18,10 +18,26 @@ const relevantEnv = Object.fromEntries(
     .sort(([left], [right]) => left.localeCompare(right))
 );
 
+const readChildCommand = (pid) =>
+  new Promise((resolveCommand) => {
+    if (!pid) {
+      resolveCommand(null);
+      return;
+    }
+    execFile("ps", ["-o", "pid=,ppid=,state=,command=", "-p", String(pid)], (error, stdout, stderr) => {
+      resolveCommand({
+        ok: !error,
+        stdout: stdout.trim(),
+        stderr: stderr.trim()
+      });
+    });
+  });
+
 const probeLaunch = (label, args) =>
   new Promise((resolveProbe) => {
     let stdout = "";
     let stderr = "";
+    let childCommand = null;
     const startedAt = Date.now();
     const child = spawn(electronExecutable, args, {
       cwd: desktopDir,
@@ -32,6 +48,9 @@ const probeLaunch = (label, args) =>
         VITE_DEV_SERVER_URL: process.env.VITE_DEV_SERVER_URL ?? "http://127.0.0.1:5173"
       }
     });
+    setTimeout(async () => {
+      childCommand = await readChildCommand(child.pid);
+    }, Math.min(500, probeTimeoutMs));
     const timeout = setTimeout(() => {
       child.kill();
     }, probeTimeoutMs);
@@ -56,6 +75,7 @@ const probeLaunch = (label, args) =>
         signal,
         sawEntry: combined.includes("[plastic:entry]"),
         sawPackageEntry: combined.includes("[plastic:entry-cjs]"),
+        command: childCommand,
         stdout: stdout.slice(-4000),
         stderr: stderr.slice(-4000),
         ms: Date.now() - startedAt
