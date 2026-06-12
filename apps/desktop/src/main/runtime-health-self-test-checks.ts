@@ -1,9 +1,5 @@
-import {
-  type PlasticEvent,
-  type PlasticExtension,
-  type PlasticPanel,
-  type PlasticWindow
-} from "@plastic/core";
+import type { PlasticEvent, PlasticExtension, PlasticPanel, PlasticWindow } from "@plastic/core";
+import { invalidControlPlaneUrls } from "./runtime-health-control-plane-checks.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
 const requiredExtensionMethods = [
@@ -217,8 +213,16 @@ export const checkProjectionDiscoveryHealth = (
   const snapshotLinks = Array.isArray(snapshotRecord.links) ? snapshotRecord.links.map(asRecord) : [];
   const snapshotMethods = asRecord(snapshotRecord.methods);
   const snapshotMethodItems = Array.isArray(snapshotMethods.items) ? snapshotMethods.items.map(asRecord) : [];
+  const invalidStateControlPlaneUrls = invalidControlPlaneUrls(stateControlPlane);
+  const invalidSnapshotControlPlaneUrls = invalidControlPlaneUrls(snapshotControlPlane);
   if (asRecord(stateControlPlane.runtime).transport !== "http" || asRecord(snapshotControlPlane.runtime).transport !== "http") {
     throw new Error("state/snapshot projections must expose the shared runtime HTTP control plane");
+  }
+  if (invalidStateControlPlaneUrls.length > 0) {
+    throw new Error(`plastic/state control plane URLs are invalid: ${invalidStateControlPlaneUrls.join(", ")}`);
+  }
+  if (invalidSnapshotControlPlaneUrls.length > 0) {
+    throw new Error(`plastic/snapshot control plane URLs are invalid: ${invalidSnapshotControlPlaneUrls.join(", ")}`);
   }
   if (!serviceResources.some((resource) => hasLinkAndAction(resource, "runtime/host"))) {
     throw new Error("plastic/state service resource missing runtime/host affordances");
@@ -240,7 +244,9 @@ export const checkProjectionDiscoveryHealth = (
   return {
     serviceResources: serviceResources.length,
     snapshotLinks: snapshotLinks.length,
-    methods: snapshotMethodItems.length
+    methods: snapshotMethodItems.length,
+    invalidStateControlPlaneUrls,
+    invalidSnapshotControlPlaneUrls
   };
 };
 
@@ -480,11 +486,9 @@ const normalizeCapabilities = (capabilities: unknown[]) =>
     })
     .sort((left, right) => String(left.id).localeCompare(String(right.id)));
 
-const hasLinkAndAction = (resource: Record<string, unknown>, method: string) => {
-  const links = Array.isArray(resource.links) ? resource.links.map(asRecord) : [];
-  const actions = Array.isArray(resource.actions) ? resource.actions.map(asRecord) : [];
-  return links.some((link) => link.method === method) && actions.some((action) => action.method === method);
-};
+const hasLinkAndAction = (resource: Record<string, unknown>, method: string) =>
+  (Array.isArray(resource.links) ? resource.links.map(asRecord) : []).some((link) => link.method === method)
+  && (Array.isArray(resource.actions) ? resource.actions.map(asRecord) : []).some((action) => action.method === method);
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
