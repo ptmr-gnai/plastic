@@ -1,4 +1,5 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
+import { assertAgentTransports } from "./plastic-contract-agent-transports.mjs";
 
 export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode }) => {
   assert(workbench?.app?.mode === mode, "workbench app mode does not match state");
@@ -94,14 +95,4 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation 
     visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
     recommendedActions: orientation.capabilities.recommendedActions.length
   };
-};
-
-const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl, source }) => {
-  const items = assertArray(transports, `${source} agentTransports is not an array`);
-  const http = items.find((transport) => transport.id === "http-rpc");
-  const mcp = items.find((transport) => transport.id === "mcp-stdio");
-  assert(http?.methodRegistry === "shared" && http.rpcUrl === rpcUrl, `${source} HTTP transport mismatch`);
-  assert(mcp?.methodRegistry === "shared", `${source} MCP transport must use shared registry`);
-  assert(mcp.command === "node" && mcp.args?.includes("scripts/plastic-mcp-server.mjs"), `${source} MCP command mismatch`);
-  assert(mcp.env?.PLASTIC_RPC_URL === rpcUrl, `${source} MCP RPC URL mismatch`);
 };
