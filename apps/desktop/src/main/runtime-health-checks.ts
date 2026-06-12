@@ -1,4 +1,4 @@
-import type { PlasticMethod } from "@plastic/core";
+import type { PlasticEvent, PlasticMethod } from "@plastic/core";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
 export const requiredRuntimeMethods = [
@@ -287,6 +287,55 @@ export const checkRuntimeModuleCoverageHealth = (modules: unknown, methods: Plas
   };
 };
 
+export const checkRuntimeStartedCapabilityParityHealth = (
+  capabilities: RuntimeCapability[],
+  events: PlasticEvent[]
+) => {
+  const latestStarted = latestRuntimeStarted(events);
+  const durable = capabilitiesFromStarted(latestStarted);
+  const livePairs = capabilityPairs(capabilities);
+  const durablePairs = capabilityPairs(durable);
+  const capabilitiesMatch = stableJson(livePairs) === stableJson(durablePairs);
+  if (!latestStarted) {
+    throw new Error("runtime.started event is missing");
+  }
+  if (!capabilitiesMatch) {
+    throw new Error("runtime.started capability inventory diverged from live runtime/capabilities");
+  }
+  return {
+    eventId: latestStarted.id,
+    liveCapabilities: livePairs.length,
+    durableCapabilities: durablePairs.length,
+    capabilitiesMatch
+  };
+};
+
+export const checkRuntimeStartedModuleParityHealth = (
+  modules: unknown,
+  events: PlasticEvent[]
+) => {
+  const latestStarted = latestRuntimeStarted(events);
+  const live = moduleItems(modules);
+  const durable = moduleItems(asRecord(latestStarted?.payload).modules);
+  const idsMatch = stableJson(live.map((item) => item.id)) === stableJson(durable.map((item) => item.id));
+  const methodsMatch = stableJson(moduleMethodPairs(live)) === stableJson(moduleMethodPairs(durable));
+  const availabilityMatch = stableJson(moduleAvailabilityPairs(live)) === stableJson(moduleAvailabilityPairs(durable));
+  if (!latestStarted) {
+    throw new Error("runtime.started event is missing");
+  }
+  if (!idsMatch || !methodsMatch || !availabilityMatch) {
+    throw new Error("runtime.started module inventory diverged from live runtime/modules");
+  }
+  return {
+    eventId: latestStarted.id,
+    liveModules: live.length,
+    durableModules: durable.length,
+    idsMatch,
+    methodsMatch,
+    availabilityMatch
+  };
+};
+
 const hasModuleAvailabilitySummary = (item: unknown) => {
   const availability = (item as { availability?: Record<string, unknown> }).availability;
   return typeof availability?.available === "number"
@@ -312,3 +361,39 @@ const moduleMethodMissing = (items: unknown[], moduleId: string, methodId: strin
     ? null
     : `${moduleId}:${methodId}`;
 };
+
+const latestRuntimeStarted = (events: PlasticEvent[]) =>
+  [...events].reverse().find((event) => event.type === "runtime.started");
+
+const capabilitiesFromStarted = (event: PlasticEvent | undefined) => {
+  const capabilities = asRecord(event?.payload).capabilities;
+  return Array.isArray(capabilities) ? capabilities as RuntimeCapability[] : [];
+};
+
+const capabilityPairs = (capabilities: Array<{ id?: unknown; status?: unknown }>) =>
+  capabilities
+    .map((capability) => [capability.id, capability.status])
+    .sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+
+const moduleItems = (modules: unknown) => {
+  if (Array.isArray(modules)) {
+    return modules.map(asRecord);
+  }
+  const items = asRecord(modules).items;
+  return Array.isArray(items) ? items.map(asRecord) : [];
+};
+
+const moduleMethodPairs = (items: Record<string, unknown>[]) =>
+  items
+    .map((item) => [item.id, [...(Array.isArray(item.methodIds) ? item.methodIds : [])].sort()])
+    .sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+
+const moduleAvailabilityPairs = (items: Record<string, unknown>[]) =>
+  items
+    .map((item) => [item.id, item.availability ?? null])
+    .sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+
+const stableJson = (value: unknown) => JSON.stringify(value);
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? value as Record<string, unknown> : {};

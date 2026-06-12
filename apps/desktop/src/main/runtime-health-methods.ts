@@ -10,6 +10,8 @@ import {
   checkMethodAvailabilityCapabilityHealth,
   checkRuntimeModuleCoverageHealth,
   checkRuntimeModuleMapHealth,
+  checkRuntimeStartedCapabilityParityHealth,
+  checkRuntimeStartedModuleParityHealth,
   checkMethodRegistryHealth
 } from "./runtime-health-checks.js";
 import {
@@ -93,16 +95,11 @@ export const createRuntimeHealthModule = (input: {
             await record("event-store:list", () => ({ count: events.length }));
             await record("methods:list", () => checkMethodRegistryHealth(methodList, capabilityList));
             await record("methods:affordances", () => checkMethodAffordanceHealth(methodList));
-            await record("methods:availability-capabilities", () =>
-              checkMethodAvailabilityCapabilityHealth(methodList, capabilityList)
-            );
+            await record("methods:availability-capabilities", () => checkMethodAvailabilityCapabilityHealth(methodList, capabilityList));
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
+            await record("runtime-started:capabilities", () => checkRuntimeStartedCapabilityParityHealth(capabilityList, events));
             await record("capabilities:projection", async () =>
-              checkCapabilityProjectionHealth(
-                capabilityList,
-                await runPromise(methods.call("runtime/capabilities", {})),
-                events
-              )
+              checkCapabilityProjectionHealth(capabilityList, await runPromise(methods.call("runtime/capabilities", {})), events)
             );
             await record("projections:discovery", async () =>
               checkProjectionDiscoveryHealth(
@@ -117,6 +114,7 @@ export const createRuntimeHealthModule = (input: {
             const runtimeModules = await runPromise(methods.call("runtime/modules", {}));
             await record("runtime-modules:map", async () => checkRuntimeModuleMapHealth(runtimeModules));
             await record("runtime-modules:coverage", () => checkRuntimeModuleCoverageHealth(runtimeModules, methodList));
+            await record("runtime-started:modules", () => checkRuntimeStartedModuleParityHealth(runtimeModules, events));
             await record("runtime-started:descriptor", () => checkRuntimeStartedDescriptorHealth(events));
             await record("runtime-host:identity", async () => checkRuntimeHostIdentityHealth(await runPromise(methods.call("runtime/host", {})), events));
             await record("runtime-audit:status", async () => checkRuntimeAuditStatusHealth(await runPromise(methods.call("runtime/auditStatus", {}))));

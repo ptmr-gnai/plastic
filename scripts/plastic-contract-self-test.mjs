@@ -16,6 +16,8 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   const capabilityCheck = selfTest.checks?.find((candidate) => candidate.id === "capabilities:list");
   assert(capabilityCheck?.details?.missingRequiredCapabilities?.length === 0, "plastic/selfTest required capability check failed");
   assert(capabilityCheck.details.invalidStatuses?.length === 0, "plastic/selfTest capability status check failed");
+  const startedCapabilitiesCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-started:capabilities");
+  assert(startedCapabilitiesCheck?.details?.capabilitiesMatch === true, "plastic/selfTest runtime.started capabilities diverged from live capabilities");
   const moduleCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-modules:map");
   assert(moduleCheck?.details?.missingRequiredModules?.length === 0, "plastic/selfTest required module check failed");
   assert(moduleCheck.details.missingAgentBackend === false, "plastic/selfTest agent backend module check failed");
@@ -24,6 +26,10 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(moduleCheck.details.missingAvailabilitySummary?.length === 0, "plastic/selfTest module availability summary check failed");
   assert(moduleCheck.details.invalidAvailabilityCounts?.length === 0, "plastic/selfTest module availability count check failed");
   assert(moduleCheck.details.missingContributions?.length === 0, "plastic/selfTest module contribution check failed");
+  const startedModulesCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-started:modules");
+  assert(startedModulesCheck?.details?.idsMatch === true, "plastic/selfTest runtime.started module ids diverged");
+  assert(startedModulesCheck.details.methodsMatch === true, "plastic/selfTest runtime.started module methods diverged");
+  assert(startedModulesCheck.details.availabilityMatch === true, "plastic/selfTest runtime.started module availability diverged");
   const startedCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-started:descriptor");
   assert(startedCheck?.details?.invalidStartedControlPlaneUrls?.length === 0, "plastic/selfTest runtime.started control-plane URLs are invalid");
   const hostIdentityCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-host:identity");
