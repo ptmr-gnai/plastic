@@ -237,6 +237,9 @@ export const checkProjectionDiscoveryHealth = (
   if (!serviceResources.some((resource) => hasLinkAndAction(resource, "runtime/capabilities"))) {
     throw new Error("plastic/state service resource missing runtime/capabilities affordances");
   }
+  if (!serviceResources.some((resource) => hasLinkAndAction(resource, "plastic/selfTest"))) {
+    throw new Error("plastic/state service resource missing plastic/selfTest affordances");
+  }
   for (const method of ["runtime/host", "runtime/capabilities", "events/list", "plastic/selfTest"]) {
     if (!snapshotLinks.some((link) => link.method === method)) {
       throw new Error(`plastic/snapshot missing ${method} link`);

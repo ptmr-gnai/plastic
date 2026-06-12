@@ -75,6 +75,7 @@ await check("plastic/state", async () => {
   const serviceResources = assertArray(state.resources, "state.resources is not an array").filter((resource) => resource.kind === "service");
   assert(serviceResources.some((resource) => resource.links?.some((link) => link.method === "runtime/host") && resource.actions?.some((action) => action.method === "runtime/host")), "state service resource missing host affordances");
   assert(serviceResources.some((resource) => resource.links?.some((link) => link.method === "runtime/capabilities") && resource.actions?.some((action) => action.method === "runtime/capabilities")), "state service resource missing capabilities affordances");
+  assert(serviceResources.some((resource) => resource.links?.some((link) => link.method === "plastic/selfTest") && resource.actions?.some((action) => action.method === "plastic/selfTest")), "state service resource missing self-test affordances");
   assert(panelResources.length > 0, "state does not expose panels");
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
   assert(runtimeStartedControlPlane.mode === state.app.mode, "runtime.started mode mismatch");

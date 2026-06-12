@@ -54,7 +54,8 @@ export const buildPlasticState = (
             { rel: "events", href: "events/list", method: "events/list" },
             { rel: "extensions", href: "extensions/list", method: "extensions/list" },
             { rel: "panels", href: "panels/list", method: "panels/list" },
-            { rel: "windows", href: "windows/list", method: "windows/list" }
+            { rel: "windows", href: "windows/list", method: "windows/list" },
+            { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" }
           ],
           actions: [
             {
@@ -91,6 +92,14 @@ export const buildPlasticState = (
               description: "Read schema, examples, effects, and verification hints for one RPC method."
             }
           ]
+        },
+        {
+          id: "runtime-health",
+          kind: "service",
+          title: "Runtime health",
+          state: {},
+          links: [{ rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" }],
+          actions: [{ id: "run-self-test", title: "Run Plastic self-test", method: "plastic/selfTest" }]
         },
         {
           id: "extensions",
