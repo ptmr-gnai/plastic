@@ -29,6 +29,26 @@ const run = (command, args, options = {}) => {
   return child;
 };
 
+const runOnce = (command, args, options = {}) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+      ...options
+    });
+    const label = [command, ...args].join(" ");
+    console.log(`[plastic:dev] preflight ${label} pid=${child.pid ?? "unknown"}`);
+    child.on("exit", (code, signal) => {
+      console.log(`[plastic:dev] preflight exited ${label} code=${code ?? "null"} signal=${signal ?? "null"}`);
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(`${label} exited with ${code ?? signal ?? "unknown"}`));
+    });
+  });
+
 const cleanup = () => {
   for (const child of children) {
     child.kill();
@@ -55,6 +75,13 @@ while (!existsSync(electronMain)) {
   await delay(250);
 }
 console.log(`[plastic:dev] electron-main-ready path=${electronMain}`);
+await runOnce(electronExecutable, [electronMain], {
+  env: {
+    ...process.env,
+    ELECTRON_RUN_AS_NODE: "1",
+    PLASTIC_ELECTRON_ENTRY_PREFLIGHT: "1"
+  }
+});
 
 let viteReady = false;
 while (!viteReady) {

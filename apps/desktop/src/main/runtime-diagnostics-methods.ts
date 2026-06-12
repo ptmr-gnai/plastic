@@ -34,12 +34,25 @@ const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
   if (
     failurePhase === "electron"
     && hints.some((hint) => hint.includes("[plastic:entry]"))
+    && !hints.some((hint) => hint.includes("[plastic:entry-preflight]"))
     && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
   ) {
     return {
       code: "electron-main-entered-startup-missing",
       phase: "electron-runtime-bootstrap",
       summary: "Electron entered Plastic's main module, but runtime startup logs were not observed."
+    };
+  }
+  if (
+    failurePhase === "electron"
+    && hints.some((hint) => hint.includes("[plastic:entry-preflight]"))
+    && hints.some((hint) => hint.includes("electron-launch"))
+    && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
+  ) {
+    return {
+      code: "electron-app-main-not-entered",
+      phase: "electron-app-main-resolution",
+      summary: "The compiled Electron main bootstrap is runnable, but Electron app launch did not observe the main entry."
     };
   }
   if (
