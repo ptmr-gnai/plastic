@@ -92,6 +92,13 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
         command: "PLASTIC_ELECTRON_LAUNCH_MODE=package PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron",
         run: { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_LAUNCH_MODE: "package", PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE: "1" } },
         description: "Compares package launch behavior against compiled-main launch behavior while preserving full Electron diagnostics."
+      }),
+      auditAction({
+        id: "probe-electron-launch-targets",
+        title: "Probe Electron launch targets",
+        command: "node scripts/plastic-electron-launch-probe.mjs",
+        run: { command: "node", args: ["scripts/plastic-electron-launch-probe.mjs"] },
+        description: "Prints the Electron executable, package launch target, compiled-main target, and relevant launch env without starting the full validation loop."
       })
     ];
   }
