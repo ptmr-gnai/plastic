@@ -11,6 +11,7 @@ const rpcUrl = `${runtimeUrl}/rpc`;
 const parityBaseline = process.env.PLASTIC_METHOD_PARITY_OUT ?? ".plastic/tmp/headless-methods.json";
 const readinessTimeoutMs = Number(process.env.PLASTIC_VALIDATE_READY_TIMEOUT_MS ?? 90_000);
 const electronPreflightTimeoutMs = Number(process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? 10_000);
+const electronAppModeSmokeTimeoutMs = Number(process.env.PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS ?? 3_000);
 const validateScope = process.env.PLASTIC_VALIDATE_SCOPE ?? "all";
 const desktopDir = new URL("../apps/desktop/", import.meta.url).pathname;
 const desktopRequire = createRequire(new URL("../apps/desktop/package.json", import.meta.url));
@@ -159,7 +160,7 @@ const runElectronAppModeSmoke = async () => {
       ""
     ].join("\n"));
     console.log(`[plastic:validate-hosts] electron app-mode smoke ${smokeDir}`);
-    const result = await runWithTimeout(electronExecutable, [smokeDir], electronPreflightTimeoutMs, {
+    const result = await runWithTimeout(electronExecutable, [smokeDir], electronAppModeSmokeTimeoutMs, {
       cwd: smokeDir,
       env: {
         ...process.env,
