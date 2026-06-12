@@ -84,6 +84,10 @@ export const assertSelfTestDurableEvent = async ({ assert, assertArray, rpc, sel
     JSON.stringify(durableEvent.payload?.summary) === JSON.stringify(selfTest.summary),
     "plastic/selfTest durable summary diverged from RPC result"
   );
+  assert(
+    JSON.stringify(durableEvent.payload?.checks) === JSON.stringify(selfTest.checks),
+    "plastic/selfTest durable checks diverged from RPC result"
+  );
 };
 
 export const assertSelfTestHttpResources = async ({ assert, buildGet, runtimeGet, selfTest }) => {
