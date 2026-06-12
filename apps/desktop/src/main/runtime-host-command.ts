@@ -12,11 +12,11 @@ export type GitStatusResult = {
 };
 
 export const createWorkspaceCommandRunner = (workspaceDir: string) =>
-  (command: string, args: string[]): Promise<RuntimeCommandResult> =>
+  (command: string, args: string[], env: Record<string, string> = {}): Promise<RuntimeCommandResult> =>
     new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         cwd: workspaceDir,
-        env: process.env
+        env: { ...process.env, ...env }
       });
       let stdout = "";
       let stderr = "";

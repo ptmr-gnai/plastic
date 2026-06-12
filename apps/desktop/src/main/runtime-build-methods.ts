@@ -18,7 +18,7 @@ const runtimeBuildAvailability = {
 
 export const createRuntimeBuildModule = (input: {
   getStatus: () => unknown;
-  runCommand: (command: string, args: string[]) => Promise<RuntimeCommandResult>;
+  runCommand: (command: string, args: string[], env?: Record<string, string>) => Promise<RuntimeCommandResult>;
 }): RuntimeModule => ({
   id: "runtime-build",
   register: async ({ methods, runPromise, appendEvent }) => {

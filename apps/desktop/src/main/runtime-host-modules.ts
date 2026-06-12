@@ -156,7 +156,7 @@ export const createRuntimeHostSupportModules = (input: {
   plasticDir: string;
   getBuildStatus: () => unknown;
   getHost: () => Record<string, unknown>;
-  runCommand: (command: string, args: string[]) => Promise<RuntimeCommandResult>;
+  runCommand: (command: string, args: string[], env?: Record<string, string>) => Promise<RuntimeCommandResult>;
   getDiagnostics: () => unknown;
 }) => ({
   host: createRuntimeHostModule({
@@ -169,7 +169,8 @@ export const createRuntimeHostSupportModules = (input: {
   }),
   diagnostics: createRuntimeDiagnosticsModule({
     getDiagnostics: input.getDiagnostics,
-    plasticDir: input.plasticDir
+    plasticDir: input.plasticDir,
+    runCommand: input.runCommand
   }),
   extensionAuthoring: createExtensionAuthoringModule({ plasticDir: input.plasticDir })
 });

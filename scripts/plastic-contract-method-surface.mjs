@@ -78,6 +78,7 @@ export const expectedMethodIds = [
   "runtime/capabilities",
   "runtime/host",
   "runtime/modules",
+  "runtime/runAuditAction",
   "windows/create",
   "windows/focusPanel",
   "windows/list",

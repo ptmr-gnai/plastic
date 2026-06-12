@@ -1,8 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { MethodRegistry } from "@plastic/core";
 import { Effect } from "effect";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
-import type { RuntimeModule } from "./runtime-method-context.js";
+import type { RuntimeCommandResult } from "./runtime-build-methods.js";
+import type { AppendEvent, RunPromise, RuntimeModule } from "./runtime-method-context.js";
 
 const runtimeDiagnosticsAvailability = {
   status: "available" as const,
@@ -28,11 +30,18 @@ type AuditSummary = {
   results?: unknown;
 };
 
+type DiagnosticAction = {
+  id: string;
+  title: string;
+  command: string;
+  description: string;
+};
+
 const asStringArray = (value: unknown): Array<string> => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 const diagnosis = (code: string, phase: string | null, summary: string) => ({ code, phase, summary });
 
-const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>) => {
+const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Array<DiagnosticAction> => {
   if (diagnosisResult.code === "audit-missing") {
     return [
       {
@@ -189,65 +198,178 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
   return { status, usable, strictElectron, unified, failurePhase, diagnosis: diagnosisResult, hints, nextAction, actions: diagnosticActionsFor(diagnosisResult) };
 };
 
+const auditActionInputSchema = {
+  type: "object",
+  required: ["id"],
+  properties: {
+    id: {
+      type: "string",
+      description: "Action id from runtime/auditStatus.verdict.actions."
+    }
+  }
+};
+
+const commandForDiagnosticAction = (action: DiagnosticAction) => {
+  if (action.command === "pnpm plastic:audit-runtime-unification") {
+    return { command: "pnpm", args: ["plastic:audit-runtime-unification"] };
+  }
+  if (action.command === "PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron") {
+    return { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE: "1" } };
+  }
+  if (action.command === "PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS=10000 pnpm plastic:validate-electron") {
+    return { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS: "10000" } };
+  }
+  if (action.command === "PLASTIC_ELECTRON_LAUNCH_MODE=package PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron") {
+    return { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_LAUNCH_MODE: "package", PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE: "1" } };
+  }
+  throw new Error(`Unsupported diagnostic action command: ${action.command}`);
+};
+
+const createAuditStatusReader = (plasticDir: string) => async () => {
+  const path = join(plasticDir, "tmp", "runtime-unification-audit.json");
+  try {
+    const summary = JSON.parse(await readFile(path, "utf8")) as AuditSummary;
+    return { available: true, path, verdict: buildAuditVerdict(summary), summary };
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "ENOENT") {
+      return { available: false, path, verdict: buildAuditVerdict(null), summary: null };
+    }
+    throw error;
+  }
+};
+
+type ReadAuditStatus = ReturnType<typeof createAuditStatusReader>;
+
+const registerAppDiagnostics = async (input: {
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+  getDiagnostics: () => unknown;
+}) =>
+  input.runPromise(
+    input.methods.register({
+      id: "app/diagnostics",
+      title: "App diagnostics",
+      description: "Returns runtime host diagnostics for the current Plastic process.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeDiagnosticsAvailability,
+      inputSchema: noInputSchema,
+      examples: [
+        {
+          title: "Read host diagnostics",
+          input: {},
+          verifyWith: { method: "plastic/state", input: {} }
+        }
+      ],
+      effects: readOnlyEffects,
+      reversibility: readOnlyReversibility,
+      handler: () => Effect.sync(input.getDiagnostics)
+    })
+  );
+
+const registerAuditStatus = async (input: {
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+  readAuditStatus: ReadAuditStatus;
+}) =>
+  input.runPromise(
+    input.methods.register({
+      id: "runtime/auditStatus",
+      title: "Runtime audit status",
+      description: "Returns the latest persisted runtime unification audit summary, when one has been written.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeDiagnosticsAvailability,
+      inputSchema: noInputSchema,
+      examples: [
+        {
+          title: "Read latest runtime audit verdict",
+          input: {},
+          verifyWith: { method: "app/diagnostics", input: {} }
+        }
+      ],
+      effects: readOnlyEffects,
+      reversibility: readOnlyReversibility,
+      handler: () => Effect.promise(input.readAuditStatus)
+    })
+  );
+
+const registerRunAuditAction = async (input: {
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+  appendEvent: AppendEvent;
+  readAuditStatus: ReadAuditStatus;
+  runCommand: (command: string, args: string[], env?: Record<string, string>) => Promise<RuntimeCommandResult>;
+}) =>
+  input.runPromise(
+    input.methods.register({
+      id: "runtime/runAuditAction",
+      title: "Run audit action",
+      description: "Runs a known diagnostic action from runtime/auditStatus.verdict.actions and records the result.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeDiagnosticsAvailability,
+      inputSchema: auditActionInputSchema,
+      examples: [
+        {
+          title: "Run a current audit action",
+          input: { id: "extend-electron-app-mode-smoke-timeout" },
+          expectedEvents: ["runtime.auditAction.completed"],
+          verifyWith: { method: "runtime/auditStatus", input: {} }
+        }
+      ],
+      effects: {
+        durableEvents: ["runtime.auditAction.completed"],
+        mutatesProjection: ["events"]
+      },
+      reversibility: {
+        reversible: false,
+        notes: "The diagnostic command result is appended to the event log; compensate by appending a later diagnostic event."
+      },
+      handler: (rawInput: unknown) =>
+        Effect.promise(async () => {
+          const actionId = (rawInput as { id?: unknown })?.id;
+          if (typeof actionId !== "string") {
+            throw new Error("runtime/runAuditAction requires string id");
+          }
+          const auditStatus = await input.readAuditStatus();
+          const action = auditStatus.verdict.actions.find((candidate) => candidate.id === actionId);
+          if (!action) {
+            throw new Error(`No current runtime audit action found for id ${actionId}`);
+          }
+          const command = commandForDiagnosticAction(action);
+          const startedAt = new Date().toISOString();
+          const result = await input.runCommand(command.command, command.args, command.env);
+          const completed = {
+            ok: result.exitCode === 0,
+            action,
+            startedAt,
+            completedAt: new Date().toISOString(),
+            command: result.command,
+            args: result.args,
+            env: command.env ?? {},
+            exitCode: result.exitCode,
+            signal: result.signal,
+            stdout: result.stdout.slice(-20000),
+            stderr: result.stderr.slice(-20000)
+          };
+          const event = await input.appendEvent({
+            type: "runtime.auditAction.completed",
+            payload: completed
+          });
+          return { ...completed, eventId: event.id };
+        })
+    })
+  );
+
 export const createRuntimeDiagnosticsModule = (input: {
   getDiagnostics: () => unknown;
   plasticDir: string;
+  runCommand: (command: string, args: string[], env?: Record<string, string>) => Promise<RuntimeCommandResult>;
 }): RuntimeModule => ({
   id: "runtime-diagnostics",
-  register: async ({ methods, runPromise }) => {
-    await runPromise(
-      methods.register({
-        id: "app/diagnostics",
-        title: "App diagnostics",
-        description: "Returns runtime host diagnostics for the current Plastic process.",
-        owner: { kind: "runtime", id: "plastic.runtime" },
-        availability: runtimeDiagnosticsAvailability,
-        inputSchema: noInputSchema,
-        examples: [
-          {
-            title: "Read host diagnostics",
-            input: {},
-            verifyWith: { method: "plastic/state", input: {} }
-          }
-        ],
-        effects: readOnlyEffects,
-        reversibility: readOnlyReversibility,
-        handler: () => Effect.sync(input.getDiagnostics)
-      })
-    );
-
-    await runPromise(
-      methods.register({
-        id: "runtime/auditStatus",
-        title: "Runtime audit status",
-        description: "Returns the latest persisted runtime unification audit summary, when one has been written.",
-        owner: { kind: "runtime", id: "plastic.runtime" },
-        availability: runtimeDiagnosticsAvailability,
-        inputSchema: noInputSchema,
-        examples: [
-          {
-            title: "Read latest runtime audit verdict",
-            input: {},
-            verifyWith: { method: "app/diagnostics", input: {} }
-          }
-        ],
-        effects: readOnlyEffects,
-        reversibility: readOnlyReversibility,
-        handler: () =>
-          Effect.promise(async () => {
-            const path = join(input.plasticDir, "tmp", "runtime-unification-audit.json");
-            try {
-              const summary = JSON.parse(await readFile(path, "utf8")) as AuditSummary;
-              return { available: true, path, verdict: buildAuditVerdict(summary), summary };
-            } catch (error) {
-              const code = (error as { code?: string }).code;
-              if (code === "ENOENT") {
-                return { available: false, path, verdict: buildAuditVerdict(null), summary: null };
-              }
-              throw error;
-            }
-          })
-      })
-    );
+  register: async ({ methods, runPromise, appendEvent }) => {
+    const readAuditStatus = createAuditStatusReader(input.plasticDir);
+    await registerAppDiagnostics({ methods, runPromise, getDiagnostics: input.getDiagnostics });
+    await registerAuditStatus({ methods, runPromise, readAuditStatus });
+    await registerRunAuditAction({ methods, runPromise, appendEvent, readAuditStatus, runCommand: input.runCommand });
   }
 });
