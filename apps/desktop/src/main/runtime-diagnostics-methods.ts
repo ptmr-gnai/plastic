@@ -295,6 +295,7 @@ const recentAuditActions = (events: Array<PlasticEvent>) =>
         command?: unknown;
         args?: unknown;
         env?: unknown;
+        auditMetadata?: unknown;
         exitCode?: unknown;
         signal?: unknown;
         stdout?: unknown;
@@ -315,6 +316,7 @@ const recentAuditActions = (events: Array<PlasticEvent>) =>
         command: typeof payload.command === "string" ? payload.command : null,
         args: Array.isArray(payload.args) ? payload.args.filter((arg): arg is string => typeof arg === "string") : [],
         env,
+        auditMetadata: normalizeAuditMetadata(payload.auditMetadata),
         exitCode: typeof payload.exitCode === "number" ? payload.exitCode : null,
         signal: typeof payload.signal === "string" ? payload.signal : null,
         stdoutTail: stdout.slice(-4000),
@@ -332,6 +334,13 @@ const compactAuditMetadata = (summary: AuditSummary | null) => ({
   strictElectron: typeof summary?.runtimeUnification?.strictElectron === "string" ? summary.runtimeUnification.strictElectron : "unknown",
   unified: typeof summary?.runtimeUnification?.unified === "string" ? summary.runtimeUnification.unified : "unknown"
 });
+
+const normalizeAuditMetadata = (value: unknown) => {
+  const metadata = value && typeof value === "object" && !Array.isArray(value)
+    ? value as ReturnType<typeof compactAuditMetadata>
+    : null;
+  return metadata?.schemaVersion === 1 ? metadata : null;
+};
 
 const createAuditStatusReader = (plasticDir: string, listAuditEvents: () => Promise<Array<PlasticEvent>>) => async () => {
   const path = join(plasticDir, "tmp", "runtime-unification-audit.json");
@@ -506,6 +515,7 @@ const registerRunAuditAction = async (input: {
             action,
             startedAt,
             completedAt: new Date().toISOString(),
+            auditMetadata: compactAuditMetadata(auditStatus.summary),
             command: result.command,
             args: result.args,
             env: command.env ?? {},

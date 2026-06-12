@@ -29,6 +29,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assert(Array.isArray(workbench.control.auditStatus.failureSummary.ids), "workbench audit status missing failure ids");
   assertArray(workbench.control.auditStatus.actionIds, "workbench audit status action ids missing");
   assertArray(workbench.control.auditStatus.recentActions, "workbench audit status recent actions missing");
+  assertRecentAuditActionMetadata({ assert, recentActions: workbench.control.auditStatus.recentActions, source: "workbench" });
   assert(workbench.control.controlPlane?.runtime?.transport === "http", "workbench missing runtime control plane");
   assert(workbench.control.controlPlane.runtime.rpcPath === "/rpc", "workbench runtime control plane rpcPath mismatch");
   assert(workbench.control.controlPlane.runtime.statePath === "/state", "workbench runtime control plane statePath mismatch");
@@ -86,6 +87,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   assert(Array.isArray(orientation.capabilities.auditStatus.failureSummary.ids), "agent/orient audit status missing failure ids");
   assertArray(orientation.capabilities.auditStatus.actionIds, "agent/orient audit status action ids missing");
   assertArray(orientation.capabilities.auditStatus.recentActions, "agent/orient audit status recent actions missing");
+  assertRecentAuditActionMetadata({ assert, recentActions: orientation.capabilities.auditStatus.recentActions, source: "agent/orient" });
   assert(orientation.capabilities.controlPlane?.runtime?.transport === "http", "agent/orient missing runtime control plane");
   assert(orientation.capabilities.controlPlane.runtime.rpcPath === "/rpc", "agent/orient runtime control plane rpcPath mismatch");
   assert(orientation.capabilities.controlPlane.runtime.statePath === "/state", "agent/orient runtime control plane statePath mismatch");
@@ -127,6 +129,10 @@ const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {
   assert(typeof auditStatus.audit.usable === "boolean", `${source} audit status missing usable flag`);
   assert(typeof auditStatus.audit.strictElectron === "string", `${source} audit status missing strict Electron status`);
   assert(typeof auditStatus.audit.unified === "string", `${source} audit status missing unified status`);
+};
+
+const assertRecentAuditActionMetadata = ({ assert, recentActions, source }) => {
+  assert(recentActions.every((action) => action.auditMetadata === null || action.auditMetadata?.schemaVersion === 1), `${source} recent audit action metadata must be null or schema-versioned`);
 };
 
 const assertSameModuleIds = ({ assert, actual, expected, source }) => {

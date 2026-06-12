@@ -61,6 +61,7 @@ export const readAgentAuditStatus = async (input: {
       actionId: typeof action.actionId === "string" ? action.actionId : null,
       ok: action.ok === true,
       exitCode: typeof action.exitCode === "number" ? action.exitCode : null,
+      auditMetadata: action.auditMetadata === null ? null : asRecord(action.auditMetadata),
       env: asRecord(action.env)
     }))
   };

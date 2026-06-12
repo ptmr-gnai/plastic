@@ -16,6 +16,7 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   assert(Array.isArray(auditStatus.recentActions), "runtime/auditStatus missing recent audit action results");
   assert(auditStatus.recentActions.every((action) => typeof action.eventId === "string" && typeof action.timestamp === "string" && Array.isArray(action.args)), "runtime/auditStatus recent audit actions have invalid shape");
   assert(auditStatus.recentActions.every((action) => action.env && typeof action.env === "object" && !Array.isArray(action.env)), "runtime/auditStatus recent audit actions must expose env object");
+  assert(auditStatus.recentActions.every((action) => action.auditMetadata === null || action.auditMetadata?.schemaVersion === 1), "runtime/auditStatus recent audit action metadata must be null or schema-versioned");
   assert(auditStatus.recentActions.every((action) => typeof action.stdoutTail === "string" && typeof action.stderrTail === "string" && action.stdoutTail.length <= 4000 && action.stderrTail.length <= 4000), "runtime/auditStatus recent audit action tails must be bounded strings");
   assertDiagnosisActions(auditStatus);
   if (auditStatus.available) {
