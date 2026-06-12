@@ -453,13 +453,19 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
     })
       ? "http-rpc:self-test-link"
       : null,
-    !Array.isArray(http?.actions) || !http.actions.some((action) => asRecord(action).id === "call-plastic-rpc" && asRecord(action).method === "http/post")
+    !Array.isArray(http?.actions) || !http.actions.some((action) => {
+      const record = asRecord(action);
+      return record.id === "call-plastic-rpc" && record.method === "http/post" && record.href === http?.rpcUrl;
+    })
       ? "http-rpc:call-action"
       : null,
     !Array.isArray(mcp?.tools) || !mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && asRecord(tool).methodRegistry === "shared")
       ? "mcp-stdio:plastic-rpc-tool"
       : null,
-    !Array.isArray(mcp?.actions) || !mcp.actions.some((action) => asRecord(action).tool === "plastic_rpc" && asRecord(asRecord(action).arguments).method === "agent/orient")
+    !Array.isArray(mcp?.actions) || !mcp.actions.some((action) => {
+      const record = asRecord(action);
+      return record.id === "call-plastic-rpc" && record.tool === "plastic_rpc" && asRecord(asRecord(action).arguments).method === "agent/orient";
+    })
       ? "mcp-stdio:call-action"
       : null
   ].filter((item): item is string => Boolean(item));
