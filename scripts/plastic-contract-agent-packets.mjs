@@ -18,6 +18,12 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assert(workbench.control.capabilities?.count >= 1, "workbench capabilities count missing");
   assert(workbench.control.capabilities.count === capabilityCount, "workbench capability count does not match runtime/capabilities");
   assertArray(workbench.control.capabilities.items, "workbench capabilities items missing");
+  assertCapabilityStatuses({
+    assert,
+    items: workbench.control.capabilities.items,
+    statuses: workbench.control.capabilities.statuses,
+    source: "workbench"
+  });
   assert(workbench.control.modules?.count >= 1, "workbench runtime module count missing");
   assert(workbench.control.modules.count === moduleIds.length, "workbench module count does not match runtime/modules");
   assertArray(workbench.control.modules.items, "workbench runtime modules items missing");
@@ -68,6 +74,12 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   assert(orientation.capabilities.host?.count >= 1, "agent/orient missing host capability count");
   assert(orientation.capabilities.host.count === capabilityCount, "agent/orient capability count does not match runtime/capabilities");
   assertArray(orientation.capabilities.host.items, "agent/orient host capabilities missing");
+  assertCapabilityStatuses({
+    assert,
+    items: orientation.capabilities.host.items,
+    statuses: orientation.capabilities.host.statuses,
+    source: "agent/orient"
+  });
   assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
   assertKnownMethodReferences({ assert, references: orientation.capabilities.recommendedActions, methodIds, source: "agent/orient recommendedActions" });
   assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
@@ -118,6 +130,12 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
     visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
     recommendedActions: orientation.capabilities.recommendedActions.length
   };
+};
+
+const assertCapabilityStatuses = ({ assert, items, statuses, source }) => {
+  assert(statuses && typeof statuses === "object" && !Array.isArray(statuses), `${source} capability statuses missing`);
+  const expected = Object.fromEntries(items.map((capability) => [capability.id, capability.status]));
+  assert(stableJson(statuses) === stableJson(expected), `${source} capability statuses do not match capability items`);
 };
 
 const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {

@@ -11,6 +11,7 @@ import {
 } from "@plastic/core";
 import type {
   CapabilityRegistry,
+  RuntimeCapability,
   RuntimeMethodContext,
   RuntimeModule,
   RunPromise
@@ -65,6 +66,9 @@ const agentWorkbenchAvailability = {
   status: "available" as const,
   notes: "Agent workbench is a shared runtime observability primitive in headed and headless modes."
 };
+
+const capabilityStatusSummary = (capabilities: RuntimeCapability[]) =>
+  Object.fromEntries(capabilities.map((capability) => [capability.id, capability.status]));
 
 export const createAgentWorkbenchModule = (host: AgentWorkbenchHost): RuntimeModule => ({
   id: "agent-workbench",
@@ -218,7 +222,8 @@ const buildControl = async (input: {
   return {
     capabilities: {
       count: capabilityItems.length,
-      items: capabilityItems
+      items: capabilityItems,
+      statuses: capabilityStatusSummary(capabilityItems)
     },
     controlPlane,
     agentTransports,

@@ -10,6 +10,7 @@ import {
 } from "@plastic/core";
 import type {
   CapabilityRegistry,
+  RuntimeCapability,
   RuntimeMethodContext,
   RuntimeModule,
   RunPromise
@@ -45,6 +46,9 @@ const agentOrientAvailability = {
   status: "available" as const,
   notes: "Agent orientation is a shared runtime observability primitive in headed and headless modes."
 };
+
+const capabilityStatusSummary = (capabilities: RuntimeCapability[]) =>
+  Object.fromEntries(capabilities.map((capability) => [capability.id, capability.status]));
 
 export const createAgentOrientModule = (host: AgentOrientHost): RuntimeModule => ({
   id: "agent-orient",
@@ -257,7 +261,8 @@ const buildCapabilities = async (input: {
   hostBase: runtimeHostBaseDescriptor,
   host: {
     count: input.capabilities.list().length,
-    items: input.capabilities.list()
+    items: input.capabilities.list(),
+    statuses: capabilityStatusSummary(input.capabilities.list())
   },
   modules: await readRuntimeModules(input),
   auditStatus: await readAgentAuditStatus(input),
