@@ -495,5 +495,5 @@ Proof:
 
 1. `pnpm plastic:validate-headless` can run repeatedly without increasing active contract panel or workspace extension projections.
 2. `pnpm plastic:method-parity` remains clean after repeated headless/Electron audit runs.
-3. `plastic/selfTest` stays green while reporting stable shared projection health.
+3. `plastic/selfTest` stays green while reporting stable shared projection health and required diagnostics methods.
 4. Validation events remain durable and inspectable, but are identifiable as validation scope rather than user workspace state.
