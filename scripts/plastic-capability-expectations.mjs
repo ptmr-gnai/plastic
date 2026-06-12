@@ -14,6 +14,7 @@ const fallbackMethodCapabilities = {
 };
 
 let runtimeMethodCapabilitiesPromise;
+let runtimeAgentBackendMethodIdsPromise;
 
 const normalizeCapabilityTable = (table) =>
   Object.fromEntries(Object.entries(table).map(([id, contract]) => [
@@ -39,23 +40,7 @@ const loadRuntimeMethodCapabilities = async () => {
   return runtimeMethodCapabilitiesPromise;
 };
 
-export const capabilityExpectationsForMode = (mode) => {
-  const visualStatus = mode === "electron" ? "available" : "unavailable";
-  const backendStatus = mode === "electron" ? "available" : "unavailable";
-  return {
-    "runtime.capabilities": "available",
-    "window.projection": "available",
-    "event.projection": "available",
-    "electron.window": visualStatus,
-    "dom.refs": visualStatus,
-    "dom.eval": visualStatus,
-    "dom.input": visualStatus,
-    screenshot: visualStatus,
-    "agent.codex": backendStatus
-  };
-};
-
-export const agentBackendMethodIds = [
+const fallbackAgentBackendMethodIds = [
   "codex/status",
   "chats/getBinding",
   "chats/createCodexChat",
@@ -86,6 +71,31 @@ export const agentBackendMethodIds = [
   "chats/interrupt",
   "chats/close"
 ];
+
+const loadRuntimeAgentBackendMethodIds = async () => {
+  if (!runtimeAgentBackendMethodIdsPromise) {
+    runtimeAgentBackendMethodIdsPromise = import("../apps/desktop/dist-electron/main/agent-backend-fallback-methods.js")
+      .then((module) => module.agentBackendFallbackMethodIds ?? fallbackAgentBackendMethodIds)
+      .catch(() => fallbackAgentBackendMethodIds);
+  }
+  return runtimeAgentBackendMethodIdsPromise;
+};
+
+export const capabilityExpectationsForMode = (mode) => {
+  const visualStatus = mode === "electron" ? "available" : "unavailable";
+  const backendStatus = mode === "electron" ? "available" : "unavailable";
+  return {
+    "runtime.capabilities": "available",
+    "window.projection": "available",
+    "event.projection": "available",
+    "electron.window": visualStatus,
+    "dom.refs": visualStatus,
+    "dom.eval": visualStatus,
+    "dom.input": visualStatus,
+    screenshot: visualStatus,
+    "agent.codex": backendStatus
+  };
+};
 
 const expectationsFromRequirements = (mode, requirements) => {
   const capabilities = capabilityExpectationsForMode(mode);
@@ -123,8 +133,8 @@ export const capabilityBackedMethodExpectationsForMode = async (mode) =>
     )
   );
 
-export const agentBackendMethodExpectationsForMode = (mode) =>
+export const agentBackendMethodExpectationsForMode = async (mode) =>
   expectationsFromRequirements(
     mode,
-    Object.fromEntries(agentBackendMethodIds.map((id) => [id, ["agent.codex"]]))
+    Object.fromEntries((await loadRuntimeAgentBackendMethodIds()).map((id) => [id, ["agent.codex"]]))
   );

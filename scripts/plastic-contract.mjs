@@ -253,7 +253,7 @@ await check("agent/orient", async () => {
 });
 
 await check("agent backend metadata", async () => {
-  const expectations = agentBackendMethodExpectationsForMode(state.app.mode);
+  const expectations = await agentBackendMethodExpectationsForMode(state.app.mode);
   const descriptions = await Promise.all(
     Object.keys(expectations).map((id) => rpc("methods/describe", { id }))
   );

@@ -122,6 +122,14 @@ const unavailableCodexMethods: UnavailableMethodDefinition[] = [
   }
 ];
 
+export const agentBackendFallbackMethodIds = [
+  "codex/status",
+  "chats/getBinding",
+  "chats/createCodexChat",
+  "chats/sendToCodex",
+  ...unavailableCodexMethods.map((definition) => definition.id)
+];
+
 export const agentBackendFallbackModule: RuntimeModule = {
   id: "agent-backend",
   register: async (context) => {
