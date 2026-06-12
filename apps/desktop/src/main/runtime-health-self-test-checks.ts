@@ -1,5 +1,13 @@
 import type { PlasticEvent, PlasticExtension, PlasticPanel, PlasticWindow } from "@plastic/core";
-import { expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./runtime-health-affordance-checks.js";
+import {
+  expectedOrientationActions,
+  expectedOrientationLinks,
+  expectedSnapshotLinks,
+  expectedWorkbenchActions,
+  hasActionAffordance,
+  hasLinkAffordance,
+  hasServiceAffordance
+} from "./runtime-health-affordance-checks.js";
 import { invalidControlPlaneUrls } from "./runtime-health-control-plane-checks.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
@@ -36,23 +44,6 @@ const requiredWindowMethods = [
   "windows/focusPanel",
   "windows/scrollToRef",
   "windows/screenshot"
-];
-
-const requiredAgentActionMethods = [
-  "runtime/host",
-  "plastic/selfTest",
-  "runtime/auditStatus",
-  "runtime/auditActionPlan",
-  "runtime/runAuditAction"
-];
-
-const requiredAgentLinkMethods = [
-  "runtime/host",
-  "runtime/modules",
-  "plastic/selfTest",
-  "runtime/auditStatus",
-  "runtime/auditActionPlan",
-  "runtime/runAuditAction"
 ];
 
 export const checkBuildStatusHealth = (buildStatus: unknown) => {
@@ -399,15 +390,9 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
   const controlPlane = asRecord(control.controlPlane);
   const runtimeControlPlane = asRecord(controlPlane.runtime);
   const buildControlPlane = asRecord(controlPlane.build);
-  const missingWorkbenchActions = requiredAgentActionMethods.filter((method) =>
-    !workbenchActions.some((action) => action.method === method)
-  );
-  const missingOrientationActions = requiredAgentActionMethods.filter((method) =>
-    !orientationActions.some((action) => action.method === method)
-  );
-  const missingOrientationLinks = requiredAgentLinkMethods.filter((method) =>
-    !orientationLinks.some((link) => link.method === method)
-  );
+  const missingWorkbenchActions = expectedWorkbenchActions.filter((action) => !hasActionAffordance(workbenchActions, action));
+  const missingOrientationActions = expectedOrientationActions.filter((action) => !hasActionAffordance(orientationActions, action));
+  const missingOrientationLinks = expectedOrientationLinks.filter((link) => !hasLinkAffordance(orientationLinks, link));
   const unknownWorkbenchActions = unknownMethodReferences(workbenchActions, methodIds);
   const unknownOrientationActions = unknownMethodReferences(orientationActions, methodIds);
   const unknownOrientationLinks = unknownMethodReferences(orientationLinks, methodIds);
@@ -421,13 +406,13 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
     throw new Error("agent/workbench missing compact audit status");
   }
   if (missingWorkbenchActions.length > 0) {
-    throw new Error(`agent/workbench missing actions: ${missingWorkbenchActions.join(", ")}`);
+    throw new Error(`agent/workbench missing actions: ${missingWorkbenchActions.map((action) => action.id).join(", ")}`);
   }
   if (missingOrientationActions.length > 0) {
-    throw new Error(`agent/orient missing actions: ${missingOrientationActions.join(", ")}`);
+    throw new Error(`agent/orient missing actions: ${missingOrientationActions.map((action) => action.id).join(", ")}`);
   }
   if (missingOrientationLinks.length > 0) {
-    throw new Error(`agent/orient missing links: ${missingOrientationLinks.join(", ")}`);
+    throw new Error(`agent/orient missing links: ${missingOrientationLinks.map((link) => link.rel).join(", ")}`);
   }
   if (unknownWorkbenchActions.length > 0 || unknownOrientationActions.length > 0 || unknownOrientationLinks.length > 0) {
     throw new Error("agent orientation packet references unknown methods");

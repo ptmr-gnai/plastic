@@ -1,5 +1,12 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertAgentTransports } from "./plastic-contract-agent-transports.mjs";
+import {
+  hasActionAffordance,
+  hasLinkAffordance,
+  requiredOrientationActions,
+  requiredOrientationLinks,
+  requiredWorkbenchActions
+} from "./plastic-contract-agent-affordances.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
 export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount, capabilityCount, modules, methodIds }) => {
@@ -34,14 +41,9 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertAgentTransports({ assert, assertArray, transports: workbench.control.agentTransports, rpcUrl: workbench.control.controlPlane.runtime.rpcUrl, source: "workbench" });
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assertKnownMethodReferences({ assert, references: workbench.control.recommendedActions, methodIds, source: "workbench recommendedActions" });
-  assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"), "workbench missing runtime/modules recommended action");
-  assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/host"), "workbench missing runtime/host recommended action");
-  assert(workbench.control.recommendedActions.some((action) => action.method === "plastic/selfTest"), "workbench missing plastic/selfTest recommended action");
-  assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/auditStatus"), "workbench missing runtime/auditStatus recommended action");
-  assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/auditActionPlan"), "workbench missing runtime/auditActionPlan recommended action");
-  assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/runAuditAction"), "workbench missing runtime/runAuditAction recommended action");
-  assert(workbench.control.recommendedActions.some((action) => action.method === "events/list" && action.input?.types?.includes("runtime.started")), "workbench missing control plane recommended action");
-  assert(workbench.control.recommendedActions.some((action) => action.id === "read-timeline" && action.method === "events/timeline"), "workbench read-timeline action must use shared events/timeline");
+  for (const action of requiredWorkbenchActions) {
+    assert(hasActionAffordance(workbench.control.recommendedActions, action), `workbench missing ${action.id} recommended action`);
+  }
   assert(workbench.observability?.timeline, "workbench timeline missing");
   assert(workbench.workspace?.git, "workbench git status missing");
   return {
@@ -93,33 +95,12 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   assert(orientation.capabilities.controlPlane.build.eventStreamPath === "/events/stream", "agent/orient build control plane eventStreamPath mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: orientation.capabilities.controlPlane, source: "agent/orient" });
   assertAgentTransports({ assert, assertArray, transports: orientation.capabilities.agentTransports, rpcUrl: orientation.capabilities.controlPlane.runtime.rpcUrl, source: "agent/orient" });
-  assert(orientation.capabilities.links?.some((link) => link.method === "runtime/modules"), "agent/orient missing runtime/modules link");
-  assert(
-    orientation.capabilities.links?.some((link) => link.method === "runtime/host")
-      && orientation.capabilities.recommendedActions?.some((action) => action.method === "runtime/host"),
-    "agent/orient missing runtime/host affordance"
-  );
-  assert(
-    orientation.capabilities.links?.some((link) => link.method === "plastic/selfTest")
-      && orientation.capabilities.recommendedActions?.some((action) => action.method === "plastic/selfTest"),
-    "agent/orient missing plastic/selfTest affordance"
-  );
-  assert(
-    orientation.capabilities.links?.some((link) => link.method === "runtime/auditStatus")
-      && orientation.capabilities.recommendedActions?.some((action) => action.method === "runtime/auditStatus"),
-    "agent/orient missing runtime/auditStatus affordance"
-  );
-  assert(
-    orientation.capabilities.links?.some((link) => link.method === "runtime/runAuditAction")
-      && orientation.capabilities.recommendedActions?.some((action) => action.method === "runtime/runAuditAction"),
-    "agent/orient missing runtime/runAuditAction affordance"
-  );
-  assert(
-    orientation.capabilities.links?.some((link) => link.method === "runtime/auditActionPlan")
-      && orientation.capabilities.recommendedActions?.some((action) => action.method === "runtime/auditActionPlan"),
-    "agent/orient missing runtime/auditActionPlan affordance"
-  );
-  assert(orientation.capabilities.links?.some((link) => link.rel === "control-plane" && link.method === "events/list"), "agent/orient missing control plane link");
+  for (const action of requiredOrientationActions) {
+    assert(hasActionAffordance(orientation.capabilities.recommendedActions, action), `agent/orient missing ${action.id} action`);
+  }
+  for (const link of requiredOrientationLinks) {
+    assert(hasLinkAffordance(orientation.capabilities.links, link), `agent/orient missing ${link.rel} link`);
+  }
   assertKnownMethodReferences({ assert, references: orientation.capabilities.links ?? [], methodIds, source: "agent/orient links" });
   assert(orientation.memory?.eventCount >= 1, "agent/orient missing event memory");
   return {
