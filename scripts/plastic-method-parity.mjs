@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { stableValue } from "./plastic-stable-json.mjs";
@@ -5,6 +6,7 @@ import { stableValue } from "./plastic-stable-json.mjs";
 const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
 const outPath = process.env.PLASTIC_METHOD_PARITY_OUT;
 const basePath = process.env.PLASTIC_METHOD_PARITY_BASE;
+const mcpToolTimeoutMs = Number(process.env.PLASTIC_METHOD_PARITY_MCP_TIMEOUT_MS ?? "3000");
 
 const rpc = async (method, input = {}) => {
   const response = await fetch(rpcUrl, {
@@ -97,6 +99,61 @@ const healthShape = (selfTest) => {
   };
 };
 
+const readMcpTools = (host) =>
+  new Promise((resolve, reject) => {
+    const transport = host.agentTransports?.find((item) => item.id === "mcp-stdio");
+    if (!transport) {
+      resolve([]);
+      return;
+    }
+    const child = spawn(transport.command, transport.args ?? [], {
+      cwd: new URL("..", import.meta.url).pathname,
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, ...(transport.env ?? {}) }
+    });
+    let stdout = "";
+    let stderr = "";
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      reject(new Error(`MCP tools/list timed out: ${stderr.trim() || "<empty>"}`));
+    }, mcpToolTimeoutMs);
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    const finish = (tools) => {
+      clearTimeout(timeout);
+      child.kill("SIGTERM");
+      resolve(tools);
+    };
+    child.stdout.on("data", () => {
+      const responses = stdout.split(/\r?\n/).filter(Boolean).map(parseJsonLine).filter(Boolean);
+      const listed = responses.find((response) => response.id === 2);
+      if (listed) {
+        finish((listed.result?.tools ?? []).map(mcpToolShape).sort((left, right) => left.name.localeCompare(right.name)));
+      }
+    });
+    child.on("error", reject);
+    child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }) + "\n");
+    child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }) + "\n");
+  });
+
+const parseJsonLine = (line) => {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null;
+  }
+};
+
+const mcpToolShape = (tool) => stableValue({
+  name: tool.name,
+  description: tool.description,
+  inputSchema: tool.inputSchema
+});
+
 const methodMetadataFields = [
   "title",
   "description",
@@ -118,6 +175,7 @@ const capture = async () => {
   const modules = await rpc("runtime/modules");
   const capabilities = await rpc("runtime/capabilities");
   const selfTest = await rpc("plastic/selfTest");
+  const mcpTools = await readMcpTools(host);
   return {
     capturedAt: new Date().toISOString(),
     rpcUrl,
@@ -128,6 +186,7 @@ const capture = async () => {
       serviceResources: serviceAffordances(state),
       snapshotLinks: snapshotAffordances(snapshot)
     },
+    mcpTools,
     methodCount: methods.length,
     moduleCount: modules.count,
     capabilityCount: capabilities.count,
@@ -177,6 +236,7 @@ const compare = (base, current) => {
     hostShapeDrift: JSON.stringify(base.host) === JSON.stringify(current.host) ? [] : [{ base: base.host, current: current.host }],
     healthDrift,
     discoveryDrift: JSON.stringify(base.discovery) === JSON.stringify(current.discovery) ? [] : [{ base: base.discovery, current: current.discovery }],
+    mcpToolDrift: JSON.stringify(base.mcpTools) === JSON.stringify(current.mcpTools) ? [] : [{ base: base.mcpTools, current: current.mcpTools }],
     methodCapabilityDrift: methodDrift.methodCapabilityDrift,
     methodMetadataDrift: methodDrift.methodMetadataDrift
   };
@@ -285,6 +345,7 @@ const main = async () => {
       comparison.hostShapeDrift.length ? "host shape drift" : null,
       comparison.healthDrift.length ? `health drift: ${comparison.healthDrift.map((item) => item.id).join(", ")}` : null,
       comparison.discoveryDrift.length ? "discovery affordance drift" : null,
+      comparison.mcpToolDrift.length ? "MCP tool metadata drift" : null,
       comparison.methodCapabilityDrift.length ? `method capability drift: ${comparison.methodCapabilityDrift.map((item) => item.id).join(", ")}` : null,
       comparison.methodMetadataDrift.length ? `method metadata drift: ${comparison.methodMetadataDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null
     ].filter(Boolean);
@@ -304,6 +365,7 @@ const main = async () => {
     capabilities: current.capabilityCount,
     healthChecks: current.healthCheckCount,
     sharedHealthChecks: current.health.sharedChecks.map((check) => check.id),
+    mcpTools: current.mcpTools.map((tool) => tool.name),
     comparison
   }, null, 2));
 };
