@@ -1,4 +1,5 @@
 import type { PlasticEvent, PlasticExtension, PlasticPanel, PlasticWindow } from "@plastic/core";
+import { hasServiceAffordance } from "./runtime-health-affordance-checks.js";
 import { invalidControlPlaneUrls } from "./runtime-health-control-plane-checks.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
@@ -231,13 +232,28 @@ export const checkProjectionDiscoveryHealth = (
   if (invalidSnapshotControlPlaneUrls.length > 0) {
     throw new Error(`plastic/snapshot control plane URLs are invalid: ${invalidSnapshotControlPlaneUrls.join(", ")}`);
   }
-  if (!serviceResources.some((resource) => hasLinkAndAction(resource, "runtime/host"))) {
+  if (!serviceResources.some((resource) => hasServiceAffordance(resource, {
+    rel: "host",
+    href: "runtime/host",
+    method: "runtime/host",
+    actionId: "read-host"
+  }))) {
     throw new Error("plastic/state service resource missing runtime/host affordances");
   }
-  if (!serviceResources.some((resource) => hasLinkAndAction(resource, "runtime/capabilities"))) {
+  if (!serviceResources.some((resource) => hasServiceAffordance(resource, {
+    rel: "capabilities",
+    href: "runtime/capabilities",
+    method: "runtime/capabilities",
+    actionId: "read-capabilities"
+  }))) {
     throw new Error("plastic/state service resource missing runtime/capabilities affordances");
   }
-  if (!serviceResources.some((resource) => hasLinkAndAction(resource, "plastic/selfTest"))) {
+  if (!serviceResources.some((resource) => hasServiceAffordance(resource, {
+    rel: "self-test",
+    href: "plastic/selfTest",
+    method: "plastic/selfTest",
+    actionId: "run-self-test"
+  }))) {
     throw new Error("plastic/state service resource missing plastic/selfTest affordances");
   }
   for (const method of ["runtime/host", "runtime/capabilities", "events/list", "plastic/selfTest"]) {
@@ -476,10 +492,6 @@ const normalizeCapabilities = (capabilities: unknown[]) =>
       };
     })
     .sort((left, right) => String(left.id).localeCompare(String(right.id)));
-
-const hasLinkAndAction = (resource: Record<string, unknown>, method: string) =>
-  (Array.isArray(resource.links) ? resource.links.map(asRecord) : []).some((link) => link.method === method)
-  && (Array.isArray(resource.actions) ? resource.actions.map(asRecord) : []).some((action) => action.method === method);
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};

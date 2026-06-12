@@ -7,6 +7,7 @@ import {
   assertMatchingModuleInventories, assertRuntimeAuditStatus, assertModuleMethodDiscoveryParity, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 import { assertAgentOrientationPacket, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
+import { hasServiceAffordance } from "./plastic-contract-affordances.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
@@ -35,11 +36,10 @@ let methods;
 let methodIds;
 let runtimeCapabilities;
 let runtimeModules;
-let createdPanelEvent;
 let extensions;
 let events;
 let runtimeStartedControlPlane;
-let scaffoldedExtensionDir, scaffoldedExtensionId, scaffoldedExtensionPanelId;
+let scaffoldedExtensionDir, scaffoldedExtensionId, scaffoldedExtensionPanelId, createdPanelEvent;
 
 await check("plastic/state", async () => {
   state = await rpc("plastic/state");
@@ -75,9 +75,9 @@ await check("plastic/state", async () => {
     : assertArray(state.resources, "state.resources is not an array")
       .filter((resource) => resource.id === "panels" || resource.kind === "panel");
   const serviceResources = assertArray(state.resources, "state.resources is not an array").filter((resource) => resource.kind === "service");
-  assert(serviceResources.some((resource) => resource.links?.some((link) => link.method === "runtime/host") && resource.actions?.some((action) => action.method === "runtime/host")), "state service resource missing host affordances");
-  assert(serviceResources.some((resource) => resource.links?.some((link) => link.method === "runtime/capabilities") && resource.actions?.some((action) => action.method === "runtime/capabilities")), "state service resource missing capabilities affordances");
-  assert(serviceResources.some((resource) => resource.links?.some((link) => link.method === "plastic/selfTest") && resource.actions?.some((action) => action.method === "plastic/selfTest")), "state service resource missing self-test affordances");
+  assert(serviceResources.some((resource) => hasServiceAffordance(resource, { rel: "host", href: "runtime/host", method: "runtime/host", actionId: "read-host" })), "state service resource missing host affordances");
+  assert(serviceResources.some((resource) => hasServiceAffordance(resource, { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities", actionId: "read-capabilities" })), "state service resource missing capabilities affordances");
+  assert(serviceResources.some((resource) => hasServiceAffordance(resource, { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest", actionId: "run-self-test" })), "state service resource missing self-test affordances");
   assert(panelResources.length > 0, "state does not expose panels");
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
   assert(runtimeStartedControlPlane.mode === state.app.mode, "runtime.started mode mismatch");
