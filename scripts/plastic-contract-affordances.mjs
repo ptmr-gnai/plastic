@@ -1,9 +1,13 @@
-export const expectedSnapshotLinks = [
+const fallbackSnapshotLinks = [
   { rel: "host", href: "runtime/host", method: "runtime/host" },
   { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },
   { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
   { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" }
 ];
+
+export const expectedSnapshotLinks = await import("../apps/desktop/dist-electron/main/runtime-health-affordance-checks.js")
+  .then((module) => module.expectedSnapshotLinks ?? fallbackSnapshotLinks)
+  .catch(() => fallbackSnapshotLinks);
 
 export const hasServiceAffordance = (resource, expected) =>
   resource.links?.some((link) =>

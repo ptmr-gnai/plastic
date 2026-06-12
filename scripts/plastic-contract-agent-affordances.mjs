@@ -1,4 +1,4 @@
-export const requiredWorkbenchActions = [
+const fallbackWorkbenchActions = [
   { id: "read-host", method: "runtime/host" },
   { id: "read-modules", method: "runtime/modules" },
   { id: "run-self-test", method: "plastic/selfTest" },
@@ -9,16 +9,17 @@ export const requiredWorkbenchActions = [
   { id: "read-timeline", method: "events/timeline" }
 ];
 
-export const requiredOrientationActions = [
+const fallbackOrientationActions = [
   { id: "read-host", method: "runtime/host" },
   { id: "run-self-test", method: "plastic/selfTest" },
   { id: "read-audit-status", method: "runtime/auditStatus" },
   { id: "plan-audit-action", method: "runtime/auditActionPlan" },
   { id: "run-audit-action", method: "runtime/runAuditAction" },
-  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }
+  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
+  { id: "read-timeline", method: "events/timeline" }
 ];
 
-export const requiredOrientationLinks = [
+const fallbackOrientationLinks = [
   { rel: "host", href: "runtime/host", method: "runtime/host" },
   { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" },
   { rel: "audit-status", href: "runtime/auditStatus", method: "runtime/auditStatus" },
@@ -27,6 +28,12 @@ export const requiredOrientationLinks = [
   { rel: "modules", href: "runtime/modules", method: "runtime/modules" },
   { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }
 ];
+
+const runtimeAffordances = await import("../apps/desktop/dist-electron/main/runtime-health-affordance-checks.js").catch(() => ({}));
+
+export const requiredWorkbenchActions = runtimeAffordances.expectedWorkbenchActions ?? fallbackWorkbenchActions;
+export const requiredOrientationActions = runtimeAffordances.expectedOrientationActions ?? fallbackOrientationActions;
+export const requiredOrientationLinks = runtimeAffordances.expectedOrientationLinks ?? fallbackOrientationLinks;
 
 export const hasActionAffordance = (actions, expected) =>
   actions?.some((action) =>

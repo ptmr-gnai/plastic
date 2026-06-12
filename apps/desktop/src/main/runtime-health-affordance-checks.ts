@@ -15,7 +15,8 @@ export const expectedWorkbenchActions = [
   { id: "read-audit-status", method: "runtime/auditStatus" },
   { id: "plan-audit-action", method: "runtime/auditActionPlan" },
   { id: "run-audit-action", method: "runtime/runAuditAction" },
-  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }
+  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
+  { id: "read-timeline", method: "events/timeline" }
 ];
 
 export const expectedOrientationActions = [
@@ -24,7 +25,8 @@ export const expectedOrientationActions = [
   { id: "read-audit-status", method: "runtime/auditStatus" },
   { id: "plan-audit-action", method: "runtime/auditActionPlan" },
   { id: "run-audit-action", method: "runtime/runAuditAction" },
-  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }
+  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
+  { id: "read-timeline", method: "events/timeline" }
 ];
 
 export const expectedOrientationLinks = [
