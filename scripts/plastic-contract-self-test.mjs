@@ -56,3 +56,25 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(orientationCheck.details.unknownOrientationLinks?.length === 0, "plastic/selfTest orientation link references unknown methods");
   return { checks: selfTest.checks?.length ?? null };
 };
+
+export const assertSelfTestMethodDescription = ({ assert, description }) => {
+  assert(description.id === "plastic/selfTest", "described wrong self-test method");
+  assert(description.outputSchema?.required?.includes("summary"), "plastic/selfTest output schema must require summary");
+  assert(description.outputSchema?.properties?.summary?.required?.includes("sharedCheckIds"), "plastic/selfTest summary schema must expose sharedCheckIds");
+  assert(description.outputSchema?.properties?.summary?.required?.includes("hostCheckIds"), "plastic/selfTest summary schema must expose hostCheckIds");
+  assert(description.effects?.durableEvents?.includes("plastic.self_test.completed"), "plastic/selfTest missing durable event effect");
+  return { id: description.id, summaryRequired: description.outputSchema.properties.summary.required };
+};
+
+export const assertSelfTestDurableEvent = async ({ assert, assertArray, rpc, selfTest }) => {
+  const selfTestEvents = assertArray(
+    await rpc("events/list", { types: ["plastic.self_test.completed"], limit: 5 }),
+    "self-test events/list is not an array"
+  );
+  const durableEvent = selfTestEvents.find((event) => event.id === selfTest.eventId);
+  assert(durableEvent, "plastic/selfTest durable event missing");
+  assert(
+    JSON.stringify(durableEvent.payload?.summary) === JSON.stringify(selfTest.summary),
+    "plastic/selfTest durable summary diverged from RPC result"
+  );
+};

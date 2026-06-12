@@ -11,7 +11,7 @@ import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors }
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertMethodCatalogsMatch, assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
-import { assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
+import { assertSelfTestDurableEvent, assertSelfTestMethodDescription, assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
 import {
   assertHeadlessFallbackChatFixture,
@@ -152,13 +152,7 @@ await check("methods/describe", async () => {
 });
 
 await check("plastic/selfTest description", async () => {
-  const description = await rpc("methods/describe", { id: "plastic/selfTest" });
-  assert(description.id === "plastic/selfTest", "described wrong self-test method");
-  assert(description.outputSchema?.required?.includes("summary"), "plastic/selfTest output schema must require summary");
-  assert(description.outputSchema?.properties?.summary?.required?.includes("sharedCheckIds"), "plastic/selfTest summary schema must expose sharedCheckIds");
-  assert(description.outputSchema?.properties?.summary?.required?.includes("hostCheckIds"), "plastic/selfTest summary schema must expose hostCheckIds");
-  assert(description.effects?.durableEvents?.includes("plastic.self_test.completed"), "plastic/selfTest missing durable event effect");
-  return { id: description.id, summaryRequired: description.outputSchema.properties.summary.required };
+  return assertSelfTestMethodDescription({ assert, description: await rpc("methods/describe", { id: "plastic/selfTest" }) });
 });
 
 await check("runtime/runAuditAction description", async () => {
@@ -488,7 +482,12 @@ await check("events list/timeline", async () => {
   assert(timelineItems.some((item) => item.eventId === createdPanelEvent.id), "panel create event missing from timeline");
   return { events: eventItems.length, timeline: timelineItems.length };
 });
-await check("plastic/selfTest", async () => assertSelfTestSurface({ assert, selfTest: await rpc("plastic/selfTest") }));
+await check("plastic/selfTest", async () => {
+  const selfTest = await rpc("plastic/selfTest");
+  const result = assertSelfTestSurface({ assert, selfTest });
+  await assertSelfTestDurableEvent({ assert, assertArray, rpc, selfTest });
+  return result;
+});
 await check("contract fixture stability", async () =>
   assertNoActiveContractFixtures({ assert, assertArray, rpc })
 );
