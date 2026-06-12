@@ -28,8 +28,22 @@ const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   const verdict = (auditStatus as { verdict?: Record<string, unknown> })?.verdict;
   const status = verdict?.status;
   const actions = verdict?.actions;
+  const diagnosis = asRecord(verdict?.diagnosis);
+  const failureSummary = asRecord(verdict?.failureSummary);
+  const firstFailure = failureSummary.first === null ? null : asRecord(failureSummary.first);
   if (!["missing", "passed", "degraded", "failed"].includes(String(status))) {
     throw new Error("runtime/auditStatus returned an invalid verdict status");
+  }
+  if (typeof diagnosis.code !== "string" || typeof diagnosis.summary !== "string") {
+    throw new Error("runtime/auditStatus verdict diagnosis is incomplete");
+  }
+  if (
+    typeof failureSummary.count !== "number"
+    || !Array.isArray(failureSummary.ids)
+    || !Array.isArray(failureSummary.blockingIds)
+    || (firstFailure !== null && typeof firstFailure.id !== "string")
+  ) {
+    throw new Error("runtime/auditStatus verdict failure summary is incomplete");
   }
   if (!Array.isArray(actions)) {
     throw new Error("runtime/auditStatus verdict actions are missing");
@@ -37,7 +51,11 @@ const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   return {
     available: (auditStatus as { available?: unknown }).available === true,
     status,
-    diagnosisCode: (verdict?.diagnosis as { code?: unknown } | undefined)?.code ?? null,
+    diagnosisCode: diagnosis.code,
+    failureCount: failureSummary.count,
+    failureIds: failureSummary.ids.filter((id): id is string => typeof id === "string"),
+    blockingFailureIds: failureSummary.blockingIds.filter((id): id is string => typeof id === "string"),
+    firstFailureId: firstFailure?.id ?? null,
     actions: actions.length
   };
 };
