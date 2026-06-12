@@ -20,6 +20,8 @@ export const createPlasticMcpClient = ({ command = "node", args = ["scripts/plas
   });
   const responses = [];
   let stderrText = "";
+  let processError;
+  let closed = false;
   child.stdout.on("data", (chunk) => {
     for (const line of chunk.toString().split(/\r?\n/).filter(Boolean)) {
       const parsed = parseJsonLine(line);
@@ -31,10 +33,16 @@ export const createPlasticMcpClient = ({ command = "node", args = ["scripts/plas
   child.stderr.on("data", (chunk) => {
     stderrText += chunk.toString();
   });
+  child.on("error", (error) => {
+    processError = error;
+  });
 
   const waitForResponse = async (id) => {
     const startedAt = Date.now();
     while (Date.now() - startedAt < timeoutMs) {
+      if (processError) {
+        throw new Error(`MCP process failed: ${processError.message}`);
+      }
       const response = responses.find((candidate) => candidate.id === id);
       if (response) {
         return response;
@@ -45,6 +53,9 @@ export const createPlasticMcpClient = ({ command = "node", args = ["scripts/plas
   };
 
   const send = async ({ id, method, params = {} }) => {
+    if (closed) {
+      throw new Error(`MCP ${method} failed: client is closed`);
+    }
     child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
     const response = await waitForResponse(id);
     if (response.error) {
@@ -74,7 +85,10 @@ export const createPlasticMcpClient = ({ command = "node", args = ["scripts/plas
       return JSON.parse(content.text);
     },
     close: () => {
-      child.kill("SIGTERM");
+      if (!closed) {
+        closed = true;
+        child.kill("SIGTERM");
+      }
     }
   };
 };
