@@ -10,7 +10,7 @@ import { assertAgentOrientationPacket, assertAgentWorkbenchPacket } from "./plas
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
-import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
+import { assertMethodCatalogsMatch, assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
 import { assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
 import {
@@ -94,6 +94,8 @@ await check("plastic/methods", async () => {
   assert(JSON.stringify(buildMethodIds) === JSON.stringify(items.map((method) => method.id).sort()), "build /methods ids diverged from plastic/methods");
   assertMethodCatalogSurface({ assert, label: "/methods", methods: runtimeItems });
   assertMethodCatalogSurface({ assert, label: "build /methods", methods: buildItems });
+  assertMethodCatalogsMatch({ assert, actual: runtimeItems, expected: items, actualLabel: "runtime /methods", expectedLabel: "plastic/methods" });
+  assertMethodCatalogsMatch({ assert, actual: buildItems, expected: items, actualLabel: "build /methods", expectedLabel: "plastic/methods" });
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   return { count: items.length };
 });
@@ -125,6 +127,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.methods?.count >= 1, "snapshot.methods.count missing");
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });
+  assertMethodCatalogsMatch({ assert, actual: snapshot.methods.items, expected: methods, actualLabel: "snapshot methods", expectedLabel: "plastic/methods" });
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
   assert(snapshot.links?.some((link) => link.method === "runtime/host") && snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing host or capabilities link");
   assert(snapshot.links?.some((link) => link.rel === "control-plane" && link.method === "events/list"), "snapshot missing control plane link");

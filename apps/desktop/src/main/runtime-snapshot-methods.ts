@@ -2,7 +2,8 @@ import { Effect } from "effect";
 import {
   projectExtensions,
   projectPanels,
-  projectWindows
+  projectWindows,
+  type PlasticMethod
 } from "@plastic/core";
 import { readRuntimeControlPlane } from "./agent-runtime-modules.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
@@ -46,14 +47,7 @@ export const createRuntimeSnapshotModule = (input: {
         handler: () =>
           Effect.promise(async () => {
             const events = await runPromise(eventStore.list());
-            const registeredMethods = await runPromise(methods.call("plastic/methods", {})) as Array<{
-              id: string;
-              title: string;
-              owner: unknown;
-              description?: string;
-              availability?: unknown;
-              links?: unknown[];
-            }>;
+            const registeredMethods = await runPromise(methods.call("plastic/methods", {})) as PlasticMethod[];
             const panels = projectPanels(events);
             const host = await input.getHostDetails();
 
@@ -65,14 +59,7 @@ export const createRuntimeSnapshotModule = (input: {
               controlPlane: readRuntimeControlPlane(events),
               methods: {
                 count: registeredMethods.length,
-                items: registeredMethods.map((method) => ({
-                  id: method.id,
-                  title: method.title,
-                  owner: method.owner,
-                  description: method.description,
-                  availability: method.availability,
-                  links: method.links ?? []
-                }))
+                items: registeredMethods.map(toSerializableMethod)
               },
               panels,
               windows: projectWindows(events, panels),
@@ -99,3 +86,5 @@ export const createRuntimeSnapshotModule = (input: {
     );
   }
 });
+
+const toSerializableMethod = ({ handler: _handler, ...method }: PlasticMethod) => method;

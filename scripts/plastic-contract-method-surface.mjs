@@ -1,3 +1,5 @@
+import { stableJson } from "./plastic-stable-json.mjs";
+
 export const expectedMethodIds = [
   "agent/orient",
   "agent/workbench",
@@ -93,6 +95,13 @@ export function methodSurfaceDiff(actual, expected) {
   const missing = expected.filter((id) => !actualSet.has(id));
   const extra = actual.filter((id) => !expectedSet.has(id));
   return `missing=[${missing.join(", ")}] extra=[${extra.join(", ")}]`;
+}
+
+export function assertMethodCatalogsMatch({ assert, actual, expected, actualLabel, expectedLabel }) {
+  assert(
+    stableJson(actual) === stableJson(expected),
+    `${actualLabel} method catalog diverged from ${expectedLabel}`
+  );
 }
 
 export function assertMethodCatalogSurface({ assert, label, methods }) {
