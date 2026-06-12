@@ -9,6 +9,31 @@ export const runtimeHostBaseDescriptor = {
   version: 1
 } as const;
 
+const createAgentTransportDescriptors = (config: RuntimeHostConfig) => [
+  {
+    id: "http-rpc",
+    title: "HTTP RPC",
+    status: "available",
+    transport: "http",
+    methodRegistry: "shared",
+    rpcUrl: config.controlPlane.runtime.rpcUrl,
+    notes: "Primary local RPC transport for renderers, scripts, and outside agents."
+  },
+  {
+    id: "mcp-stdio",
+    title: "MCP stdio bridge",
+    status: "available",
+    transport: "stdio",
+    methodRegistry: "shared",
+    command: "node",
+    args: ["scripts/plastic-mcp-server.mjs"],
+    env: {
+      PLASTIC_RPC_URL: config.controlPlane.runtime.rpcUrl
+    },
+    notes: "Adapter transport for agents that cannot reach local TCP directly; calls the same Plastic RPC method registry."
+  }
+];
+
 export const createRuntimeBuildStatus = (
   input: {
     config: RuntimeHostConfig;
@@ -29,6 +54,7 @@ export const createRuntimeBuildStatus = (
     eventPath: config.eventPath,
     runtimeRpcUrl,
     controlPlane: config.controlPlane,
+    agentTransports: createAgentTransportDescriptors(config),
     buildSocket: config.controlPlane.build.baseUrl,
     hostBase: runtimeHostBaseDescriptor,
     pid: process.pid,
@@ -57,6 +83,7 @@ export const createRuntimeHostDescriptor = (
     eventPath: config.eventPath,
     runtimeRpcUrl,
     controlPlane: config.controlPlane,
+    agentTransports: createAgentTransportDescriptors(config),
     hostBase: runtimeHostBaseDescriptor,
     pid: process.pid,
     startedAt,
