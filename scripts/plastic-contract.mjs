@@ -151,6 +151,16 @@ await check("methods/describe", async () => {
   return { id: description.id, owner: description.owner, availability: description.availability?.status ?? "unspecified" };
 });
 
+await check("plastic/selfTest description", async () => {
+  const description = await rpc("methods/describe", { id: "plastic/selfTest" });
+  assert(description.id === "plastic/selfTest", "described wrong self-test method");
+  assert(description.outputSchema?.required?.includes("summary"), "plastic/selfTest output schema must require summary");
+  assert(description.outputSchema?.properties?.summary?.required?.includes("sharedCheckIds"), "plastic/selfTest summary schema must expose sharedCheckIds");
+  assert(description.outputSchema?.properties?.summary?.required?.includes("hostCheckIds"), "plastic/selfTest summary schema must expose hostCheckIds");
+  assert(description.effects?.durableEvents?.includes("plastic.self_test.completed"), "plastic/selfTest missing durable event effect");
+  return { id: description.id, summaryRequired: description.outputSchema.properties.summary.required };
+});
+
 await check("runtime/runAuditAction description", async () => {
   const description = await rpc("methods/describe", { id: "runtime/runAuditAction" });
   const planDescription = await rpc("methods/describe", { id: "runtime/auditActionPlan" });

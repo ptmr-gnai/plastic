@@ -60,6 +60,7 @@ export const createRuntimeHealthModule = (input: {
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: runtimeHealthAvailability,
         inputSchema: noInputSchema,
+        outputSchema: selfTestOutputSchema,
         examples: [
           {
             title: "Run runtime health checks",
@@ -155,4 +156,18 @@ const summarizeHealthChecks = (checks: HealthCheck[], sharedCheckIds: string[]) 
     sharedCheckIds,
     hostCheckIds
   };
+};
+
+const selfTestOutputSchema = {
+  type: "object",
+  required: ["ok", "summary", "checks", "eventId"],
+  properties: {
+    ok: { type: "boolean" },
+    summary: {
+      type: "object",
+      required: ["total", "shared", "host", "failedIds", "sharedCheckIds", "hostCheckIds"]
+    },
+    checks: { type: "array" },
+    eventId: { type: "string" }
+  }
 };
