@@ -27,5 +27,13 @@ export const readRuntimeControlPlane = (events: PlasticEvent[]): Record<string, 
   return Object.keys(controlPlane).length > 0 ? controlPlane : null;
 };
 
+export const readRuntimeAgentTransports = (events: PlasticEvent[]): Array<Record<string, unknown>> => {
+  const latestStarted = [...events].reverse().find((event: PlasticEvent) => event.type === "runtime.started");
+  const payload = asRecord(latestStarted?.payload);
+  const host = asRecord(payload.host);
+  const transports = host.agentTransports;
+  return Array.isArray(transports) ? transports.filter((transport) => typeof transport === "object" && transport !== null) as Array<Record<string, unknown>> : [];
+};
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};

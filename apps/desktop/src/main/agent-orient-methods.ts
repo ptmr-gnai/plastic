@@ -15,7 +15,7 @@ import type {
   RunPromise
 } from "./runtime-method-context.js";
 import { readAgentAuditStatus } from "./agent-audit-status.js";
-import { readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
+import { readRuntimeAgentTransports, readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import { runtimeHostBaseDescriptor } from "./runtime-host-status.js";
 
@@ -130,6 +130,7 @@ const buildOrientation = async (input: {
     capabilities: await buildCapabilities({
       capabilities: input.capabilities,
       controlPlane: readRuntimeControlPlane(events),
+      agentTransports: readRuntimeAgentTransports(events),
       methods: input.methods,
       methodList,
       runPromise: input.runPromise,
@@ -245,6 +246,7 @@ const buildMemory = (
 
 const buildCapabilities = async (input: {
   capabilities: CapabilityRegistry;
+  agentTransports: Array<Record<string, unknown>>;
   controlPlane: Record<string, unknown> | null;
   methods: MethodRegistry;
   methodList: PlasticMethod[];
@@ -260,6 +262,7 @@ const buildCapabilities = async (input: {
   modules: await readRuntimeModules(input),
   auditStatus: await readAgentAuditStatus(input),
   controlPlane: input.controlPlane,
+  agentTransports: input.agentTransports,
   methods: recommendedMethods(input.methodList),
   recommendedActions: [
     { id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId: input.panelId, eventCursor: input.latestEventId } },

@@ -21,6 +21,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assert(workbench.control.controlPlane.build.methodsPath === "/methods", "workbench build control plane methodsPath mismatch");
   assert(workbench.control.controlPlane.build.eventStreamPath === "/events/stream", "workbench build control plane eventStreamPath mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: workbench.control.controlPlane, source: "workbench" });
+  assertAgentTransports({ assert, assertArray, transports: workbench.control.agentTransports, rpcUrl: workbench.control.controlPlane.runtime.rpcUrl, source: "workbench" });
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"), "workbench missing runtime/modules recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/host"), "workbench missing runtime/host recommended action");
@@ -36,6 +37,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
     capabilities: workbench.control.capabilities.count,
     modules: workbench.control.modules.count,
     controlPlane: workbench.control.controlPlane.runtime.transport,
+    agentTransports: workbench.control.agentTransports.length,
     actions: workbench.control.recommendedActions.length,
     visibleRefs: workbench.observability.visibleRefs?.length ?? 0
   };
@@ -63,6 +65,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation 
   assert(orientation.capabilities.controlPlane.build.methodsPath === "/methods", "agent/orient build control plane methodsPath mismatch");
   assert(orientation.capabilities.controlPlane.build.eventStreamPath === "/events/stream", "agent/orient build control plane eventStreamPath mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: orientation.capabilities.controlPlane, source: "agent/orient" });
+  assertAgentTransports({ assert, assertArray, transports: orientation.capabilities.agentTransports, rpcUrl: orientation.capabilities.controlPlane.runtime.rpcUrl, source: "agent/orient" });
   assert(orientation.capabilities.links?.some((link) => link.method === "runtime/modules"), "agent/orient missing runtime/modules link");
   assert(
     orientation.capabilities.links?.some((link) => link.method === "runtime/host")
@@ -87,7 +90,18 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation 
     capabilities: orientation.capabilities.host.count,
     modules: orientation.capabilities.modules.count,
     controlPlane: orientation.capabilities.controlPlane.runtime.transport,
+    agentTransports: orientation.capabilities.agentTransports.length,
     visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
     recommendedActions: orientation.capabilities.recommendedActions.length
   };
+};
+
+const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl, source }) => {
+  const items = assertArray(transports, `${source} agentTransports is not an array`);
+  const http = items.find((transport) => transport.id === "http-rpc");
+  const mcp = items.find((transport) => transport.id === "mcp-stdio");
+  assert(http?.methodRegistry === "shared" && http.rpcUrl === rpcUrl, `${source} HTTP transport mismatch`);
+  assert(mcp?.methodRegistry === "shared", `${source} MCP transport must use shared registry`);
+  assert(mcp.command === "node" && mcp.args?.includes("scripts/plastic-mcp-server.mjs"), `${source} MCP command mismatch`);
+  assert(mcp.env?.PLASTIC_RPC_URL === rpcUrl, `${source} MCP RPC URL mismatch`);
 };

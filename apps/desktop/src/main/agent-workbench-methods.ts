@@ -16,7 +16,7 @@ import type {
   RunPromise
 } from "./runtime-method-context.js";
 import { readAgentAuditStatus } from "./agent-audit-status.js";
-import { readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
+import { readRuntimeAgentTransports, readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import { runtimeHostBaseDescriptor } from "./runtime-host-status.js";
 
@@ -136,6 +136,7 @@ const buildWorkbench = async (input: {
     control: await buildControl({
       capabilities,
       controlPlane: readRuntimeControlPlane(events),
+      agentTransports: readRuntimeAgentTransports(events),
       host,
       methods,
       methodList,
@@ -202,6 +203,7 @@ const buildObservability = (input: {
 
 const buildControl = async (input: {
   capabilities: CapabilityRegistry;
+  agentTransports: Array<Record<string, unknown>>;
   controlPlane: Record<string, unknown> | null;
   host: AgentWorkbenchHost;
   methods: MethodRegistry;
@@ -211,7 +213,7 @@ const buildControl = async (input: {
   panelId: string | undefined;
   latestEventId: string | undefined;
 }) => {
-  const { capabilities, controlPlane, host, methods, methodList, runPromise, workbenchInput, panelId, latestEventId } = input;
+  const { capabilities, agentTransports, controlPlane, host, methods, methodList, runPromise, workbenchInput, panelId, latestEventId } = input;
   const capabilityItems = capabilities.list();
   return {
     capabilities: {
@@ -219,6 +221,7 @@ const buildControl = async (input: {
       items: capabilityItems
     },
     controlPlane,
+    agentTransports,
     auditStatus: await readAgentAuditStatus({ methods, methodList, runPromise }),
     modules: await readRuntimeModules({ methods, runPromise }),
     methodCount: methodList.length,
