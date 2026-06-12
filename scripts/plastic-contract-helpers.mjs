@@ -129,10 +129,9 @@ export const assertEventsTagged = (events, tags, message) => {
   assert(events.every((event) => tags.every((tag) => event.meta?.tags?.includes(tag))), message);
 };
 
-export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) => {
+export const assertMethodDiscoveryParity = async ({ methods, rpc }) => {
   const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
-  const ids = sampleIds ?? methods.map((method) => method.id);
-  for (const id of ids) {
+  for (const id of methods.map((method) => method.id)) {
     const listed = byId[id];
     assert(listed, `plastic/methods missing ${id}`);
     const described = await rpc("methods/describe", { id });

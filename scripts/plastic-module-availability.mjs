@@ -23,7 +23,7 @@ let runtimeModuleIdsPromise;
 
 export const expectedRuntimeModuleIds = async () => {
   if (!runtimeModuleIdsPromise) {
-    runtimeModuleIdsPromise = import("../apps/desktop/dist-electron/main/runtime-module-plan.js")
+    runtimeModuleIdsPromise = import("../apps/desktop/dist-electron/main/runtime-module-ids.js")
       .then((module) => module.standardRuntimeModuleIds ?? fallbackRuntimeModuleIds)
       .catch(() => fallbackRuntimeModuleIds);
   }
