@@ -7,6 +7,8 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(methodCheck.details.missingReferencedCapabilities?.length === 0, "plastic/selfTest method capability reference check failed");
   assert(methodCheck.details.missingRequiredMethods?.length === 0, "plastic/selfTest required method check failed");
   assert(methodCheck.details.requiredDiagnosticsMethods === true, "plastic/selfTest diagnostics method check failed");
+  const buildCheck = selfTest.checks?.find((candidate) => candidate.id === "build:surface");
+  assert(buildCheck?.details?.invalidTransportAffordances?.length === 0, "plastic/selfTest build/status transport affordances are invalid");
   const capabilityCheck = selfTest.checks?.find((candidate) => candidate.id === "capabilities:list");
   assert(capabilityCheck?.details?.missingRequiredCapabilities?.length === 0, "plastic/selfTest required capability check failed");
   assert(capabilityCheck.details.invalidStatuses?.length === 0, "plastic/selfTest capability status check failed");

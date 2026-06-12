@@ -63,6 +63,7 @@ export const checkBuildStatusHealth = (buildStatus: unknown) => {
   const runtimeControlPlane = asRecord(controlPlane.runtime);
   const buildControlPlane = asRecord(controlPlane.build);
   const transports = Array.isArray(status.agentTransports) ? status.agentTransports.map(asRecord) : [];
+  const invalidTransportAffordances = invalidAgentTransportAffordances(transports);
   if (status.status !== "running") {
     throw new Error("build/status did not report running");
   }
@@ -78,12 +79,16 @@ export const checkBuildStatusHealth = (buildStatus: unknown) => {
   if (!transports.some((transport) => transport.id === "http-rpc") || !transports.some((transport) => transport.id === "mcp-stdio")) {
     throw new Error("build/status missing agent transport affordances");
   }
+  if (invalidTransportAffordances.length > 0) {
+    throw new Error(`build/status agent transports have invalid affordances: ${invalidTransportAffordances.join(", ")}`);
+  }
   return {
     service: status.service ?? null,
     mode: status.mode ?? null,
     runtimeTransport: runtimeControlPlane.transport,
     buildTransport: buildControlPlane.transport,
-    agentTransports: transports.length
+    agentTransports: transports.length,
+    invalidTransportAffordances
   };
 };
 
@@ -141,20 +146,7 @@ export const checkAgentTransportsHealth = (events: PlasticEvent[]) => {
   const transports = Array.isArray(host.agentTransports) ? host.agentTransports.map(asRecord) : [];
   const http = transports.find((transport) => transport.id === "http-rpc");
   const mcp = transports.find((transport) => transport.id === "mcp-stdio");
-  const invalidTransportAffordances = [
-    !Array.isArray(http?.links) || !http.links.some((link) => asRecord(link).rel === "methods" && asRecord(link).method === "http/get")
-      ? "http-rpc:methods-link"
-      : null,
-    !Array.isArray(http?.actions) || !http.actions.some((action) => asRecord(action).id === "call-plastic-rpc" && asRecord(action).method === "http/post")
-      ? "http-rpc:call-action"
-      : null,
-    !Array.isArray(mcp?.tools) || !mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && asRecord(tool).methodRegistry === "shared")
-      ? "mcp-stdio:plastic-rpc-tool"
-      : null,
-    !Array.isArray(mcp?.actions) || !mcp.actions.some((action) => asRecord(action).tool === "plastic_rpc" && asRecord(asRecord(action).arguments).method === "agent/orient")
-      ? "mcp-stdio:call-action"
-      : null
-  ].filter((item): item is string => Boolean(item));
+  const invalidTransportAffordances = invalidAgentTransportAffordances(transports);
   if (!http || http.status !== "available" || http.methodRegistry !== "shared") {
     throw new Error("runtime.started missing shared HTTP RPC agent transport");
   }
@@ -420,6 +412,25 @@ const unknownMethodReferences = (references: Record<string, unknown>[], methodId
   references
     .map((reference) => reference.method)
     .filter((method): method is string => typeof method === "string" && !methodIds.has(method));
+
+const invalidAgentTransportAffordances = (transports: Record<string, unknown>[]) => {
+  const http = transports.find((transport) => transport.id === "http-rpc");
+  const mcp = transports.find((transport) => transport.id === "mcp-stdio");
+  return [
+    !Array.isArray(http?.links) || !http.links.some((link) => asRecord(link).rel === "methods" && asRecord(link).method === "http/get")
+      ? "http-rpc:methods-link"
+      : null,
+    !Array.isArray(http?.actions) || !http.actions.some((action) => asRecord(action).id === "call-plastic-rpc" && asRecord(action).method === "http/post")
+      ? "http-rpc:call-action"
+      : null,
+    !Array.isArray(mcp?.tools) || !mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && asRecord(tool).methodRegistry === "shared")
+      ? "mcp-stdio:plastic-rpc-tool"
+      : null,
+    !Array.isArray(mcp?.actions) || !mcp.actions.some((action) => asRecord(action).tool === "plastic_rpc" && asRecord(asRecord(action).arguments).method === "agent/orient")
+      ? "mcp-stdio:call-action"
+      : null
+  ].filter((item): item is string => Boolean(item));
+};
 
 const normalizeCapabilities = (capabilities: unknown[]) =>
   capabilities
