@@ -214,7 +214,9 @@ const capture = async () => {
     })).sort((left, right) => left.order - right.order),
     capabilities: capabilities.items.map((capability) => ({
       id: capability.id,
-      title: capability.title
+      title: capability.title,
+      status: capability.status,
+      notes: capability.notes
     })).sort((left, right) => left.id.localeCompare(right.id))
   };
 };
@@ -295,7 +297,14 @@ const compareCapabilities = (baseCapabilitiesList, currentCapabilitiesList) => {
     capabilityTitleDrift: baseCapabilityIds
       .filter((id) => currentCapabilities[id])
       .filter((id) => baseCapabilities[id].title !== currentCapabilities[id].title)
-      .map((id) => ({ id, base: baseCapabilities[id].title, current: currentCapabilities[id].title }))
+      .map((id) => ({ id, base: baseCapabilities[id].title, current: currentCapabilities[id].title })),
+    capabilityStatusComparison: baseCapabilityIds
+      .filter((id) => currentCapabilities[id])
+      .map((id) => ({
+        id,
+        base: baseCapabilities[id].status,
+        current: currentCapabilities[id].status
+      }))
   };
 };
 
@@ -375,6 +384,7 @@ const main = async () => {
     healthChecks: current.healthCheckCount,
     sharedHealthChecks: current.health.sharedChecks.map((check) => check.id),
     mcpTools: current.mcpTools.map((tool) => tool.name),
+    capabilityStatuses: Object.fromEntries(current.capabilities.map((capability) => [capability.id, capability.status])),
     comparison
   }, null, 2));
 };
