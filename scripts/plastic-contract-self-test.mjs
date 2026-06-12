@@ -24,6 +24,8 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(moduleCheck.details.missingAvailabilitySummary?.length === 0, "plastic/selfTest module availability summary check failed");
   assert(moduleCheck.details.invalidAvailabilityCounts?.length === 0, "plastic/selfTest module availability count check failed");
   assert(moduleCheck.details.missingContributions?.length === 0, "plastic/selfTest module contribution check failed");
+  const startedCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-started:descriptor");
+  assert(startedCheck?.details?.invalidStartedControlPlaneUrls?.length === 0, "plastic/selfTest runtime.started control-plane URLs are invalid");
   const hostIdentityCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-host:identity");
   assert(hostIdentityCheck?.details?.mismatchedIdentityFields?.length === 0, "plastic/selfTest host identity check failed");
   assert(hostIdentityCheck.details.invalidHostControlPlaneUrls?.length === 0, "plastic/selfTest runtime/host control-plane URLs are invalid");

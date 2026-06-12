@@ -264,6 +264,7 @@ export const checkRuntimeStartedDescriptorHealth = (events: PlasticEvent[]) => {
   const buildControlPlane = asRecord(controlPlane.build);
   const capabilities = Array.isArray(payload.capabilities) ? payload.capabilities.map(asRecord) : [];
   const modules = Array.isArray(payload.modules) ? payload.modules.map(asRecord) : [];
+  const invalidStartedControlPlaneUrls = invalidControlPlaneUrls(controlPlane);
   if (!latestStarted) {
     throw new Error("runtime.started event is missing");
   }
@@ -272,6 +273,9 @@ export const checkRuntimeStartedDescriptorHealth = (events: PlasticEvent[]) => {
   }
   if (runtimeControlPlane.transport !== "http" || buildControlPlane.transport !== "http") {
     throw new Error("runtime.started control plane must expose runtime and build HTTP transports");
+  }
+  if (invalidStartedControlPlaneUrls.length > 0) {
+    throw new Error(`runtime.started control plane URLs are invalid: ${invalidStartedControlPlaneUrls.join(", ")}`);
   }
   if (capabilities.length === 0 || !capabilities.every((capability) => typeof capability.id === "string")) {
     throw new Error("runtime.started capability inventory is incomplete");
@@ -283,6 +287,7 @@ export const checkRuntimeStartedDescriptorHealth = (events: PlasticEvent[]) => {
     eventId: latestStarted.id,
     runtimeTransport: runtimeControlPlane.transport,
     buildTransport: buildControlPlane.transport,
+    invalidStartedControlPlaneUrls,
     capabilities: capabilities.length,
     modules: modules.length,
     agentTransports: host.agentTransports.length
