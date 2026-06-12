@@ -141,6 +141,20 @@ export const checkAgentTransportsHealth = (events: PlasticEvent[]) => {
   const transports = Array.isArray(host.agentTransports) ? host.agentTransports.map(asRecord) : [];
   const http = transports.find((transport) => transport.id === "http-rpc");
   const mcp = transports.find((transport) => transport.id === "mcp-stdio");
+  const invalidTransportAffordances = [
+    !Array.isArray(http?.links) || !http.links.some((link) => asRecord(link).rel === "methods" && asRecord(link).method === "http/get")
+      ? "http-rpc:methods-link"
+      : null,
+    !Array.isArray(http?.actions) || !http.actions.some((action) => asRecord(action).id === "call-plastic-rpc" && asRecord(action).method === "http/post")
+      ? "http-rpc:call-action"
+      : null,
+    !Array.isArray(mcp?.tools) || !mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && asRecord(tool).methodRegistry === "shared")
+      ? "mcp-stdio:plastic-rpc-tool"
+      : null,
+    !Array.isArray(mcp?.actions) || !mcp.actions.some((action) => asRecord(action).tool === "plastic_rpc" && asRecord(asRecord(action).arguments).method === "agent/orient")
+      ? "mcp-stdio:call-action"
+      : null
+  ].filter((item): item is string => Boolean(item));
   if (!http || http.status !== "available" || http.methodRegistry !== "shared") {
     throw new Error("runtime.started missing shared HTTP RPC agent transport");
   }
@@ -156,10 +170,14 @@ export const checkAgentTransportsHealth = (events: PlasticEvent[]) => {
   if (!Array.isArray(mcp.actions) || !mcp.actions.some((action) => asRecord(action).tool === "plastic_rpc")) {
     throw new Error("MCP stdio agent transport missing plastic_rpc action");
   }
+  if (invalidTransportAffordances.length > 0) {
+    throw new Error(`Agent transports have invalid affordances: ${invalidTransportAffordances.join(", ")}`);
+  }
   return {
     count: transports.length,
     ids: transports.map((transport) => transport.id),
-    mcpTool: "plastic_rpc"
+    mcpTool: "plastic_rpc",
+    invalidTransportAffordances
   };
 };
 
