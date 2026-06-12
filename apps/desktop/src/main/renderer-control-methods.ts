@@ -1,5 +1,6 @@
 import { Effect } from "effect";
-import { availabilityFromCapabilities, type RuntimeModule } from "./runtime-method-context.js";
+import { windowAvailability } from "./window-availability.js";
+import type { RuntimeModule } from "./runtime-method-context.js";
 
 export type RendererReloadResult = {
   windowId: number;
@@ -11,11 +12,7 @@ export const createRendererControlModule = (input: {
 }): RuntimeModule => ({
   id: "renderer-control",
   register: async ({ capabilities, methods, runPromise }) => {
-    const availability = availabilityFromCapabilities(
-      capabilities,
-      ["electron.window"],
-      "Requires Electron renderer windows."
-    );
+    const availability = windowAvailability(capabilities, "renderer/reload");
 
     await runPromise(
       methods.register({

@@ -1,11 +1,8 @@
 import type { BrowserWindow as ElectronBrowserWindow } from "electron";
 import { Effect } from "effect";
 import { projectPanels, projectWindows } from "@plastic/core";
-import {
-  availabilityFromCapabilities,
-  type RuntimeMethodContext,
-  type RuntimeModule
-} from "./runtime-method-context.js";
+import { windowAvailability } from "./window-availability.js";
+import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
 type WindowHost = {
   getAllWindows: () => ElectronBrowserWindow[];
@@ -29,23 +26,13 @@ export const createWindowCapabilityModule = (input: WindowCapabilityModuleInput 
 
 const registerWindowList = async (context: RuntimeMethodContext) => {
   const { eventStore, methods, runPromise } = context;
-  const requiredCapabilities = ["electron.window", "window.projection"];
-  const availability = context.capabilities.has("electron.window")
-    ? availabilityFromCapabilities(context.capabilities, requiredCapabilities)
-    : {
-        status: "degraded" as const,
-        requiredCapabilities,
-        missingCapabilities: context.capabilities.missing(["electron.window"]),
-        notes: "This host can project durable windows but cannot inspect live Electron windows."
-      };
-
   await runPromise(
     methods.register({
       id: "windows/list",
       title: "List windows",
       description: "Returns known windows rebuilt from durable events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability,
+      availability: windowAvailability(context.capabilities, "windows/list"),
       handler: () => Effect.map(eventStore.list(), (events) => projectWindows(events, projectPanels(events)))
     })
   );
@@ -62,11 +49,7 @@ const registerWindowCreate = async (
       title: "Create window",
       description: "Opens a new Electron window and appends window.created.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["electron.window"],
-        "Requires a host that can create Electron BrowserWindow instances."
-      ),
+      availability: windowAvailability(context.capabilities, "windows/create"),
       handler: (methodInput) =>
         Effect.promise(async () => {
           if (!createWindow) {
@@ -91,11 +74,7 @@ const registerWindowFocusPanel = async (
       title: "Focus panel",
       description: "Scrolls a visible panel into view and focuses its window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["electron.window", "dom.refs"],
-        "Requires a rendered DOM and a focusable Electron window."
-      ),
+      availability: windowAvailability(context.capabilities, "windows/focusPanel"),
       handler: (methodInput) =>
         Effect.promise(async () => {
           if (!browserWindow || !scrollRefIntoViewScript) {
@@ -123,11 +102,7 @@ const registerWindowScrollToRef = async (
       title: "Scroll to visible ref",
       description: "Scrolls any visible data-plastic-ref into view.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["electron.window", "dom.refs"],
-        "Requires a rendered DOM and a focusable Electron window."
-      ),
+      availability: windowAvailability(context.capabilities, "windows/scrollToRef"),
       handler: (methodInput) =>
         Effect.promise(async () => {
           if (!browserWindow || !scrollRefIntoViewScript) {
