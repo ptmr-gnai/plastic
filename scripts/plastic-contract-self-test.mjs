@@ -27,6 +27,8 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(moduleCheck.details.missingAgentBackend === false, "plastic/selfTest agent backend module check failed");
   assert(moduleCheck.details.requiredHostModule === true, "plastic/selfTest host module check failed");
   assert(moduleCheck.details.missingMethodIds?.length === 0, "plastic/selfTest module methodIds check failed");
+  assert(moduleCheck.details.invalidModuleOrder?.length === 0, "plastic/selfTest runtime module order check failed");
+  assert(moduleCheck.details.invalidOrderFields?.length === 0, "plastic/selfTest runtime module order field check failed");
   assert(moduleCheck.details.missingAvailabilitySummary?.length === 0, "plastic/selfTest module availability summary check failed");
   assert(moduleCheck.details.invalidAvailabilityCounts?.length === 0, "plastic/selfTest module availability count check failed");
   assert(moduleCheck.details.missingContributions?.length === 0, "plastic/selfTest module contribution check failed");

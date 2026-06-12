@@ -27,6 +27,7 @@ const requiredRuntimeModules = [
   "runtime-diagnostics",
   "extension-authoring",
   "renderer-control",
+  "agent-backend",
   "runtime-control",
   "panel-control",
   "window-capability",
@@ -212,6 +213,16 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
   const missingAvailabilitySummary = items
     .filter((item) => !hasModuleAvailabilitySummary(item))
     .map((item) => (item as { id?: string }).id ?? "<missing-id>");
+  const moduleIds = items.map((item) => (item as { id?: string }).id).filter(Boolean);
+  const invalidModuleOrder = JSON.stringify(moduleIds) === JSON.stringify(requiredRuntimeModules)
+    ? []
+    : [{
+      expected: requiredRuntimeModules,
+      actual: moduleIds
+    }];
+  const invalidOrderFields = items
+    .filter((item, index) => (item as { order?: unknown }).order !== index)
+    .map((item) => (item as { id?: string }).id ?? "<missing-id>");
   const invalidAvailabilityCounts = items
     .filter((item) => hasModuleAvailabilitySummary(item))
     .filter((item) => !moduleAvailabilityCountsMatch(item))
@@ -231,6 +242,12 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
   if (missingMethodIds.length > 0) {
     throw new Error(`Runtime modules missing methodIds: ${missingMethodIds.join(", ")}`);
   }
+  if (invalidModuleOrder.length > 0) {
+    throw new Error("Runtime module order diverged from shared runtime plan");
+  }
+  if (invalidOrderFields.length > 0) {
+    throw new Error(`Runtime module order fields are invalid: ${invalidOrderFields.join(", ")}`);
+  }
   if (missingAvailabilitySummary.length > 0) {
     throw new Error(`Runtime modules missing availability summaries: ${missingAvailabilitySummary.join(", ")}`);
   }
@@ -246,6 +263,8 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
     missingAgentBackend,
     requiredHostModule: ids.has("runtime-host"),
     missingMethodIds,
+    invalidModuleOrder,
+    invalidOrderFields,
     missingAvailabilitySummary,
     invalidAvailabilityCounts,
     missingContributions
