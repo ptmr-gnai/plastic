@@ -128,7 +128,12 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   assert(auditStatus.recentActions.every((action) => action.env && typeof action.env === "object" && !Array.isArray(action.env)), "runtime/auditStatus recent audit actions must expose env object");
   assert(auditStatus.recentActions.every((action) => typeof action.stdoutTail === "string" && typeof action.stderrTail === "string" && action.stdoutTail.length <= 4000 && action.stderrTail.length <= 4000), "runtime/auditStatus recent audit action tails must be bounded strings");
   if (auditStatus.verdict.diagnosis?.code === "electron-app-mode-smoke-not-entered") {
+    assert(auditStatus.verdict.actions.some((action) => action.id === "force-full-electron-launch-diagnostics"), "runtime/auditStatus smoke failure missing full launch diagnostic action");
     assert(auditStatus.verdict.actions.some((action) => action.id === "probe-electron-launch-targets"), "runtime/auditStatus smoke failure missing launch probe action");
+  }
+  if (electronLaunchDiagnosisCodes.has(auditStatus.verdict.diagnosis?.code)) {
+    assert(auditStatus.verdict.actions.some((action) => action.id === "try-electron-package-launch-mode"), "runtime/auditStatus Electron launch failure missing package launch action");
+    assert(auditStatus.verdict.actions.some((action) => action.id === "probe-electron-launch-targets"), "runtime/auditStatus Electron launch failure missing launch probe action");
   }
   if (auditStatus.available) {
     assert(typeof auditStatus.summary?.runtimeUnification?.usable === "boolean", "runtime/auditStatus missing structured verdict");
@@ -137,6 +142,17 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   }
   return { available: auditStatus.available, path: auditStatus.path, usable: auditStatus.summary?.runtimeUnification?.usable ?? null, verdict: auditStatus.verdict.status };
 };
+
+const electronLaunchDiagnosisCodes = new Set([
+  "electron-child-running-compiled-main-not-entered",
+  "electron-main-entered-startup-missing",
+  "electron-cjs-entry-entered-esm-missing",
+  "electron-child-running-main-not-entered",
+  "electron-app-main-not-entered",
+  "electron-main-entry-not-observed",
+  "electron-main-startup-missing",
+  "electron-runtime-ports-missing"
+]);
 
 export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) => {
   const byId = Object.fromEntries(methods.map((method) => [method.id, method]));

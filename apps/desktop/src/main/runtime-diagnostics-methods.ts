@@ -119,7 +119,7 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
       probeElectronLaunchTargetsAction()
     ];
   }
-  if (diagnosisResult.code === "electron-child-running-compiled-main-not-entered") {
+  if (electronLaunchDiagnosisCodes.has(diagnosisResult.code)) {
     return [
       tryElectronPackageLaunchModeAction(),
       probeElectronLaunchTargetsAction()
@@ -127,6 +127,17 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
   }
   return [rerunRuntimeUnificationAuditAction()];
 };
+
+const electronLaunchDiagnosisCodes = new Set([
+  "electron-child-running-compiled-main-not-entered",
+  "electron-main-entered-startup-missing",
+  "electron-cjs-entry-entered-esm-missing",
+  "electron-child-running-main-not-entered",
+  "electron-app-main-not-entered",
+  "electron-main-entry-not-observed",
+  "electron-main-startup-missing",
+  "electron-runtime-ports-missing"
+]);
 
 const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
   if (
