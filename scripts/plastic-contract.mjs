@@ -12,6 +12,7 @@ import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./p
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
 import { assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
+import { assertHeadlessFallbackChatFixture, cleanupLegacyContractFixtures } from "./plastic-contract-fixtures.mjs";
 import {
   agentBackendMethodExpectationsForMode,
   capabilityBackedMethodExpectationsForMode
@@ -91,6 +92,10 @@ await check("plastic/methods", async () => {
   assertMethodCatalogSurface({ assert, label: "build /methods", methods: buildItems });
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   return { count: items.length };
+});
+
+await check("legacy contract fixture cleanup", async () => {
+  return cleanupLegacyContractFixtures({ assertArray, rpc, validationMeta });
 });
 
 await check("plastic/snapshot", async () => {
@@ -217,28 +222,7 @@ await check("headless agent backend fallback", async () => {
   if (state.app.mode !== "headless") {
     return { skipped: true, reason: "fallback path is headless-only" };
   }
-  const chatId = `${runId}-fallback-chat`;
-  const created = await rpc("chats/createCodexChat", {
-    id: chatId,
-    title: "Contract Fallback Chat"
-  });
-  assert(created.chatId === chatId, "fallback chat returned wrong id");
-  assert(created.threadId === null, "fallback chat should not bind a Codex thread");
-  const sent = await rpc("chats/sendToCodex", {
-    chatId,
-    content: "Contract fallback message"
-  });
-  assert(sent.userEvent?.id, "fallback send missing user event");
-  assert(sent.agentEvent?.id, "fallback send missing agent event");
-  const timeline = await rpc("events/timeline", { scope: { panelId: chatId }, limit: 10 });
-  const timelineItems = itemsFrom(timeline, "fallback timeline returned no items");
-  assert(timelineItems.some((item) => item.eventId === sent.userEvent.id), "fallback user event missing from timeline");
-  return {
-    chatId,
-    createEventId: created.panelEvent.id,
-    userEventId: sent.userEvent.id,
-    agentEventId: sent.agentEvent.id
-  };
+  return assertHeadlessFallbackChatFixture({ assert, assertArray, assertEventsTagged, itemsFrom, rpc, runId, validationMeta, validationTags });
 });
 
 await check("build/status", async () => {

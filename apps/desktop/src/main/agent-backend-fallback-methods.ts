@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { projectPanels } from "@plastic/core";
+import { projectPanels, type PlasticEventMeta } from "@plastic/core";
 import {
   availabilityFromCapabilities,
   type RuntimeMethodContext,
@@ -26,12 +26,14 @@ import { codexBackendOwner } from "./codex-method-registration.js";
 type ChatInput = {
   chatId?: string;
   content?: string;
+  meta?: PlasticEventMeta;
 };
 
 type CreateChatInput = {
   id?: string;
   title?: string;
   order?: number;
+  meta?: PlasticEventMeta;
 };
 
 type UnavailableMethodDefinition = {
@@ -212,7 +214,8 @@ const createFallbackChat = async (context: RuntimeMethodContext, input: unknown,
       body: "Chat panel created without an attached Codex backend.",
       order
     },
-    scope: { panelId, extensionId: "plastic.chat" }
+    scope: { panelId, extensionId: "plastic.chat" },
+    ...(payload?.meta ? { meta: payload.meta } : {})
   });
   const noticeEvent = await context.appendEvent({
     type: "chat.agent_message.completed",
@@ -222,7 +225,8 @@ const createFallbackChat = async (context: RuntimeMethodContext, input: unknown,
       content: "Chat created. Codex app-server passthrough is unavailable in this host."
     },
     scope: { panelId },
-    causationId: panelEvent.id
+    causationId: panelEvent.id,
+    ...(payload?.meta ? { meta: payload.meta } : {})
   });
   return { panelId, chatId: panelId, threadId: null, panelEvent, noticeEvent, availability };
 };
@@ -270,7 +274,8 @@ const recordFallbackMessage = async (context: RuntimeMethodContext, input: unkno
     type: "chat.user_message.submitted",
     payload: { chatId, content, targetAgent: "codex" },
     scope: { panelId: chatId, agentId: "codex" },
-    actor: { kind: "user", id: "local-user", name: "Local User" }
+    actor: { kind: "user", id: "local-user", name: "Local User" },
+    ...(payload?.meta ? { meta: payload.meta } : {})
   });
   const agentEvent = await context.appendEvent({
     type: "chat.agent_message.completed",
@@ -280,7 +285,8 @@ const recordFallbackMessage = async (context: RuntimeMethodContext, input: unkno
       content: "Headless runtime received this message. Codex app-server passthrough is unavailable in this host."
     },
     scope: { panelId: chatId },
-    causationId: userEvent.id
+    causationId: userEvent.id,
+    ...(payload?.meta ? { meta: payload.meta } : {})
   });
   return { userEvent, agentEvent, availability };
 };

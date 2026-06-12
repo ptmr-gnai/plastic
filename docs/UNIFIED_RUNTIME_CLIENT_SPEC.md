@@ -489,11 +489,11 @@ This command does not replace `pnpm plastic:validate-electron`. Strict Electron 
 
 ## Practical Next Step
 
-Keep the audit loop bounded. The next architecture slice should isolate or compact contract-generated durable validation events so repeated audits do not distort projected panel/extension counts over time.
+Keep the audit loop bounded. Contract-generated durable validation events must remain inspectable but should not leave active user-shaped projections behind. Headless fallback chat validation now tags its durable chat events, closes its fixture, and repairs older contract panel fixtures before taking the main snapshot.
 
 Proof:
 
-1. `pnpm plastic:contract` can run repeatedly without increasing active contract panel or workspace extension projections.
+1. `pnpm plastic:validate-headless` can run repeatedly without increasing active contract panel or workspace extension projections.
 2. `pnpm plastic:method-parity` remains clean after repeated headless/Electron audit runs.
 3. `plastic/selfTest` stays green while reporting stable shared projection health.
 4. Validation events remain durable and inspectable, but are identifiable as validation scope rather than user workspace state.
