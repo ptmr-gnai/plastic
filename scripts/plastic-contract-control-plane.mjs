@@ -1,7 +1,38 @@
 import { stableJson } from "./plastic-stable-json.mjs";
 
+const runtimePaths = {
+  rpcPath: "/rpc",
+  statePath: "/state",
+  methodsPath: "/methods",
+  hostPath: "/host",
+  capabilitiesPath: "/capabilities",
+  snapshotPath: "/snapshot",
+  selfTestPath: "/self-test",
+  eventStreamPath: "/events/stream",
+  healthPath: "/healthz"
+};
+
+const buildPaths = {
+  rpcPath: "/rpc",
+  statePath: "/state",
+  methodsPath: "/methods",
+  hostPath: "/host",
+  capabilitiesPath: "/capabilities",
+  eventStreamPath: "/events/stream",
+  healthPath: "/healthz",
+  statusPath: "/status",
+  snapshotPath: "/snapshot",
+  selfTestPath: "/self-test"
+};
+
 export const assertControlPlaneEndpointUrls = ({ assert, controlPlane, source }) => {
+  assert(controlPlane?.runtime?.transport === "http", `${source} runtime transport mismatch`);
   assert(controlPlane?.runtime?.baseUrl?.startsWith("http://"), `${source} runtime baseUrl missing`);
+  assert(typeof controlPlane.runtime.host === "string" && controlPlane.runtime.host.length > 0, `${source} runtime host missing`);
+  assert(typeof controlPlane.runtime.port === "number", `${source} runtime port missing`);
+  for (const [key, value] of Object.entries(runtimePaths)) {
+    assert(controlPlane.runtime[key] === value, `${source} runtime ${key} mismatch`);
+  }
   assert(controlPlane.runtime.rpcUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.rpcPath}`, `${source} runtime rpcUrl mismatch`);
   assert(controlPlane.runtime.stateUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.statePath}`, `${source} runtime stateUrl mismatch`);
   assert(controlPlane.runtime.methodsUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.methodsPath}`, `${source} runtime methodsUrl mismatch`);
@@ -11,7 +42,13 @@ export const assertControlPlaneEndpointUrls = ({ assert, controlPlane, source })
   assert(controlPlane.runtime.selfTestUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.selfTestPath}`, `${source} runtime selfTestUrl mismatch`);
   assert(controlPlane.runtime.eventStreamUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.eventStreamPath}`, `${source} runtime eventStreamUrl mismatch`);
   assert(controlPlane.runtime.healthUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.healthPath}`, `${source} runtime healthUrl mismatch`);
+  assert(controlPlane?.build?.transport === "http", `${source} build transport mismatch`);
   assert(controlPlane?.build?.baseUrl?.startsWith("http://"), `${source} build baseUrl missing`);
+  assert(typeof controlPlane.build.host === "string" && controlPlane.build.host.length > 0, `${source} build host missing`);
+  assert(typeof controlPlane.build.port === "number", `${source} build port missing`);
+  for (const [key, value] of Object.entries(buildPaths)) {
+    assert(controlPlane.build[key] === value, `${source} build ${key} mismatch`);
+  }
   assert(controlPlane.build.rpcUrl === `${controlPlane.build.baseUrl}${controlPlane.build.rpcPath}`, `${source} build rpcUrl mismatch`);
   assert(controlPlane.build.stateUrl === `${controlPlane.build.baseUrl}${controlPlane.build.statePath}`, `${source} build stateUrl mismatch`);
   assert(controlPlane.build.methodsUrl === `${controlPlane.build.baseUrl}${controlPlane.build.methodsPath}`, `${source} build methodsUrl mismatch`);
