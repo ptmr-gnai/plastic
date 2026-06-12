@@ -30,6 +30,8 @@ type AuditSummary = {
 
 const asStringArray = (value: unknown): Array<string> => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
+const diagnosis = (code: string, phase: string | null, summary: string) => ({ code, phase, summary });
+
 const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
   if (
     failurePhase === "electron"
@@ -37,11 +39,7 @@ const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
     && !hints.some((hint) => hint.includes("[plastic:entry-preflight]"))
     && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
   ) {
-    return {
-      code: "electron-main-entered-startup-missing",
-      phase: "electron-runtime-bootstrap",
-      summary: "Electron entered Plastic's main module, but runtime startup logs were not observed."
-    };
+    return diagnosis("electron-main-entered-startup-missing", "electron-runtime-bootstrap", "Electron entered Plastic's main module, but runtime startup logs were not observed.");
   }
   if (
     failurePhase === "electron"
@@ -49,11 +47,16 @@ const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
     && !hints.some((hint) => hint.includes("[plastic:entry]"))
     && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
   ) {
-    return {
-      code: "electron-cjs-entry-entered-esm-missing",
-      phase: "electron-esm-main-import",
-      summary: "Electron entered the CommonJS package launcher, but the compiled ESM main bootstrap was not observed."
-    };
+    return diagnosis("electron-cjs-entry-entered-esm-missing", "electron-esm-main-import", "Electron entered the CommonJS package launcher, but the compiled ESM main bootstrap was not observed.");
+  }
+  if (
+    failurePhase === "electron"
+    && hints.some((hint) => hint.includes("[plastic:entry-preflight]"))
+    && hints.some((hint) => hint.includes("electron-launch"))
+    && hints.some((hint) => hint.includes("electron-child-status") && hint.includes("exitCode=running"))
+    && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
+  ) {
+    return diagnosis("electron-child-running-main-not-entered", "electron-app-main-resolution", "Electron child process stayed alive, but neither the CommonJS package launcher nor compiled main bootstrap was observed.");
   }
   if (
     failurePhase === "electron"
@@ -61,11 +64,7 @@ const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
     && hints.some((hint) => hint.includes("electron-launch"))
     && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
   ) {
-    return {
-      code: "electron-app-main-not-entered",
-      phase: "electron-app-main-resolution",
-      summary: "The compiled Electron main bootstrap is runnable, but Electron app launch did not observe the main entry."
-    };
+    return diagnosis("electron-app-main-not-entered", "electron-app-main-resolution", "The compiled Electron main bootstrap is runnable, but Electron app launch did not observe the main entry.");
   }
   if (
     failurePhase === "electron"
@@ -73,38 +72,18 @@ const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
     && hints.some((hint) => hint.includes("electron-launch"))
     && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
   ) {
-    return {
-      code: "electron-main-entry-not-observed",
-      phase: "electron-main-entry",
-      summary: "The Electron main bundle existed and Electron was launched, but Plastic main-process startup logs were not observed."
-    };
+    return diagnosis("electron-main-entry-not-observed", "electron-main-entry", "The Electron main bundle existed and Electron was launched, but Plastic main-process startup logs were not observed.");
   }
   if (failurePhase === "electron" && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))) {
-    return {
-      code: "electron-main-startup-missing",
-      phase: "electron-main-process-startup",
-      summary: "Electron launched, but Plastic main-process startup was not observed before runtime ports became ready."
-    };
+    return diagnosis("electron-main-startup-missing", "electron-main-process-startup", "Electron launched, but Plastic main-process startup was not observed before runtime ports became ready.");
   }
   if (failurePhase === "electron" && hints.some((hint) => hint.includes("7331") || hint.includes("7332"))) {
-    return {
-      code: "electron-runtime-ports-missing",
-      phase: "electron-runtime-port-binding",
-      summary: "Electron validation did not observe the runtime/build HTTP ports."
-    };
+    return diagnosis("electron-runtime-ports-missing", "electron-runtime-port-binding", "Electron validation did not observe the runtime/build HTTP ports.");
   }
   if (failurePhase) {
-    return {
-      code: `${failurePhase}-validation-failed`,
-      phase: failurePhase,
-      summary: `The ${failurePhase} validation step failed.`
-    };
+    return diagnosis(`${failurePhase}-validation-failed`, failurePhase, `The ${failurePhase} validation step failed.`);
   }
-  return {
-    code: "none",
-    phase: null,
-    summary: "No failed validation step was found."
-  };
+  return diagnosis("none", null, "No failed validation step was found.");
 };
 
 const buildAuditVerdict = (summary: AuditSummary | null) => {

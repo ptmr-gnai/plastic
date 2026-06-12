@@ -55,7 +55,7 @@ const runStep = (step) =>
         result.diagnostics = {
           tail: output,
           hints: output
-            .filter((line) => /plastic:entry|entry-cjs|entry-preflight|electronStartupHint|electron-main-ready|electron-launch|vite-ready|did not become ready|lsof -nP -iTCP:7331|lsof -nP -iTCP:7332|activeHostPid|activeHostExit/.test(line))
+            .filter((line) => /plastic:entry|entry-cjs|entry-preflight|electronStartupHint|electron-main-ready|electron-launch|electron-child-status|vite-ready|did not become ready|lsof -nP -iTCP:7331|lsof -nP -iTCP:7332|activeHostPid|activeHostExit/.test(line))
             .slice(-20)
         };
       }

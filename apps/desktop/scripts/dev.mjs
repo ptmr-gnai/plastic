@@ -22,6 +22,9 @@ const run = (command, args, options = {}) => {
   const label = [command, ...args].join(" ");
   console.log(`[plastic:dev] spawned ${label} pid=${child.pid ?? "unknown"}`);
   children.add(child);
+  child.on("error", (error) => {
+    console.log(`[plastic:dev] error ${label} ${error instanceof Error ? error.message : String(error)}`);
+  });
   child.on("exit", (code, signal) => {
     children.delete(child);
     console.log(`[plastic:dev] exited ${label} code=${code ?? "null"} signal=${signal ?? "null"}`);
@@ -98,11 +101,18 @@ console.log(`[plastic:dev] electron-launch cwd=${cwd} packageMain=main.cjs compi
 const electronChild = run(electronExecutable, ["."], {
   env: {
     ...process.env,
+    ELECTRON_ENABLE_STACK_DUMPING: process.env.ELECTRON_ENABLE_STACK_DUMPING ?? "1",
     PLASTIC_WORKSPACE_DIR: workspaceDir,
     ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1",
     VITE_DEV_SERVER_URL: viteUrl
   }
 });
+
+setTimeout(() => {
+  console.log(
+    `[plastic:dev] electron-child-status pid=${electronChild.pid ?? "unknown"} exitCode=${electronChild.exitCode ?? "running"} signalCode=${electronChild.signalCode ?? "null"}`
+  );
+}, 2_500).unref();
 
 electronChild.on("exit", (code, signal) => {
   if (process.env.PLASTIC_DEV_EXIT_ON_ELECTRON_EXIT === "1") {
