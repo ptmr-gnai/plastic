@@ -33,15 +33,16 @@ const readChildCommand = (pid) =>
     });
   });
 
-const probeLaunch = (label, args) =>
+const probeLaunch = (label, command, args) =>
   new Promise((resolveProbe) => {
     let stdout = "";
     let stderr = "";
     let childCommand = null;
     const startedAt = Date.now();
-    const child = spawn(electronExecutable, args, {
+    const child = spawn(command, args, {
       cwd: desktopDir,
       stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32",
       env: {
         ...process.env,
         ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1",
@@ -86,8 +87,10 @@ const probeLaunch = (label, args) =>
 const launchProbes = process.env.PLASTIC_ELECTRON_LAUNCH_PROBE_RUN === "1"
   ? {
       timeoutMs: probeTimeoutMs,
-      compiledMain: await probeLaunch("compiledMain", [compiledMain]),
-      package: await probeLaunch("package", [desktopDir])
+      directCompiledMain: await probeLaunch("directCompiledMain", electronExecutable, [compiledMain]),
+      directPackage: await probeLaunch("directPackage", electronExecutable, [desktopDir]),
+      cliCompiledMain: await probeLaunch("cliCompiledMain", "pnpm", ["exec", "electron", compiledMain]),
+      cliPackage: await probeLaunch("cliPackage", "pnpm", ["exec", "electron", desktopDir])
     }
   : null;
 

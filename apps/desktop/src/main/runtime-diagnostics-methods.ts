@@ -98,7 +98,7 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
         title: "Probe Electron launch targets",
         command: "PLASTIC_ELECTRON_LAUNCH_PROBE_RUN=1 node scripts/plastic-electron-launch-probe.mjs",
         run: { command: "node", args: ["scripts/plastic-electron-launch-probe.mjs"], env: { PLASTIC_ELECTRON_LAUNCH_PROBE_RUN: "1" } },
-        description: "Prints launch targets, child command lines, and brief compiled-main/package Electron entry-marker probes without starting the full validation loop."
+        description: "Compares direct-binary and CLI-wrapper Electron launch targets, child command lines, and brief entry-marker probes without starting the full validation loop."
       })
     ];
   }
