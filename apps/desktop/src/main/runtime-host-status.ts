@@ -17,6 +17,13 @@ const createAgentTransportDescriptors = (config: RuntimeHostConfig) => [
     transport: "http",
     methodRegistry: "shared",
     rpcUrl: config.controlPlane.runtime.rpcUrl,
+    links: [
+      { rel: "methods", href: config.controlPlane.runtime.methodsUrl, method: "http/get" },
+      { rel: "rpc", href: config.controlPlane.runtime.rpcUrl, method: "http/post" }
+    ],
+    actions: [
+      { id: "call-plastic-rpc", title: "Call Plastic RPC over HTTP", method: "http/post", href: config.controlPlane.runtime.rpcUrl }
+    ],
     notes: "Primary local RPC transport for renderers, scripts, and outside agents."
   },
   {
@@ -30,6 +37,21 @@ const createAgentTransportDescriptors = (config: RuntimeHostConfig) => [
     env: {
       PLASTIC_RPC_URL: config.controlPlane.runtime.rpcUrl
     },
+    tools: [
+      {
+        name: "plastic_rpc",
+        methodRegistry: "shared",
+        description: "Calls any registered Plastic RPC method through the shared method registry."
+      }
+    ],
+    actions: [
+      {
+        id: "call-plastic-rpc",
+        title: "Call Plastic RPC through MCP",
+        tool: "plastic_rpc",
+        arguments: { method: "agent/orient", input: {} }
+      }
+    ],
     notes: "Adapter transport for agents that cannot reach local TCP directly; calls the same Plastic RPC method registry."
   }
 ];

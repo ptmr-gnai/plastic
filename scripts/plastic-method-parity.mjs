@@ -54,7 +54,10 @@ const transportShape = (transport) => stableValue({
   methodRegistry: transport.methodRegistry,
   command: transport.command,
   args: transport.args,
-  envKeys: sorted(Object.keys(transport.env ?? {}))
+  envKeys: sorted(Object.keys(transport.env ?? {})),
+  links: transport.links,
+  actions: transport.actions,
+  tools: transport.tools
 });
 const hostShape = (host) => ({
   hostBase: stableValue(host.hostBase),
