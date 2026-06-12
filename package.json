@@ -10,6 +10,7 @@
     "typecheck": "pnpm -r typecheck",
     "guardrails": "node scripts/guardrails.mjs",
     "plastic:contract": "node scripts/plastic-contract.mjs",
+    "plastic:contract-mcp-bridge": "node scripts/plastic-contract-mcp-bridge.mjs",
     "plastic:method-parity": "node scripts/plastic-method-parity.mjs",
     "plastic:validate-hosts": "node scripts/plastic-validate-hosts.mjs",
     "plastic:validate-unified": "PLASTIC_VALIDATE_SCOPE=unified node scripts/plastic-validate-hosts.mjs",
