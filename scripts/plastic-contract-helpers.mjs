@@ -116,6 +116,8 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   assert(typeof auditStatus?.available === "boolean", "runtime/auditStatus missing availability");
   assert(typeof auditStatus.path === "string" && auditStatus.path.includes("runtime-unification-audit.json"), "runtime/auditStatus missing audit path");
   assert(["missing", "passed", "degraded", "failed"].includes(auditStatus.verdict?.status), "runtime/auditStatus missing compact verdict");
+  assert(typeof auditStatus.verdict?.diagnosis?.code === "string", "runtime/auditStatus missing diagnosis code");
+  assert(typeof auditStatus.verdict?.diagnosis?.summary === "string", "runtime/auditStatus missing diagnosis summary");
   assert(typeof auditStatus.verdict?.nextAction === "string", "runtime/auditStatus missing next action");
   if (auditStatus.available) {
     assert(typeof auditStatus.summary?.runtimeUnification?.usable === "boolean", "runtime/auditStatus missing structured verdict");

@@ -30,6 +30,35 @@ type AuditSummary = {
 
 const asStringArray = (value: unknown): Array<string> => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
+const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
+  if (failurePhase === "electron" && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))) {
+    return {
+      code: "electron-main-startup-missing",
+      phase: "electron-main-process-startup",
+      summary: "Electron launched, but Plastic main-process startup was not observed before runtime ports became ready."
+    };
+  }
+  if (failurePhase === "electron" && hints.some((hint) => hint.includes("7331") || hint.includes("7332"))) {
+    return {
+      code: "electron-runtime-ports-missing",
+      phase: "electron-runtime-port-binding",
+      summary: "Electron validation did not observe the runtime/build HTTP ports."
+    };
+  }
+  if (failurePhase) {
+    return {
+      code: `${failurePhase}-validation-failed`,
+      phase: failurePhase,
+      summary: `The ${failurePhase} validation step failed.`
+    };
+  }
+  return {
+    code: "none",
+    phase: null,
+    summary: "No failed validation step was found."
+  };
+};
+
 const buildAuditVerdict = (summary: AuditSummary | null) => {
   if (!summary) {
     return {
@@ -38,6 +67,11 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
       strictElectron: "not-run",
       unified: "not-run",
       failurePhase: null,
+      diagnosis: {
+        code: "audit-missing",
+        phase: null,
+        summary: "No runtime unification audit has been written yet."
+      },
       hints: [],
       nextAction: "Run pnpm plastic:audit-runtime-unification to create a runtime unification audit."
     };
@@ -51,6 +85,7 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
   const usable = summary.runtimeUnification?.usable === true;
   const status = usable ? strictElectron === "passed" && unified === "passed" ? "passed" : "degraded" : "failed";
   const failurePhase = typeof firstFailed?.id === "string" ? firstFailed.id : null;
+  const diagnosis = diagnoseFailure(failurePhase, hints);
   const nextAction = failurePhase === "electron"
     ? "Investigate Electron launch before Plastic main-process startup; compare host output, port listeners, and runtime startup logs."
     : failurePhase
@@ -59,7 +94,7 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
         ? "Continue closing headed/headless runtime gaps; strict Electron is the remaining proof when degraded."
         : "Rerun pnpm plastic:audit-runtime-unification and inspect failed check diagnostics.";
 
-  return { status, usable, strictElectron, unified, failurePhase, hints, nextAction };
+  return { status, usable, strictElectron, unified, failurePhase, diagnosis, hints, nextAction };
 };
 
 export const createRuntimeDiagnosticsModule = (input: {
