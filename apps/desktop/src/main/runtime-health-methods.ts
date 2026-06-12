@@ -11,6 +11,7 @@ import {
 import {
   checkCapabilityRegistryHealth,
   checkMethodAffordanceHealth,
+  checkMethodAvailabilityCapabilityHealth,
   checkRuntimeModuleCoverageHealth,
   checkRuntimeModuleMapHealth,
   checkMethodRegistryHealth
@@ -386,6 +387,9 @@ export const createRuntimeHealthModule = (input: {
             await record("event-store:list", () => ({ count: events.length }));
             await record("methods:list", () => checkMethodRegistryHealth(methodList, capabilityList));
             await record("methods:affordances", () => checkMethodAffordanceHealth(methodList));
+            await record("methods:availability-capabilities", () =>
+              checkMethodAvailabilityCapabilityHealth(methodList, capabilityList)
+            );
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
             await record("build:surface", async () =>
               checkBuildStatusHealth(await runPromise(methods.call("build/status", {})))

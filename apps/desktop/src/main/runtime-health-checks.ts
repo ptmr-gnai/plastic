@@ -152,6 +152,53 @@ export const checkCapabilityRegistryHealth = (capabilities: RuntimeCapability[])
   return { count: capabilities.length, invalidStatuses, missingRequiredCapabilities };
 };
 
+export const checkMethodAvailabilityCapabilityHealth = (
+  methods: PlasticMethod[],
+  capabilities: RuntimeCapability[]
+) => {
+  const capabilityStatus = new Map(capabilities.map((capability) => [capability.id, capability.status]));
+  const staleMissingCapabilities = methods
+    .map((method) => {
+      const required = method.availability?.requiredCapabilities ?? [];
+      const expectedMissing = required
+        .filter((capabilityId) => capabilityStatus.get(capabilityId) !== "available")
+        .sort();
+      const actualMissing = [...(method.availability?.missingCapabilities ?? [])].sort();
+      return JSON.stringify(expectedMissing) === JSON.stringify(actualMissing)
+        ? null
+        : `${method.id}: expected=[${expectedMissing.join(", ")}] actual=[${actualMissing.join(", ")}]`;
+    })
+    .filter((item): item is string => Boolean(item));
+  const availableWithMissingCapabilities = methods
+    .filter((method) =>
+      method.availability?.status === "available"
+      && (method.availability.missingCapabilities?.length ?? 0) > 0
+    )
+    .map((method) => method.id);
+  const unavailableWithoutMissingCapabilities = methods
+    .filter((method) =>
+      method.availability?.status === "unavailable"
+      && (method.availability.requiredCapabilities?.length ?? 0) > 0
+      && (method.availability.missingCapabilities?.length ?? 0) === 0
+    )
+    .map((method) => method.id);
+  if (staleMissingCapabilities.length > 0) {
+    throw new Error(`Methods with stale missingCapabilities: ${staleMissingCapabilities.join("; ")}`);
+  }
+  if (availableWithMissingCapabilities.length > 0) {
+    throw new Error(`Available methods report missing capabilities: ${availableWithMissingCapabilities.join(", ")}`);
+  }
+  if (unavailableWithoutMissingCapabilities.length > 0) {
+    throw new Error(`Unavailable capability-backed methods do not report missing capabilities: ${unavailableWithoutMissingCapabilities.join(", ")}`);
+  }
+  return {
+    checkedMethods: methods.length,
+    staleMissingCapabilities,
+    availableWithMissingCapabilities,
+    unavailableWithoutMissingCapabilities
+  };
+};
+
 export const checkRuntimeModuleMapHealth = (modules: unknown) => {
   const items = Array.isArray((modules as { items?: unknown })?.items)
     ? (modules as { items: unknown[] }).items
