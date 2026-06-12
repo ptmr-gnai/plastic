@@ -1,91 +1,41 @@
-import { spawn } from "node:child_process";
-import { setTimeout as delay } from "node:timers/promises";
 import { assert, rpc, rpcUrl } from "./plastic-contract-helpers.mjs";
+import { createPlasticMcpClient } from "./plastic-mcp-client.mjs";
 
 const actorId = `contract.mcp.${Date.now()}`;
 
-const parseJsonLine = (line) => {
-  try {
-    return JSON.parse(line);
-  } catch {
-    return null;
-  }
-};
-
-const waitForResponse = async (responses, id, stderr) => {
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    const response = responses.find((candidate) => candidate.id === id);
-    if (response) {
-      return response;
-    }
-    await delay(250);
-  }
-  throw new Error(`MCP response ${id} was not returned. stderr: ${stderr() || "<empty>"}`);
-};
-
-const callMcpTool = async ({ mcp, responses, stderr, id, method, input }) => {
-  mcp.stdin.write(JSON.stringify({
-    jsonrpc: "2.0",
+const callPlasticRpcTool = (mcp, { id, method, input }) =>
+  mcp.callTool({
     id,
-    method: "tools/call",
-    params: {
-      name: "plastic_rpc",
-      arguments: { method, input }
-    }
-  }) + "\n");
-  const response = await waitForResponse(responses, id, stderr);
-  assert(response.result?.content?.[0]?.type === "text", "MCP tool response missing text content");
-  return JSON.parse(response.result.content[0].text);
-};
+    arguments: { method, input }
+  });
 
-const assertMcpToolMetadata = async ({ mcp, responses, stderr }) => {
-  mcp.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }) + "\n");
-  const listedTools = await waitForResponse(responses, 2, stderr);
-  const plasticTool = listedTools.result?.tools?.find((candidate) => candidate.name === "plastic_rpc");
+const assertMcpToolMetadata = async (mcp) => {
+  const listedTools = await mcp.listTools();
+  const plasticTool = listedTools.find((candidate) => candidate.name === "plastic_rpc");
   assert(plasticTool, "MCP tools/list missing plastic_rpc");
   assert(plasticTool.description?.includes("agent/orient"), "MCP plastic_rpc description must teach agent/orient");
   assert(plasticTool.description?.includes("runtime/auditStatus"), "MCP plastic_rpc description must teach runtime/auditStatus");
   assert(plasticTool.description?.includes("runtime/auditActionPlan"), "MCP plastic_rpc description must teach runtime/auditActionPlan");
 };
 
-const initializeMcp = async ({ mcp, responses, stderr }) => {
-  mcp.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }) + "\n");
-  const initialized = await waitForResponse(responses, 1, stderr);
+const initializeMcp = async (mcp) => {
+  const initialized = await mcp.initialize();
   assert(initialized.result?.serverInfo?.name === "plastic", "MCP initialize returned wrong server");
 };
 
 const run = async () => {
-  const mcp = spawn("node", ["scripts/plastic-mcp-server.mjs"], {
-    cwd: new URL("..", import.meta.url).pathname,
-    stdio: ["pipe", "pipe", "pipe"],
+  const mcp = createPlasticMcpClient({
     env: {
-      ...process.env,
       PLASTIC_RPC_URL: rpcUrl,
       PLASTIC_MCP_ACTOR_ID: actorId
     }
   });
-  const responses = [];
-  let stderrText = "";
-  mcp.stdout.on("data", (chunk) => {
-    for (const line of chunk.toString().split(/\r?\n/).filter(Boolean)) {
-      const parsed = parseJsonLine(line);
-      if (parsed) {
-        responses.push(parsed);
-      }
-    }
-  });
-  mcp.stderr.on("data", (chunk) => {
-    stderrText += chunk.toString();
-  });
 
   try {
-    await initializeMcp({ mcp, responses, stderr: () => stderrText });
-    await assertMcpToolMetadata({ mcp, responses, stderr: () => stderrText });
+    await initializeMcp(mcp);
+    await assertMcpToolMetadata(mcp);
 
-    const payload = await callMcpTool({
-      mcp,
-      responses,
-      stderr: () => stderrText,
+    const payload = await callPlasticRpcTool(mcp, {
       id: 3,
       method: "runtime/auditStatus",
       input: {}
@@ -96,10 +46,7 @@ const run = async () => {
     const actionId = payload.value?.verdict?.actions?.[0]?.id;
     assert(typeof actionId === "string", "MCP auditStatus result missing current action id");
 
-    const planPayload = await callMcpTool({
-      mcp,
-      responses,
-      stderr: () => stderrText,
+    const planPayload = await callPlasticRpcTool(mcp, {
       id: 4,
       method: "runtime/auditActionPlan",
       input: { id: actionId }
@@ -130,7 +77,7 @@ const run = async () => {
       bridgeEvents: events.filter((event) => event.type?.startsWith("bridge.plastic_rpc.")).length
     }, null, 2));
   } finally {
-    mcp.kill("SIGTERM");
+    mcp.close();
   }
 };
 

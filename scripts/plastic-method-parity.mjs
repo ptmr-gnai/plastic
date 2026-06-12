@@ -1,6 +1,6 @@
-import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { createPlasticMcpClient } from "./plastic-mcp-client.mjs";
 import { stableValue } from "./plastic-stable-json.mjs";
 
 const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
@@ -99,52 +99,23 @@ const healthShape = (selfTest) => {
   };
 };
 
-const readMcpTools = (host) =>
-  new Promise((resolve, reject) => {
-    const transport = host.agentTransports?.find((item) => item.id === "mcp-stdio");
-    if (!transport) {
-      resolve([]);
-      return;
-    }
-    const child = spawn(transport.command, transport.args ?? [], {
-      cwd: new URL("..", import.meta.url).pathname,
-      stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, ...(transport.env ?? {}) }
-    });
-    let stdout = "";
-    let stderr = "";
-    const timeout = setTimeout(() => {
-      child.kill("SIGTERM");
-      reject(new Error(`MCP tools/list timed out: ${stderr.trim() || "<empty>"}`));
-    }, mcpToolTimeoutMs);
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    const finish = (tools) => {
-      clearTimeout(timeout);
-      child.kill("SIGTERM");
-      resolve(tools);
-    };
-    child.stdout.on("data", () => {
-      const responses = stdout.split(/\r?\n/).filter(Boolean).map(parseJsonLine).filter(Boolean);
-      const listed = responses.find((response) => response.id === 2);
-      if (listed) {
-        finish((listed.result?.tools ?? []).map(mcpToolShape).sort((left, right) => left.name.localeCompare(right.name)));
-      }
-    });
-    child.on("error", reject);
-    child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }) + "\n");
-    child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }) + "\n");
+const readMcpTools = async (host) => {
+  const transport = host.agentTransports?.find((item) => item.id === "mcp-stdio");
+  if (!transport) {
+    return [];
+  }
+  const mcp = createPlasticMcpClient({
+    command: transport.command,
+    args: transport.args ?? [],
+    env: transport.env ?? {},
+    timeoutMs: mcpToolTimeoutMs
   });
-
-const parseJsonLine = (line) => {
   try {
-    return JSON.parse(line);
-  } catch {
-    return null;
+    await mcp.initialize();
+    const tools = await mcp.listTools();
+    return tools.map(mcpToolShape).sort((left, right) => left.name.localeCompare(right.name));
+  } finally {
+    mcp.close();
   }
 };
 
