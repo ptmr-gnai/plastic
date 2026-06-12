@@ -60,6 +60,7 @@ export const checkBuildStatusHealth = (buildStatus: unknown) => {
   const buildControlPlane = asRecord(controlPlane.build);
   const transports = Array.isArray(status.agentTransports) ? status.agentTransports.map(asRecord) : [];
   const invalidTransportAffordances = invalidAgentTransportAffordances(transports);
+  const invalidControlPlaneEndpointUrls = invalidControlPlaneUrls(controlPlane);
   if (status.status !== "running") {
     throw new Error("build/status did not report running");
   }
@@ -68,6 +69,9 @@ export const checkBuildStatusHealth = (buildStatus: unknown) => {
   }
   if (runtimeControlPlane.transport !== "http" || buildControlPlane.transport !== "http") {
     throw new Error("build/status missing runtime/build HTTP control plane");
+  }
+  if (invalidControlPlaneEndpointUrls.length > 0) {
+    throw new Error(`build/status control plane URLs are invalid: ${invalidControlPlaneEndpointUrls.join(", ")}`);
   }
   if (typeof status.workspaceDir !== "string" || typeof status.eventPath !== "string") {
     throw new Error("build/status missing workspace paths");
@@ -84,6 +88,7 @@ export const checkBuildStatusHealth = (buildStatus: unknown) => {
     runtimeTransport: runtimeControlPlane.transport,
     buildTransport: buildControlPlane.transport,
     agentTransports: transports.length,
+    invalidControlPlaneEndpointUrls,
     invalidTransportAffordances
   };
 };
