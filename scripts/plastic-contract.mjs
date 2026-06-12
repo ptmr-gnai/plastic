@@ -11,7 +11,7 @@ import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors }
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertMethodCatalogsMatch, assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
-import { assertSelfTestDurableEvent, assertSelfTestMethodDescription, assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
+import { assertSelfTestDurableEvent, assertSelfTestHttpResources, assertSelfTestMethodDescription, assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
 import {
   assertHeadlessFallbackChatFixture,
@@ -489,22 +489,11 @@ await check("events list/timeline", async () => {
 });
 await check("plastic/selfTest", async () => {
   const selfTest = await rpc("plastic/selfTest");
-  const runtimeSelfTest = await runtimeGet("/self-test");
-  const buildSelfTest = await buildGet("/self-test");
-  assert(runtimeSelfTest.value?.ok === true, "runtime /self-test did not return ok result");
-  assert(buildSelfTest.value?.ok === true, "build /self-test did not return ok result");
-  assert(runtimeSelfTest.value.summary?.total >= selfTest.summary.total, "runtime /self-test summary missing total");
-  assert(buildSelfTest.value.summary?.total >= selfTest.summary.total, "build /self-test summary missing total");
-  assertSelfTestSurface({ assert, selfTest: runtimeSelfTest.value });
-  assertSelfTestSurface({ assert, selfTest: buildSelfTest.value });
+  await assertSelfTestHttpResources({ assert, buildGet, runtimeGet, selfTest });
   const result = assertSelfTestSurface({ assert, selfTest });
   await assertSelfTestDurableEvent({ assert, assertArray, rpc, selfTest });
   return result;
 });
-await check("contract fixture stability", async () =>
-  assertNoActiveContractFixtures({ assert, assertArray, rpc })
-);
-const failed = results.filter((result) => !result.ok);
-const summary = { ok: failed.length === 0, rpcUrl, checks: results.length, failed: failed.length, results };
-console.log(JSON.stringify(summary, null, 2));
-if (failed.length > 0) process.exitCode = 1;
+await check("contract fixture stability", async () => assertNoActiveContractFixtures({ assert, assertArray, rpc }));
+const failed = results.filter((result) => !result.ok); console.log(JSON.stringify({ ok: failed.length === 0, rpcUrl, checks: results.length, failed: failed.length, results }, null, 2));
+if (failed.length) process.exitCode = 1;

@@ -78,3 +78,18 @@ export const assertSelfTestDurableEvent = async ({ assert, assertArray, rpc, sel
     "plastic/selfTest durable summary diverged from RPC result"
   );
 };
+
+export const assertSelfTestHttpResources = async ({ assert, buildGet, runtimeGet, selfTest }) => {
+  const runtimeSelfTest = await runtimeGet("/self-test");
+  const buildSelfTest = await buildGet("/self-test");
+  assert(runtimeSelfTest.value?.ok === true, "runtime /self-test did not return ok result");
+  assert(buildSelfTest.value?.ok === true, "build /self-test did not return ok result");
+  assert(runtimeSelfTest.value.summary?.total >= selfTest.summary.total, "runtime /self-test summary missing total");
+  assert(buildSelfTest.value.summary?.total >= selfTest.summary.total, "build /self-test summary missing total");
+  assertSelfTestSurface({ assert, selfTest: runtimeSelfTest.value });
+  assertSelfTestSurface({ assert, selfTest: buildSelfTest.value });
+  return {
+    runtimeChecks: runtimeSelfTest.value.checks?.length ?? null,
+    buildChecks: buildSelfTest.value.checks?.length ?? null
+  };
+};
