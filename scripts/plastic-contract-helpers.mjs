@@ -137,6 +137,10 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   }
   if (auditStatus.available) {
     assert(typeof auditStatus.summary?.runtimeUnification?.usable === "boolean", "runtime/auditStatus missing structured verdict");
+    assert(typeof auditStatus.summary?.failures?.count === "number", "runtime/auditStatus missing audit failure count");
+    assert(Array.isArray(auditStatus.summary.failures.ids), "runtime/auditStatus missing audit failure ids");
+    assert(Array.isArray(auditStatus.summary.failures.blockingIds), "runtime/auditStatus missing audit blocking failure ids");
+    assert(auditStatus.summary.failures.first === null || typeof auditStatus.summary.failures.first?.id === "string", "runtime/auditStatus invalid first failure summary");
     const failedResults = auditStatus.summary.results?.filter((result) => result.ok === false) ?? [];
     assert(failedResults.every((result) => result.diagnostics === undefined || Array.isArray(result.diagnostics.tail)), "runtime/auditStatus failure diagnostics must include output tail when present");
   }

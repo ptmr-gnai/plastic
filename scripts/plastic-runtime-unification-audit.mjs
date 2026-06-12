@@ -29,6 +29,49 @@ const steps = [
   }
 ];
 
+const writeSummary = async (results) => {
+  const byId = Object.fromEntries(results.map((result) => [result.id, result]));
+  const failed = results.filter((result) => !result.ok);
+  const blockingFailures = failed.filter((result) => result.id !== "electron").map((result) => result.id);
+  const strictElectron = byId.electron?.ok ? "passed" : byId.electron ? "failed" : "not-run";
+  const unified = byId.unified?.ok ? strictElectron === "passed" ? "passed" : "degraded" : byId.unified ? "failed" : "not-run";
+  const firstFailure = failed[0] ?? null;
+  const summary = {
+    ok: results.every((result) => result.ok) && results.length === steps.length,
+    checks: results.length,
+    expectedChecks: steps.length,
+    continuedAfterFailure: failed.length > 0,
+    failures: {
+      count: failed.length,
+      ids: failed.map((result) => result.id),
+      blockingIds: blockingFailures,
+      first: firstFailure
+        ? {
+          id: firstFailure.id,
+          exit: firstFailure.exit,
+          command: firstFailure.command,
+          env: firstFailure.env ?? {},
+          hints: firstFailure.diagnostics?.hints ?? [],
+          tail: firstFailure.diagnostics?.tail ?? []
+        }
+        : null
+    },
+    diagnosticEnvironment: {
+      electron: electronDiagnosticEnv
+    },
+    runtimeUnification: {
+      usable: blockingFailures.length === 0 && byId.headless?.ok === true && byId.unified?.ok === true,
+      strictElectron,
+      unified,
+      blockingFailures
+    },
+    results
+  };
+  await mkdir(dirname(outPath), { recursive: true });
+  await writeFile(outPath, `${JSON.stringify(summary, null, 2)}\n`);
+  return summary;
+};
+
 const runStep = (step) =>
   new Promise((resolve) => {
     const startedAt = Date.now();
@@ -75,6 +118,7 @@ const runStep = (step) =>
   });
 
 const results = [];
+await writeSummary(results);
 for (const step of steps) {
   const result = await runStep(step);
   results.push(result);
@@ -83,31 +127,7 @@ for (const step of steps) {
   }
 }
 
-const byId = Object.fromEntries(results.map((result) => [result.id, result]));
-const failed = results.filter((result) => !result.ok);
-const blockingFailures = failed.filter((result) => result.id !== "electron").map((result) => result.id);
-const strictElectron = byId.electron?.ok ? "passed" : byId.electron ? "failed" : "not-run";
-const unified = byId.unified?.ok ? strictElectron === "passed" ? "passed" : "degraded" : byId.unified ? "failed" : "not-run";
-
-const summary = {
-  ok: results.every((result) => result.ok) && results.length === steps.length,
-  checks: results.length,
-  expectedChecks: steps.length,
-  continuedAfterFailure: failed.length > 0,
-  diagnosticEnvironment: {
-    electron: electronDiagnosticEnv
-  },
-  runtimeUnification: {
-    usable: blockingFailures.length === 0 && byId.headless?.ok === true && byId.unified?.ok === true,
-    strictElectron,
-    unified,
-    blockingFailures
-  },
-  results
-};
-
-await mkdir(dirname(outPath), { recursive: true });
-await writeFile(outPath, `${JSON.stringify(summary, null, 2)}\n`);
+const summary = await writeSummary(results);
 console.log(JSON.stringify(summary, null, 2));
 if (!summary.ok) {
   process.exitCode = 1;
