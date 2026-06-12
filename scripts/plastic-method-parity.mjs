@@ -45,9 +45,19 @@ const serviceAffordances = (state) => (state.resources ?? [])
     { links: [], actions: [] }
   );
 const snapshotAffordances = (snapshot) => sorted((snapshot.links ?? []).map((link) => `${link.rel}:${link.method}`));
+const transportShape = (transport) => stableValue({
+  id: transport.id,
+  status: transport.status,
+  transport: transport.transport,
+  methodRegistry: transport.methodRegistry,
+  command: transport.command,
+  args: transport.args,
+  envKeys: sorted(Object.keys(transport.env ?? {}))
+});
 const hostShape = (host) => ({
   hostBase: stableValue(host.hostBase),
   status: host.status,
+  agentTransports: stableValue((host.agentTransports ?? []).map(transportShape).sort((left, right) => left.id.localeCompare(right.id))),
   controlPlane: {
     runtime: stableValue({
       transport: host.controlPlane?.runtime?.transport,
