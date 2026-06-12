@@ -46,6 +46,20 @@ const actionShape = (action) => stableValue({
   target: action.target,
   input: action.input
 });
+const transportActionShape = (action) => stableValue({
+  id: action.id,
+  title: action.title,
+  href: action.href,
+  method: action.method,
+  tool: action.tool,
+  arguments: action.arguments
+});
+const transportToolShape = (tool) => stableValue({
+  name: tool.name,
+  description: tool.description,
+  methodRegistry: tool.methodRegistry,
+  inputSchema: tool.inputSchema
+});
 const sharedHealthCheckIds = [
   "event-store:list",
   "methods:list",
@@ -86,9 +100,9 @@ const transportShape = (transport) => stableValue({
   command: transport.command,
   args: transport.args,
   envKeys: sorted(Object.keys(transport.env ?? {})),
-  links: transport.links,
-  actions: transport.actions,
-  tools: transport.tools
+  links: sortedStableObjects((transport.links ?? []).map(linkShape)),
+  actions: sortedStableObjects((transport.actions ?? []).map(transportActionShape)),
+  tools: sortedStableObjects((transport.tools ?? []).map(transportToolShape))
 });
 const hostShape = (host) => ({
   hostBase: stableValue(host.hostBase),
