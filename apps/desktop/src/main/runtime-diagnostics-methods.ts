@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { MethodRegistry } from "@plastic/core";
+import type { MethodRegistry, PlasticEvent } from "@plastic/core";
 import { Effect } from "effect";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeCommandResult } from "./runtime-build-methods.js";
@@ -241,15 +241,45 @@ const auditActionInputSchema = {
   }
 };
 
-const createAuditStatusReader = (plasticDir: string) => async () => {
+const recentAuditActions = (events: Array<PlasticEvent>) =>
+  events
+    .filter((event) => event.type === "runtime.auditAction.completed")
+    .slice(-5)
+    .reverse()
+    .map((event) => {
+      const payload = event.payload as {
+        ok?: unknown;
+        action?: { id?: unknown; title?: unknown };
+        completedAt?: unknown;
+        command?: unknown;
+        args?: unknown;
+        exitCode?: unknown;
+        signal?: unknown;
+      };
+      return {
+        eventId: event.id,
+        timestamp: event.timestamp,
+        actionId: typeof payload.action?.id === "string" ? payload.action.id : null,
+        title: typeof payload.action?.title === "string" ? payload.action.title : null,
+        ok: payload.ok === true,
+        completedAt: typeof payload.completedAt === "string" ? payload.completedAt : event.timestamp,
+        command: typeof payload.command === "string" ? payload.command : null,
+        args: Array.isArray(payload.args) ? payload.args.filter((arg): arg is string => typeof arg === "string") : [],
+        exitCode: typeof payload.exitCode === "number" ? payload.exitCode : null,
+        signal: typeof payload.signal === "string" ? payload.signal : null
+      };
+    });
+
+const createAuditStatusReader = (plasticDir: string, listAuditEvents: () => Promise<Array<PlasticEvent>>) => async () => {
   const path = join(plasticDir, "tmp", "runtime-unification-audit.json");
+  const recentActions = recentAuditActions(await listAuditEvents());
   try {
     const summary = JSON.parse(await readFile(path, "utf8")) as AuditSummary;
-    return { available: true, path, verdict: buildAuditVerdict(summary), summary };
+    return { available: true, path, verdict: buildAuditVerdict(summary), recentActions, summary };
   } catch (error) {
     const code = (error as { code?: string }).code;
     if (code === "ENOENT") {
-      return { available: false, path, verdict: buildAuditVerdict(null), summary: null };
+      return { available: false, path, verdict: buildAuditVerdict(null), recentActions, summary: null };
     }
     throw error;
   }
@@ -382,8 +412,8 @@ export const createRuntimeDiagnosticsModule = (input: {
   runCommand: (command: string, args: string[], env?: Record<string, string>) => Promise<RuntimeCommandResult>;
 }): RuntimeModule => ({
   id: "runtime-diagnostics",
-  register: async ({ methods, runPromise, appendEvent }) => {
-    const readAuditStatus = createAuditStatusReader(input.plasticDir);
+  register: async ({ eventStore, methods, runPromise, appendEvent }) => {
+    const readAuditStatus = createAuditStatusReader(input.plasticDir, () => runPromise(eventStore.list()));
     await registerAppDiagnostics({ methods, runPromise, getDiagnostics: input.getDiagnostics });
     await registerAuditStatus({ methods, runPromise, readAuditStatus });
     await registerRunAuditAction({ methods, runPromise, appendEvent, readAuditStatus, runCommand: input.runCommand });
