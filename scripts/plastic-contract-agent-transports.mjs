@@ -6,6 +6,7 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
   assert(http.methodRegistry === "shared", `${source} HTTP transport must use shared registry`);
   assert(http.rpcUrl === rpcUrl, `${source} HTTP transport URL mismatch`);
   assert(http.links?.some((link) => link.rel === "methods" && link.method === "http/get"), `${source} HTTP transport missing methods link`);
+  assert(http.links?.some((link) => link.rel === "self-test" && link.method === "http/get"), `${source} HTTP transport missing self-test link`);
   assert(http.actions?.some((action) => action.id === "call-plastic-rpc" && action.method === "http/post" && action.href === rpcUrl), `${source} HTTP transport missing call action`);
   assert(mcp?.status === "available", `${source} missing available MCP stdio transport`);
   assert(mcp.methodRegistry === "shared", `${source} MCP transport must use shared registry`);

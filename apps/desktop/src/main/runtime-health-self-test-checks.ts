@@ -441,6 +441,9 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
     !Array.isArray(http?.links) || !http.links.some((link) => asRecord(link).rel === "methods" && asRecord(link).method === "http/get")
       ? "http-rpc:methods-link"
       : null,
+    !Array.isArray(http?.links) || !http.links.some((link) => asRecord(link).rel === "self-test" && asRecord(link).method === "http/get")
+      ? "http-rpc:self-test-link"
+      : null,
     !Array.isArray(http?.actions) || !http.actions.some((action) => asRecord(action).id === "call-plastic-rpc" && asRecord(action).method === "http/post")
       ? "http-rpc:call-action"
       : null,
