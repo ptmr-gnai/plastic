@@ -21,5 +21,10 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   const auditCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-audit:status");
   assert(["missing", "passed", "degraded", "failed"].includes(auditCheck?.details?.status), "plastic/selfTest audit status check failed");
   assert(typeof auditCheck.details.actions === "number", "plastic/selfTest audit status actions check failed");
+  const transportCheck = selfTest.checks?.find((candidate) => candidate.id === "agent-transports:affordances");
+  assert(transportCheck?.ok === true, "plastic/selfTest agent transport affordance check failed");
+  assert(transportCheck.details?.ids?.includes("http-rpc"), "plastic/selfTest missing HTTP RPC transport health");
+  assert(transportCheck.details?.ids?.includes("mcp-stdio"), "plastic/selfTest missing MCP transport health");
+  assert(transportCheck.details?.mcpTool === "plastic_rpc", "plastic/selfTest missing plastic_rpc transport health");
   return { checks: selfTest.checks?.length ?? null };
 };

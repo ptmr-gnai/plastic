@@ -2,7 +2,8 @@ import { Effect } from "effect";
 import {
   projectExtensions,
   projectPanels,
-  projectWindows
+  projectWindows,
+  type PlasticEvent
 } from "@plastic/core";
 import {
   checkCapabilityRegistryHealth,
@@ -40,6 +41,37 @@ const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
     actions: actions.length
   };
 };
+
+const checkAgentTransportsHealth = (events: PlasticEvent[]) => {
+  const latestStarted = [...events].reverse().find((event) => event.type === "runtime.started");
+  const host = asRecord(asRecord(latestStarted?.payload).host);
+  const transports = Array.isArray(host.agentTransports) ? host.agentTransports.map(asRecord) : [];
+  const http = transports.find((transport) => transport.id === "http-rpc");
+  const mcp = transports.find((transport) => transport.id === "mcp-stdio");
+  if (!http || http.status !== "available" || http.methodRegistry !== "shared") {
+    throw new Error("runtime.started missing shared HTTP RPC agent transport");
+  }
+  if (!mcp || mcp.status !== "available" || mcp.methodRegistry !== "shared") {
+    throw new Error("runtime.started missing shared MCP stdio agent transport");
+  }
+  if (!Array.isArray(http.actions) || !http.actions.some((action) => asRecord(action).id === "call-plastic-rpc")) {
+    throw new Error("HTTP RPC agent transport missing call action");
+  }
+  if (!Array.isArray(mcp.tools) || !mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc")) {
+    throw new Error("MCP stdio agent transport missing plastic_rpc tool");
+  }
+  if (!Array.isArray(mcp.actions) || !mcp.actions.some((action) => asRecord(action).tool === "plastic_rpc")) {
+    throw new Error("MCP stdio agent transport missing plastic_rpc action");
+  }
+  return {
+    count: transports.length,
+    ids: transports.map((transport) => transport.id),
+    mcpTool: "plastic_rpc"
+  };
+};
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? value as Record<string, unknown> : {};
 
 const runtimeHealthAvailability = {
   status: "available" as const,
@@ -97,6 +129,7 @@ export const createRuntimeHealthModule = (input: {
             await record("runtime-audit:status", async () =>
               checkRuntimeAuditStatusHealth(await runPromise(methods.call("runtime/auditStatus", {})))
             );
+            await record("agent-transports:affordances", () => checkAgentTransportsHealth(events));
             await record("panels:project", () => ({ count: projectPanels(events).length }));
             await record("windows:project", () => ({ count: projectWindows(events).length }));
             await record("extensions:project", () => ({ count: projectExtensions(events).length }));
