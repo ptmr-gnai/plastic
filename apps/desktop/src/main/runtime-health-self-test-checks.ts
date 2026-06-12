@@ -1,5 +1,5 @@
 import type { PlasticEvent, PlasticExtension, PlasticPanel, PlasticWindow } from "@plastic/core";
-import { hasServiceAffordance } from "./runtime-health-affordance-checks.js";
+import { expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./runtime-health-affordance-checks.js";
 import { invalidControlPlaneUrls } from "./runtime-health-control-plane-checks.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
@@ -256,9 +256,9 @@ export const checkProjectionDiscoveryHealth = (
   }))) {
     throw new Error("plastic/state service resource missing plastic/selfTest affordances");
   }
-  for (const method of ["runtime/host", "runtime/capabilities", "events/list", "plastic/selfTest"]) {
-    if (!snapshotLinks.some((link) => link.method === method)) {
-      throw new Error(`plastic/snapshot missing ${method} link`);
+  for (const link of expectedSnapshotLinks) {
+    if (!hasLinkAffordance(snapshotLinks, link)) {
+      throw new Error(`plastic/snapshot missing ${link.method} link`);
     }
   }
   if (snapshotMethods.count !== methodList.length || snapshotMethodItems.length !== methodList.length) {

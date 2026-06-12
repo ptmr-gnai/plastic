@@ -7,7 +7,7 @@ import {
   assertMatchingModuleInventories, assertRuntimeAuditStatus, assertModuleMethodDiscoveryParity, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 import { assertAgentOrientationPacket, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
-import { hasServiceAffordance } from "./plastic-contract-affordances.mjs";
+import { expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
@@ -30,8 +30,7 @@ const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
 const validationTags = ["validation", "validation:contract"];
 const validationMeta = { tags: validationTags };
-let state;
-let snapshot;
+let state, snapshot;
 let methods;
 let methodIds;
 let runtimeCapabilities;
@@ -138,8 +137,9 @@ await check("plastic/snapshot", async () => {
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });
   assertMethodCatalogsMatch({ assert, actual: snapshot.methods.items, expected: methods, actualLabel: "snapshot methods", expectedLabel: "plastic/methods" });
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
-  assert(snapshot.links?.some((link) => link.method === "runtime/host") && snapshot.links?.some((link) => link.method === "runtime/capabilities"), "snapshot missing host or capabilities link");
-  assert(snapshot.links?.some((link) => link.rel === "control-plane" && link.method === "events/list"), "snapshot missing control plane link");
+  for (const link of expectedSnapshotLinks) {
+    assert(hasLinkAffordance(snapshot.links, link), `snapshot missing ${link.method} link`);
+  }
   assert(snapshot.methods.items?.every((method) => method.availability?.status), "snapshot methods missing availability");
   return {
     mode: snapshot.app.mode, methods: snapshot.methods.count, panels: snapshot.panels.length,
