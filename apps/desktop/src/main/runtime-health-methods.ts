@@ -3,6 +3,7 @@ import {
   projectExtensions,
   projectPanels,
   projectWindows,
+  type PlasticExtension,
   type PlasticEvent
 } from "@plastic/core";
 import {
@@ -23,6 +24,19 @@ type HostHealthCheck = {
   id: string;
   run: () => Promise<unknown> | unknown;
 };
+
+const requiredExtensionMethods = [
+  "extensions/scan",
+  "extensions/list",
+  "extensions/get",
+  "extensions/verify",
+  "extensions/verifyAll",
+  "extensions/verificationStatus",
+  "extensions/activate",
+  "extensions/forkBundled",
+  "extensions/registerPanel",
+  "extensions/scaffold"
+];
 
 const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   const verdict = (auditStatus as { verdict?: Record<string, unknown> })?.verdict;
@@ -122,6 +136,26 @@ const checkRuntimeStartedDescriptorHealth = (events: PlasticEvent[]) => {
   };
 };
 
+const checkExtensionRuntimeHealth = (extensions: PlasticExtension[], methodIds: Set<string>) => {
+  const bundled = extensions.filter((extension) => extension.source === "bundled");
+  const missingMethods = requiredExtensionMethods.filter((id) => !methodIds.has(id));
+  if (bundled.length === 0) {
+    throw new Error("No bundled extensions are projected");
+  }
+  if (!bundled.some((extension) => extension.id === "plastic.chat")) {
+    throw new Error("Bundled chat extension is not projected");
+  }
+  if (missingMethods.length > 0) {
+    throw new Error(`Extension runtime methods missing: ${missingMethods.join(", ")}`);
+  }
+  return {
+    count: extensions.length,
+    bundled: bundled.length,
+    bundledIds: bundled.map((extension) => extension.id),
+    requiredMethods: requiredExtensionMethods.length
+  };
+};
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
 
@@ -171,7 +205,9 @@ export const createRuntimeHealthModule = (input: {
 
             const events = await runPromise(eventStore.list());
             const methodList = await runPromise(methods.list());
+            const methodIds = new Set(methodList.map((method) => method.id));
             const capabilityList = capabilities.list();
+            const projectedExtensions = projectExtensions(events);
             await record("event-store:list", () => ({ count: events.length }));
             await record("methods:list", () => checkMethodRegistryHealth(methodList, capabilityList));
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
@@ -185,7 +221,7 @@ export const createRuntimeHealthModule = (input: {
             await record("agent-transports:affordances", () => checkAgentTransportsHealth(events));
             await record("panels:project", () => ({ count: projectPanels(events).length }));
             await record("windows:project", () => ({ count: projectWindows(events).length }));
-            await record("extensions:project", () => ({ count: projectExtensions(events).length }));
+            await record("extensions:project", () => checkExtensionRuntimeHealth(projectedExtensions, methodIds));
             for (const check of input.hostChecks ?? []) {
               await record(check.id, check.run);
             }
