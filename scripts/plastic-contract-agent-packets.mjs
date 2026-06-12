@@ -1,7 +1,9 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertAgentTransports } from "./plastic-contract-agent-transports.mjs";
+import { stableJson } from "./plastic-stable-json.mjs";
 
-export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount, capabilityCount, moduleIds }) => {
+export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount, capabilityCount, modules }) => {
+  const moduleIds = modules.ids;
   assert(workbench?.app?.mode === mode, "workbench app mode does not match state");
   assert(workbench.app.hostBase?.id === "runtime-host-base" && workbench.app.hostBase?.version === 1, "workbench shared host base marker mismatch");
   assert(workbench.control?.methodCount >= 1, "workbench method count missing");
@@ -13,6 +15,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assert(workbench.control.modules.count === moduleIds.length, "workbench module count does not match runtime/modules");
   assertArray(workbench.control.modules.items, "workbench runtime modules items missing");
   assertSameModuleIds({ assert, actual: workbench.control.modules.items, expected: moduleIds, source: "workbench" });
+  assertSameModuleAvailability({ assert, actual: workbench.control.modules.items, expected: modules.items, source: "workbench" });
   assert(workbench.control.auditStatus?.verdict, "workbench missing compact audit status");
   assert(typeof workbench.control.auditStatus.failureSummary?.count === "number", "workbench audit status missing failure summary");
   assert(Array.isArray(workbench.control.auditStatus.failureSummary.ids), "workbench audit status missing failure ids");
@@ -51,7 +54,8 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   };
 };
 
-export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount, capabilityCount, moduleIds }) => {
+export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount, capabilityCount, modules }) => {
+  const moduleIds = modules.ids;
   assert(orientation?.agent?.id, "agent/orient missing agent id");
   assert(orientation.embodiment?.projectDir, "agent/orient missing projectDir");
   assert(orientation.capabilities?.hostBase?.id === "runtime-host-base" && orientation.capabilities.hostBase?.version === 1, "agent/orient shared host base marker mismatch");
@@ -63,6 +67,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   assert(orientation.capabilities.modules.count === moduleIds.length, "agent/orient module count does not match runtime/modules");
   assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
   assertSameModuleIds({ assert, actual: orientation.capabilities.modules.items, expected: moduleIds, source: "agent/orient" });
+  assertSameModuleAvailability({ assert, actual: orientation.capabilities.modules.items, expected: modules.items, source: "agent/orient" });
   assert(orientation.capabilities.methodCount === methodCount, "agent/orient method count does not match plastic/methods");
   assertArray(orientation.capabilities.methods, "agent/orient recommended methods missing");
   assert(
@@ -126,3 +131,12 @@ const assertSameModuleIds = ({ assert, actual, expected, source }) => {
   const expectedIds = [...expected].sort();
   assert(JSON.stringify(actualIds) === JSON.stringify(expectedIds), `${source} module ids do not match runtime/modules`);
 };
+
+const assertSameModuleAvailability = ({ assert, actual, expected, source }) => {
+  const actualAvailability = availabilityById(actual);
+  const expectedAvailability = availabilityById(expected);
+  assert(stableJson(actualAvailability) === stableJson(expectedAvailability), `${source} module availability does not match runtime/modules`);
+};
+
+const availabilityById = (modules) =>
+  Object.fromEntries(modules.map((module) => [module.id, module.availability]));

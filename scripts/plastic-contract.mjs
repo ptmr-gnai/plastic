@@ -233,7 +233,7 @@ await check("agent/workbench", async () => {
     mode: state.app.mode,
     methodCount: methods.length,
     capabilityCount: runtimeCapabilities.count,
-    moduleIds: runtimeModules.ids
+    modules: runtimeModules
   });
 });
 
@@ -245,7 +245,7 @@ await check("agent/orient", async () => {
     orientation,
     methodCount: methods.length,
     capabilityCount: runtimeCapabilities.count,
-    moduleIds: runtimeModules.ids
+    modules: runtimeModules
   });
 });
 
