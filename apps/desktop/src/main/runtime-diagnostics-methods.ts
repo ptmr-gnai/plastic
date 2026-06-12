@@ -255,7 +255,11 @@ const recentAuditActions = (events: Array<PlasticEvent>) =>
         args?: unknown;
         exitCode?: unknown;
         signal?: unknown;
+        stdout?: unknown;
+        stderr?: unknown;
       };
+      const stdout = typeof payload.stdout === "string" ? payload.stdout : "";
+      const stderr = typeof payload.stderr === "string" ? payload.stderr : "";
       return {
         eventId: event.id,
         timestamp: event.timestamp,
@@ -266,7 +270,9 @@ const recentAuditActions = (events: Array<PlasticEvent>) =>
         command: typeof payload.command === "string" ? payload.command : null,
         args: Array.isArray(payload.args) ? payload.args.filter((arg): arg is string => typeof arg === "string") : [],
         exitCode: typeof payload.exitCode === "number" ? payload.exitCode : null,
-        signal: typeof payload.signal === "string" ? payload.signal : null
+        signal: typeof payload.signal === "string" ? payload.signal : null,
+        stdoutTail: stdout.slice(-4000),
+        stderrTail: stderr.slice(-4000)
       };
     });
 
