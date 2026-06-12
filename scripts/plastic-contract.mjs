@@ -140,6 +140,20 @@ await check("methods/describe", async () => {
   return { id: description.id, owner: description.owner, availability: description.availability?.status ?? "unspecified" };
 });
 
+await check("runtime/runAuditAction description", async () => {
+  const description = await rpc("methods/describe", { id: "runtime/runAuditAction" });
+  assert(description.id === "runtime/runAuditAction", "described wrong audit action method");
+  assert(description.inputSchema?.required?.includes("id"), "runtime/runAuditAction input schema must require id");
+  assert(description.effects?.durableEvents?.includes("runtime.auditAction.completed"), "runtime/runAuditAction missing durable event effect");
+  assert(description.examples?.some((example) => example.input?.id && example.verifyWith?.method === "runtime/auditStatus"), "runtime/runAuditAction example must teach audit-status verification");
+  assert(description.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === description.id), "runtime/runAuditAction missing invoke link");
+  return {
+    id: description.id,
+    required: description.inputSchema.required,
+    durableEvents: description.effects.durableEvents
+  };
+});
+
 await check("method discovery parity", async () => {
   const sampleIds = [
     "plastic/state",
