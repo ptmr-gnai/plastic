@@ -170,9 +170,12 @@ const checkImportBoundaries = (file, text) => {
 const checkRuntimeBootstrap = (file, text) => {
   const repoPath = toRepoPath(file);
   const expectedFactoryByFile = {
-    "apps/desktop/src/main/main.ts": "createElectronRuntimeHostStandardModules",
+    "apps/desktop/src/main/main-entry.ts": "createElectronRuntimeHostStandardModules",
     "apps/desktop/src/main/headless.ts": "createHeadlessRuntimeHostStandardModules"
   };
+  if (repoPath === "apps/desktop/src/main/main.ts" && !text.includes('import("./main-entry.js")')) {
+    addFailure("runtime-bootstrap", repoPath, "Electron bootstrap must dynamically import main-entry.js.");
+  }
   const expectedFactory = expectedFactoryByFile[repoPath];
   if (!expectedFactory) {
     return;
