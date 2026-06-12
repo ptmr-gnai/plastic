@@ -437,11 +437,15 @@ const unknownMethodReferences = (references: Record<string, unknown>[], methodId
 const invalidAgentTransportAffordances = (transports: Record<string, unknown>[]) => {
   const http = transports.find((transport) => transport.id === "http-rpc");
   const mcp = transports.find((transport) => transport.id === "mcp-stdio");
+  const selfTestUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/self-test") : undefined;
   return [
     !Array.isArray(http?.links) || !http.links.some((link) => asRecord(link).rel === "methods" && asRecord(link).method === "http/get")
       ? "http-rpc:methods-link"
       : null,
-    !Array.isArray(http?.links) || !http.links.some((link) => asRecord(link).rel === "self-test" && asRecord(link).method === "http/get")
+    !Array.isArray(http?.links) || !http.links.some((link) => {
+      const record = asRecord(link);
+      return record.rel === "self-test" && record.method === "http/get" && record.href === selfTestUrl;
+    })
       ? "http-rpc:self-test-link"
       : null,
     !Array.isArray(http?.actions) || !http.actions.some((action) => asRecord(action).id === "call-plastic-rpc" && asRecord(action).method === "http/post")
