@@ -12,41 +12,6 @@ import { checkAuditMetadata } from "./runtime-health-audit-checks.js";
 import { invalidControlPlaneUrls } from "./runtime-health-control-plane-checks.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
-const requiredExtensionMethods = [
-  "extensions/scan",
-  "extensions/list",
-  "extensions/get",
-  "extensions/verify",
-  "extensions/verifyAll",
-  "extensions/verificationStatus",
-  "extensions/activate",
-  "extensions/forkBundled",
-  "extensions/registerPanel",
-  "extensions/scaffold"
-];
-
-const requiredPanelMethods = [
-  "panels/list",
-  "panels/get",
-  "panels/create",
-  "panels/rename",
-  "panels/move",
-  "panels/remove",
-  "panels/close",
-  "panels/sendMessage",
-  "panels/listMessages",
-  "panels/markMessageRead",
-  "panels/mailboxes"
-];
-
-const requiredWindowMethods = [
-  "windows/list",
-  "windows/create",
-  "windows/focusPanel",
-  "windows/scrollToRef",
-  "windows/screenshot"
-];
-
 export const checkBuildStatusHealth = (buildStatus: unknown) => {
   const status = asRecord(buildStatus);
   const hostBase = asRecord(status.hostBase);
@@ -310,9 +275,10 @@ export const checkRuntimeStartedDescriptorHealth = (events: PlasticEvent[]) => {
   };
 };
 
-export const checkExtensionRuntimeHealth = (extensions: PlasticExtension[], methodIds: Set<string>) => {
+export const checkExtensionRuntimeHealth = (extensions: PlasticExtension[], runtimeModules: unknown, methodIds: Set<string>) => {
   const bundled = extensions.filter((extension) => extension.source === "bundled");
-  const missingMethods = requiredExtensionMethods.filter((id) => !methodIds.has(id));
+  const extensionMethods = moduleMethodIds(runtimeModules, ["extension-authoring", "extension-runtime"]);
+  const missingMethods = extensionMethods.filter((id) => !methodIds.has(id));
   if (bundled.length === 0) {
     throw new Error("No bundled extensions are projected");
   }
@@ -326,14 +292,15 @@ export const checkExtensionRuntimeHealth = (extensions: PlasticExtension[], meth
     count: extensions.length,
     bundled: bundled.length,
     bundledIds: bundled.map((extension) => extension.id),
-    requiredMethods: requiredExtensionMethods.length
+    moduleMethods: extensionMethods.length
   };
 };
 
-export const checkPanelRuntimeHealth = (panels: PlasticPanel[], extensions: PlasticExtension[], methodIds: Set<string>) => {
+export const checkPanelRuntimeHealth = (panels: PlasticPanel[], extensions: PlasticExtension[], runtimeModules: unknown, methodIds: Set<string>) => {
   const extensionIds = new Set(extensions.map((extension) => extension.id));
   const extensionBackedPanels = panels.filter((panel) => extensionIds.has(panel.extensionId));
-  const missingMethods = requiredPanelMethods.filter((id) => !methodIds.has(id));
+  const panelMethods = moduleMethodIds(runtimeModules, ["panel-control", "panel-mailbox"]);
+  const missingMethods = panelMethods.filter((id) => !methodIds.has(id));
   if (panels.length === 0) {
     throw new Error("No panels are projected");
   }
@@ -347,13 +314,14 @@ export const checkPanelRuntimeHealth = (panels: PlasticPanel[], extensions: Plas
     count: panels.length,
     extensionBacked: extensionBackedPanels.length,
     extensionBackedIds: extensionBackedPanels.map((panel) => panel.id),
-    requiredMethods: requiredPanelMethods.length
+    moduleMethods: panelMethods.length
   };
 };
 
-export const checkWindowRuntimeHealth = (windows: PlasticWindow[], panels: PlasticPanel[], methodList: Array<{ id: string; availability?: { status?: string; missingCapabilities?: string[] } }>) => {
+export const checkWindowRuntimeHealth = (windows: PlasticWindow[], panels: PlasticPanel[], runtimeModules: unknown, methodList: Array<{ id: string; availability?: { status?: string; missingCapabilities?: string[] } }>) => {
   const byId = new Map(methodList.map((method) => [method.id, method]));
-  const missingMethods = requiredWindowMethods.filter((id) => !byId.has(id));
+  const windowMethods = moduleMethodIds(runtimeModules, ["window-capability", "deixis"]);
+  const missingMethods = windowMethods.filter((id) => !byId.has(id));
   const windowsList = byId.get("windows/list");
   if (windows.length === 0) {
     throw new Error("No windows are projected");
@@ -376,8 +344,22 @@ export const checkWindowRuntimeHealth = (windows: PlasticWindow[], panels: Plast
     panelSlots: windows.reduce((count, window) => count + window.panelIds.length, 0),
     windowsListStatus: windowsList?.availability?.status ?? null,
     missingCapabilities: windowsList?.availability?.missingCapabilities ?? [],
-    requiredMethods: requiredWindowMethods.length
+    moduleMethods: windowMethods.length
   };
+};
+
+const moduleMethodIds = (runtimeModules: unknown, moduleIds: string[]): string[] => {
+  const rawItems = asRecord(runtimeModules).items;
+  const items = Array.isArray(rawItems)
+    ? rawItems.map(asRecord)
+    : [];
+  const methodIds = items
+    .filter((module) => moduleIds.includes(String(module.id)))
+    .flatMap((module) => Array.isArray(module.methodIds) ? module.methodIds.filter((id): id is string => typeof id === "string") : []);
+  if (methodIds.length === 0) {
+    throw new Error(`Runtime module methods missing for ${moduleIds.join(", ")}`);
+  }
+  return methodIds;
 };
 
 export const checkAgentOrientationHealth = (workbench: unknown, orientation: unknown, methodIds: Set<string>) => {

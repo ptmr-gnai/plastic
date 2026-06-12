@@ -126,9 +126,9 @@ export const createRuntimeHealthModule = (input: {
               )
             );
             await record("agent-transports:affordances", () => checkAgentTransportsHealth(events));
-            await record("panels:project", () => checkPanelRuntimeHealth(projectedPanels, projectedExtensions, methodIds));
-            await record("windows:project", () => checkWindowRuntimeHealth(projectedWindows, projectedPanels, methodList));
-            await record("extensions:project", () => checkExtensionRuntimeHealth(projectedExtensions, methodIds));
+            await record("panels:project", () => checkPanelRuntimeHealth(projectedPanels, projectedExtensions, runtimeModules, methodIds));
+            await record("windows:project", () => checkWindowRuntimeHealth(projectedWindows, projectedPanels, runtimeModules, methodList));
+            await record("extensions:project", () => checkExtensionRuntimeHealth(projectedExtensions, runtimeModules, methodIds));
             const sharedCheckIds = checks.map((check) => check.id);
             for (const check of input.hostChecks ?? []) {
               await record(check.id, check.run);
