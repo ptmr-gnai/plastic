@@ -26,6 +26,7 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(moduleCheck.details.missingContributions?.length === 0, "plastic/selfTest module contribution check failed");
   const hostIdentityCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-host:identity");
   assert(hostIdentityCheck?.details?.mismatchedIdentityFields?.length === 0, "plastic/selfTest host identity check failed");
+  assert(hostIdentityCheck.details.invalidHostControlPlaneUrls?.length === 0, "plastic/selfTest runtime/host control-plane URLs are invalid");
   assert(hostIdentityCheck.details.agentTransportsMatch === true, "plastic/selfTest host transport identity check failed");
   const auditCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-audit:status");
   assert(["missing", "passed", "degraded", "failed"].includes(auditCheck?.details?.status), "plastic/selfTest audit status check failed");

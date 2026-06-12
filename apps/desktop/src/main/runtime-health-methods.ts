@@ -20,11 +20,11 @@ import {
   checkExtensionRuntimeHealth,
   checkPanelRuntimeHealth,
   checkProjectionDiscoveryHealth,
-  checkRuntimeHostIdentityHealth,
   checkRuntimeAuditStatusHealth,
   checkRuntimeStartedDescriptorHealth,
   checkWindowRuntimeHealth
 } from "./runtime-health-self-test-checks.js";
+import { checkRuntimeHostIdentityHealth } from "./runtime-health-host-checks.js";
 import { noInputSchema } from "./runtime-method-metadata.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
