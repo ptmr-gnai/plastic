@@ -384,7 +384,7 @@ export const createRuntimeHealthModule = (input: {
             await record("event-store:list", () => ({ count: events.length }));
             await record("methods:list", () => checkMethodRegistryHealth(methodList, capabilityList));
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
-            await record("build:status", async () =>
+            await record("build:surface", async () =>
               checkBuildStatusHealth(await runPromise(methods.call("build/status", {})))
             );
             await record("runtime-modules:map", async () =>
