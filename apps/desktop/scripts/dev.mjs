@@ -50,9 +50,11 @@ rmSync(new URL("../dist-electron", import.meta.url), { force: true, recursive: t
 run("pnpm", ["exec", "tsc", "-p", "tsconfig.node.json", "--watch", "--preserveWatchOutput"]);
 run("pnpm", ["exec", "vite", "--host", "127.0.0.1"]);
 
+console.log(`[plastic:dev] waiting electron-main path=${electronMain}`);
 while (!existsSync(electronMain)) {
   await delay(250);
 }
+console.log(`[plastic:dev] electron-main-ready path=${electronMain}`);
 
 let viteReady = false;
 while (!viteReady) {
@@ -63,7 +65,9 @@ while (!viteReady) {
     await delay(250);
   }
 }
+console.log(`[plastic:dev] vite-ready url=${viteUrl}`);
 
+console.log(`[plastic:dev] electron-launch cwd=${cwd} main=${electronMain}`);
 const electronChild = run(electronExecutable, ["."], {
   env: {
     ...process.env,

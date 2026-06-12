@@ -31,6 +31,18 @@ type AuditSummary = {
 const asStringArray = (value: unknown): Array<string> => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
+  if (
+    failurePhase === "electron"
+    && hints.some((hint) => hint.includes("electron-main-ready"))
+    && hints.some((hint) => hint.includes("electron-launch"))
+    && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
+  ) {
+    return {
+      code: "electron-main-entry-not-observed",
+      phase: "electron-main-entry",
+      summary: "The Electron main bundle existed and Electron was launched, but Plastic main-process startup logs were not observed."
+    };
+  }
   if (failurePhase === "electron" && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))) {
     return {
       code: "electron-main-startup-missing",
