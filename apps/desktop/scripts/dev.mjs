@@ -7,6 +7,7 @@ const cwd = new URL("..", import.meta.url).pathname;
 const workspaceDir = new URL("../../..", import.meta.url).pathname;
 const viteUrl = "http://127.0.0.1:5173";
 const electronMain = new URL("../dist-electron/main/main.js", import.meta.url).pathname;
+const electronAppPath = cwd;
 const require = createRequire(import.meta.url);
 const electronExecutable = require("electron");
 
@@ -97,8 +98,8 @@ while (!viteReady) {
 }
 console.log(`[plastic:dev] vite-ready url=${viteUrl}`);
 
-console.log(`[plastic:dev] electron-launch cwd=${cwd} packageMain=main.cjs compiledMain=${electronMain}`);
-const electronChild = run(electronExecutable, ["."], {
+console.log(`[plastic:dev] electron-launch cwd=${cwd} appPath=${electronAppPath} packageMain=main.cjs compiledMain=${electronMain}`);
+const electronChild = run(electronExecutable, [electronAppPath], {
   env: {
     ...process.env,
     ELECTRON_ENABLE_STACK_DUMPING: process.env.ELECTRON_ENABLE_STACK_DUMPING ?? "1",
