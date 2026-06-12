@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { execFile, spawn } from "node:child_process";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
 const probeTimeoutMs = Number(process.env.PLASTIC_ELECTRON_LAUNCH_PROBE_TIMEOUT_MS ?? "3000");
@@ -90,7 +91,9 @@ const launchProbes = process.env.PLASTIC_ELECTRON_LAUNCH_PROBE_RUN === "1"
       directCompiledMain: await probeLaunch("directCompiledMain", electronExecutable, [compiledMain]),
       directPackage: await probeLaunch("directPackage", electronExecutable, [desktopDir]),
       cliCompiledMain: await probeLaunch("cliCompiledMain", "pnpm", ["exec", "electron", compiledMain]),
-      cliPackage: await probeLaunch("cliPackage", "pnpm", ["exec", "electron", desktopDir])
+      cliPackage: await probeLaunch("cliPackage", "pnpm", ["exec", "electron", desktopDir]),
+      isolatedCompiledMain: await probeLaunch("isolatedCompiledMain", electronExecutable, [`--user-data-dir=${mkdtempSync(`${tmpdir()}/plastic-electron-user-data-`)}`, compiledMain]),
+      isolatedPackage: await probeLaunch("isolatedPackage", electronExecutable, [`--user-data-dir=${mkdtempSync(`${tmpdir()}/plastic-electron-user-data-`)}`, desktopDir])
     }
   : null;
 
