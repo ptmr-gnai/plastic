@@ -2,7 +2,7 @@ import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane
 import { assertAgentTransports } from "./plastic-contract-agent-transports.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
-export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount, capabilityCount, modules }) => {
+export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount, capabilityCount, modules, methodIds }) => {
   const moduleIds = modules.ids;
   assert(workbench?.app?.mode === mode, "workbench app mode does not match state");
   assert(workbench.app.hostBase?.id === "runtime-host-base" && workbench.app.hostBase?.version === 1, "workbench shared host base marker mismatch");
@@ -33,6 +33,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertControlPlaneEndpointUrls({ assert, controlPlane: workbench.control.controlPlane, source: "workbench" });
   assertAgentTransports({ assert, assertArray, transports: workbench.control.agentTransports, rpcUrl: workbench.control.controlPlane.runtime.rpcUrl, source: "workbench" });
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
+  assertKnownMethodReferences({ assert, references: workbench.control.recommendedActions, methodIds, source: "workbench recommendedActions" });
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"), "workbench missing runtime/modules recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/host"), "workbench missing runtime/host recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/auditStatus"), "workbench missing runtime/auditStatus recommended action");
@@ -54,7 +55,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   };
 };
 
-export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount, capabilityCount, modules }) => {
+export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount, capabilityCount, modules, methodIds }) => {
   const moduleIds = modules.ids;
   assert(orientation?.agent?.id, "agent/orient missing agent id");
   assert(orientation.embodiment?.projectDir, "agent/orient missing projectDir");
@@ -63,6 +64,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   assert(orientation.capabilities.host.count === capabilityCount, "agent/orient capability count does not match runtime/capabilities");
   assertArray(orientation.capabilities.host.items, "agent/orient host capabilities missing");
   assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
+  assertKnownMethodReferences({ assert, references: orientation.capabilities.recommendedActions, methodIds, source: "agent/orient recommendedActions" });
   assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
   assert(orientation.capabilities.modules.count === moduleIds.length, "agent/orient module count does not match runtime/modules");
   assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
@@ -112,6 +114,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
     "agent/orient missing runtime/auditActionPlan affordance"
   );
   assert(orientation.capabilities.links?.some((link) => link.rel === "control-plane" && link.method === "events/list"), "agent/orient missing control plane link");
+  assertKnownMethodReferences({ assert, references: orientation.capabilities.links ?? [], methodIds, source: "agent/orient links" });
   assert(orientation.memory?.eventCount >= 1, "agent/orient missing event memory");
   return {
     agentId: orientation.agent.id,
@@ -140,3 +143,10 @@ const assertSameModuleAvailability = ({ assert, actual, expected, source }) => {
 
 const availabilityById = (modules) =>
   Object.fromEntries(modules.map((module) => [module.id, module.availability]));
+
+const assertKnownMethodReferences = ({ assert, references, methodIds, source }) => {
+  const unknown = references
+    .map((reference) => reference.method)
+    .filter((method) => typeof method === "string" && !methodIds.has(method));
+  assert(unknown.length === 0, `${source} reference unknown methods: ${unknown.join(", ")}`);
+};

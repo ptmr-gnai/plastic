@@ -32,6 +32,7 @@ const validationMeta = { tags: validationTags };
 let state;
 let snapshot;
 let methods;
+let methodIds;
 let runtimeCapabilities;
 let runtimeModules;
 let createdPanelEvent;
@@ -85,6 +86,7 @@ await check("plastic/methods", async () => {
   const runtimeMethods = await runtimeGet("/methods");
   const buildMethods = await buildGet("/methods");
   const items = assertArray(methods, "plastic/methods is not an array");
+  methodIds = new Set(items.map((method) => method.id));
   const runtimeItems = assertArray(runtimeMethods.value, "runtime /methods is not an array");
   const buildItems = assertArray(buildMethods.value, "build /methods is not an array");
   assert(runtimeItems.length === items.length, "runtime /methods count mismatch");
@@ -226,27 +228,14 @@ await check("runtime/modules", async () => {
 
 await check("agent/workbench", async () => {
   const workbench = await rpc("agent/workbench", { limit: 5 });
-  return assertAgentWorkbenchPacket({
-    assert,
-    assertArray,
-    workbench,
-    mode: state.app.mode,
-    methodCount: methods.length,
-    capabilityCount: runtimeCapabilities.count,
-    modules: runtimeModules
-  });
+  const shared = { assert, assertArray, mode: state.app.mode, methodCount: methods.length, capabilityCount: runtimeCapabilities.count, modules: runtimeModules, methodIds };
+  return assertAgentWorkbenchPacket({ ...shared, workbench });
 });
 
 await check("agent/orient", async () => {
   const orientation = await rpc("agent/orient", { panelId: "chat-main" });
-  return assertAgentOrientationPacket({
-    assert,
-    assertArray,
-    orientation,
-    methodCount: methods.length,
-    capabilityCount: runtimeCapabilities.count,
-    modules: runtimeModules
-  });
+  const shared = { assert, assertArray, methodCount: methods.length, capabilityCount: runtimeCapabilities.count, modules: runtimeModules, methodIds };
+  return assertAgentOrientationPacket({ ...shared, orientation });
 });
 
 await check("agent backend metadata", async () => {
