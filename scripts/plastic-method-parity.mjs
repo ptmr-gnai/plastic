@@ -34,6 +34,7 @@ const sharedHealthCheckIds = [
   "methods:availability-capabilities",
   "capabilities:list",
   "capabilities:projection",
+  "projections:discovery",
   "build:surface",
   "runtime-modules:map",
   "runtime-modules:coverage",

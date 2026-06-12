@@ -205,6 +205,47 @@ const checkCapabilityProjectionHealth = (
   };
 };
 
+const checkProjectionDiscoveryHealth = (
+  state: unknown,
+  snapshot: unknown,
+  methodList: Array<{ id: string; availability?: { status?: string } }>
+) => {
+  const stateRecord = asRecord(state);
+  const snapshotRecord = asRecord(snapshot);
+  const stateControlPlane = asRecord(stateRecord.controlPlane);
+  const snapshotControlPlane = asRecord(snapshotRecord.controlPlane);
+  const stateResources = Array.isArray(stateRecord.resources) ? stateRecord.resources.map(asRecord) : [];
+  const serviceResources = stateResources.filter((resource) => resource.kind === "service");
+  const snapshotLinks = Array.isArray(snapshotRecord.links) ? snapshotRecord.links.map(asRecord) : [];
+  const snapshotMethods = asRecord(snapshotRecord.methods);
+  const snapshotMethodItems = Array.isArray(snapshotMethods.items) ? snapshotMethods.items.map(asRecord) : [];
+  if (asRecord(stateControlPlane.runtime).transport !== "http" || asRecord(snapshotControlPlane.runtime).transport !== "http") {
+    throw new Error("state/snapshot projections must expose the shared runtime HTTP control plane");
+  }
+  if (!serviceResources.some((resource) => hasLinkAndAction(resource, "runtime/host"))) {
+    throw new Error("plastic/state service resource missing runtime/host affordances");
+  }
+  if (!serviceResources.some((resource) => hasLinkAndAction(resource, "runtime/capabilities"))) {
+    throw new Error("plastic/state service resource missing runtime/capabilities affordances");
+  }
+  for (const method of ["runtime/host", "runtime/capabilities", "events/list", "plastic/selfTest"]) {
+    if (!snapshotLinks.some((link) => link.method === method)) {
+      throw new Error(`plastic/snapshot missing ${method} link`);
+    }
+  }
+  if (snapshotMethods.count !== methodList.length || snapshotMethodItems.length !== methodList.length) {
+    throw new Error("plastic/snapshot method catalog count does not match plastic/methods");
+  }
+  if (!snapshotMethodItems.every((method) => typeof asRecord(method.availability).status === "string")) {
+    throw new Error("plastic/snapshot method catalog is missing availability metadata");
+  }
+  return {
+    serviceResources: serviceResources.length,
+    snapshotLinks: snapshotLinks.length,
+    methods: snapshotMethodItems.length
+  };
+};
+
 const checkRuntimeStartedDescriptorHealth = (events: PlasticEvent[]) => {
   const latestStarted = [...events].reverse().find((event) => event.type === "runtime.started");
   const payload = asRecord(latestStarted?.payload);
@@ -376,6 +417,12 @@ const checkAgentOrientationHealth = (workbench: unknown, orientation: unknown) =
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
 
+const hasLinkAndAction = (resource: Record<string, unknown>, method: string) => {
+  const links = Array.isArray(resource.links) ? resource.links.map(asRecord) : [];
+  const actions = Array.isArray(resource.actions) ? resource.actions.map(asRecord) : [];
+  return links.some((link) => link.method === method) && actions.some((action) => action.method === method);
+};
+
 const runtimeHealthAvailability = {
   status: "available" as const,
   notes: "Self-test is a shared runtime health primitive in headed and headless modes."
@@ -439,6 +486,13 @@ export const createRuntimeHealthModule = (input: {
                 capabilityList,
                 await runPromise(methods.call("runtime/capabilities", {})),
                 events
+              )
+            );
+            await record("projections:discovery", async () =>
+              checkProjectionDiscoveryHealth(
+                await runPromise(methods.call("plastic/state", {})),
+                await runPromise(methods.call("plastic/snapshot", {})),
+                methodList
               )
             );
             await record("build:surface", async () =>
