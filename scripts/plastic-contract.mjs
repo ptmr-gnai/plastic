@@ -4,7 +4,7 @@ import {
   assertEventsTagged, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
   assertCapabilityStatuses, assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
-  assertMatchingModuleInventories, assertRuntimeAuditStatus, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
+  assertMatchingModuleInventories, assertRuntimeAuditStatus, assertModuleMethodDiscoveryParity, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 import { assertAgentOrientationPacket, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
@@ -223,6 +223,7 @@ await check("runtime/modules", async () => {
   assertRuntimeModuleOrder({ assert, modules: durable, source: "runtime.started modules" });
   assertModuleAvailabilitySummaries({ assert, modules: live, methods, source: "runtime/modules" });
   assertModuleAvailabilitySummaries({ assert, modules: durable, methods, source: "runtime.started modules" });
+  await assertModuleMethodDiscoveryParity({ methods, modules: live, rpc });
   return { live, durable };
 });
 

@@ -185,6 +185,20 @@ export const assertMethodDiscoveryParity = async ({ methods, rpc, sampleIds }) =
   }
 };
 
+export const assertModuleMethodDiscoveryParity = async ({ methods, modules, rpc }) => {
+  const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
+  const moduleMethodIds = modules.items.flatMap((module) => module.methodIds);
+  const missingFromMethods = moduleMethodIds.filter((id) => !byId[id]);
+  assert(missingFromMethods.length === 0, `runtime/modules references unknown methods: ${missingFromMethods.join(", ")}`);
+  const uncovered = methods.map((method) => method.id).filter((id) => !moduleMethodIds.includes(id));
+  assert(uncovered.length === 0, `plastic/methods has methods missing from runtime/modules: ${uncovered.join(", ")}`);
+  for (const id of moduleMethodIds) {
+    const described = await rpc("methods/describe", { id });
+    const listed = byId[id];
+    assert(stableJson(described) === stableJson(listed), `${id} describe metadata diverged from plastic/methods`);
+  }
+};
+
 export const assertMethodLegibility = ({ methods, ids }) => {
   const byId = Object.fromEntries(methods.map((method) => [method.id, method]));
   for (const id of ids) {
