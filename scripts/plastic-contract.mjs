@@ -156,6 +156,7 @@ await check("bridge/callPlasticRpcTool description", async () => {
   const description = await rpc("methods/describe", { id: "bridge/callPlasticRpcTool" });
   assert(description.description?.includes("agent/orient"), "bridge/callPlasticRpcTool must teach agent/orient orientation");
   assert(description.description?.includes("runtime/auditStatus"), "bridge/callPlasticRpcTool must teach runtime/auditStatus");
+  assert(description.description?.includes("delegated method effects"), "bridge/callPlasticRpcTool must describe delegated method effects");
   assert(description.examples?.some((example) => example.input?.method === "agent/orient"), "bridge/callPlasticRpcTool example must call agent/orient");
   return { id: description.id, examples: description.examples.length };
 });

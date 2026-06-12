@@ -139,7 +139,7 @@ export const bridgeTestMetadata = {
 };
 
 export const bridgeCallPlasticRpcToolMetadata = {
-  description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works. Agents should use agent/orient or agent/workbench for orientation and runtime/auditStatus for headed/headless audit state.",
+  description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works. Tool results include delegated method effects and reversibility when available. Agents should use agent/orient or agent/workbench for orientation and runtime/auditStatus for headed/headless audit state.",
   inputSchema: {
     type: "object",
     required: ["method"],

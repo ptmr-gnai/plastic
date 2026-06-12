@@ -30,6 +30,22 @@ const callPlastic = async (method, input = {}) => {
   return result.value;
 };
 
+const readMethodEffects = async (method) => {
+  try {
+    const description = await callPlastic("methods/describe", { id: method });
+    return {
+      owner: description.owner ?? null,
+      availability: description.availability?.status ?? description.availability ?? null,
+      effects: description.effects ?? null,
+      reversibility: description.reversibility ?? null
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+};
+
 const appendBridgeEvent = async (type, payload) => {
   try {
     await callPlastic("events/append", {
@@ -44,7 +60,7 @@ const appendBridgeEvent = async (type, payload) => {
 
 const tool = {
   name: "plastic_rpc",
-  description: "Call any registered Plastic RPC method through the shared Plastic method registry. For orientation, call agent/orient or agent/workbench first; for headed/headless audit state, call runtime/auditStatus.",
+  description: "Call any registered Plastic RPC method through the shared Plastic method registry. The result includes delegated method effects and reversibility when available. For orientation, call agent/orient or agent/workbench first; for headed/headless audit state, call runtime/auditStatus.",
   inputSchema: {
     type: "object",
     properties: {
@@ -111,9 +127,11 @@ const handleRequest = async (message) => {
 
     const startedAt = new Date().toISOString();
     const correlationId = crypto.randomUUID();
+    const methodEffects = await readMethodEffects(methodId);
     await appendBridgeEvent("bridge.plastic_rpc.requested", {
       correlationId,
       method: methodId,
+      methodEffects,
       input,
       rpcUrl,
       startedAt
@@ -121,19 +139,21 @@ const handleRequest = async (message) => {
 
     try {
       const value = await callPlastic(methodId, input);
-      const result = { ok: true, value };
+      const result = { ok: true, value, methodEffects };
       await appendBridgeEvent("bridge.plastic_rpc.completed", {
         correlationId,
         method: methodId,
+        methodEffects,
         ok: true,
         completedAt: new Date().toISOString()
       });
       sendResult(id, { content: [{ type: "text", text: JSON.stringify(result) }] });
     } catch (error) {
-      const result = { ok: false, error: error instanceof Error ? error.message : String(error) };
+      const result = { ok: false, error: error instanceof Error ? error.message : String(error), methodEffects };
       await appendBridgeEvent("bridge.plastic_rpc.completed", {
         correlationId,
         method: methodId,
+        methodEffects,
         ok: false,
         error: result.error,
         completedAt: new Date().toISOString()
