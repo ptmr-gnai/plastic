@@ -17,7 +17,7 @@ import {
   checkMethodRegistryHealth
 } from "./runtime-health-checks.js";
 import { noInputSchema } from "./runtime-method-metadata.js";
-import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
+import type { RuntimeCapability, RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
 type HealthCheck = {
   id: string;
@@ -175,6 +175,36 @@ const checkAgentTransportsHealth = (events: PlasticEvent[]) => {
   };
 };
 
+const checkCapabilityProjectionHealth = (
+  capabilities: RuntimeCapability[],
+  runtimeCapabilities: unknown,
+  events: PlasticEvent[]
+) => {
+  const liveItems = normalizeCapabilities(capabilities);
+  const projection = asRecord(runtimeCapabilities);
+  const projectionItems = normalizeCapabilities(Array.isArray(projection.items) ? projection.items : []);
+  const latestStarted = [...events].reverse().find((event) => event.type === "runtime.started");
+  const durableItems = normalizeCapabilities(
+    Array.isArray(asRecord(latestStarted?.payload).capabilities)
+      ? asRecord(latestStarted?.payload).capabilities as unknown[]
+      : []
+  );
+  if (projection.count !== liveItems.length) {
+    throw new Error("runtime/capabilities count does not match live capability registry");
+  }
+  if (JSON.stringify(projectionItems) !== JSON.stringify(liveItems)) {
+    throw new Error("runtime/capabilities items do not match live capability registry");
+  }
+  if (JSON.stringify(durableItems) !== JSON.stringify(liveItems)) {
+    throw new Error("runtime.started capability inventory does not match live capability registry");
+  }
+  return {
+    count: liveItems.length,
+    ids: liveItems.map((capability) => capability.id),
+    durableEventId: latestStarted?.id ?? null
+  };
+};
+
 const checkRuntimeStartedDescriptorHealth = (events: PlasticEvent[]) => {
   const latestStarted = [...events].reverse().find((event) => event.type === "runtime.started");
   const payload = asRecord(latestStarted?.payload);
@@ -208,6 +238,19 @@ const checkRuntimeStartedDescriptorHealth = (events: PlasticEvent[]) => {
     agentTransports: host.agentTransports.length
   };
 };
+
+const normalizeCapabilities = (capabilities: unknown[]) =>
+  capabilities
+    .map((capability) => {
+      const record = asRecord(capability);
+      return {
+        id: record.id,
+        title: record.title,
+        status: record.status,
+        notes: record.notes
+      };
+    })
+    .sort((left, right) => String(left.id).localeCompare(String(right.id)));
 
 const checkExtensionRuntimeHealth = (extensions: PlasticExtension[], methodIds: Set<string>) => {
   const bundled = extensions.filter((extension) => extension.source === "bundled");
@@ -391,6 +434,13 @@ export const createRuntimeHealthModule = (input: {
               checkMethodAvailabilityCapabilityHealth(methodList, capabilityList)
             );
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
+            await record("capabilities:projection", async () =>
+              checkCapabilityProjectionHealth(
+                capabilityList,
+                await runPromise(methods.call("runtime/capabilities", {})),
+                events
+              )
+            );
             await record("build:surface", async () =>
               checkBuildStatusHealth(await runPromise(methods.call("build/status", {})))
             );
