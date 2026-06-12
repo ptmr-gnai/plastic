@@ -13,7 +13,11 @@ import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
 import { assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
-import { assertHeadlessFallbackChatFixture, cleanupLegacyContractFixtures } from "./plastic-contract-fixtures.mjs";
+import {
+  assertHeadlessFallbackChatFixture,
+  assertNoActiveContractFixtures,
+  cleanupLegacyContractFixtures
+} from "./plastic-contract-fixtures.mjs";
 import {
   agentBackendMethodExpectationsForMode,
   capabilityBackedMethodExpectationsForMode
@@ -463,6 +467,9 @@ await check("events list/timeline", async () => {
   return { events: eventItems.length, timeline: timelineItems.length };
 });
 await check("plastic/selfTest", async () => assertSelfTestSurface({ assert, selfTest: await rpc("plastic/selfTest") }));
+await check("contract fixture stability", async () =>
+  assertNoActiveContractFixtures({ assert, assertArray, rpc })
+);
 const failed = results.filter((result) => !result.ok);
 const summary = { ok: failed.length === 0, rpcUrl, checks: results.length, failed: failed.length, results };
 console.log(JSON.stringify(summary, null, 2));

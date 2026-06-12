@@ -15,6 +15,27 @@ export const cleanupLegacyContractFixtures = async ({ assertArray, rpc, validati
   return { removedPanels: fixtures.length };
 };
 
+export const assertNoActiveContractFixtures = async ({ assert, assertArray, rpc }) => {
+  const panels = assertArray(await rpc("panels/list"), "fixture stability panels/list is not an array");
+  const extensions = assertArray(await rpc("extensions/list"), "fixture stability extensions/list is not an array");
+  const activePanels = panels
+    .filter((panel) => typeof panel.id === "string" && panel.id.startsWith("contract-"))
+    .map((panel) => panel.id)
+    .sort();
+  const activeExtensions = extensions
+    .filter((extension) => typeof extension.id === "string" && extension.id.startsWith("workspace.contract-"))
+    .map((extension) => extension.id)
+    .sort();
+  assert(activePanels.length === 0, `active contract panels remain: ${activePanels.join(", ")}`);
+  assert(activeExtensions.length === 0, `active contract extensions remain: ${activeExtensions.join(", ")}`);
+  return {
+    activeContractPanels: activePanels.length,
+    activeContractExtensions: activeExtensions.length,
+    panels: panels.length,
+    extensions: extensions.length
+  };
+};
+
 export const assertHeadlessFallbackChatFixture = async ({
   assert,
   assertArray,
