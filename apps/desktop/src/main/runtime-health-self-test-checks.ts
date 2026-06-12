@@ -90,10 +90,18 @@ export const checkBuildStatusHealth = (buildStatus: unknown) => {
 export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   const verdict = (auditStatus as { verdict?: Record<string, unknown> })?.verdict;
   const status = verdict?.status;
-  const actions = verdict?.actions;
+  const actions = Array.isArray(verdict?.actions) ? verdict.actions.map(asRecord) : [];
   const diagnosis = asRecord(verdict?.diagnosis);
   const failureSummary = asRecord(verdict?.failureSummary);
   const firstFailure = failureSummary.first === null ? null : asRecord(failureSummary.first);
+  const invalidActionInvocations = actions
+    .filter((action) =>
+      action.method !== "runtime/runAuditAction"
+      || asRecord(action.input).id !== action.id
+      || typeof asRecord(action.run).command !== "string"
+      || !Array.isArray(asRecord(action.run).args)
+    )
+    .map((action) => String(action.id ?? "<missing-id>"));
   if (!["missing", "passed", "degraded", "failed"].includes(String(status))) {
     throw new Error("runtime/auditStatus returned an invalid verdict status");
   }
@@ -108,8 +116,11 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   ) {
     throw new Error("runtime/auditStatus verdict failure summary is incomplete");
   }
-  if (!Array.isArray(actions)) {
+  if (!Array.isArray(verdict?.actions)) {
     throw new Error("runtime/auditStatus verdict actions are missing");
+  }
+  if (invalidActionInvocations.length > 0) {
+    throw new Error(`runtime/auditStatus actions have invalid invocation metadata: ${invalidActionInvocations.join(", ")}`);
   }
   return {
     available: (auditStatus as { available?: unknown }).available === true,
@@ -119,7 +130,8 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
     failureIds: failureSummary.ids.filter((id): id is string => typeof id === "string"),
     blockingFailureIds: failureSummary.blockingIds.filter((id): id is string => typeof id === "string"),
     firstFailureId: firstFailure?.id ?? null,
-    actions: actions.length
+    actions: actions.length,
+    invalidActionInvocations
   };
 };
 
