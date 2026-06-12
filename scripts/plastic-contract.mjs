@@ -198,9 +198,8 @@ await check("bridge/callPlasticRpcTool description", async () => {
 });
 
 await check("method discovery parity", async () => {
-  const sampleIds = ["plastic/state", "panels/create", "events/append", "windows/screenshot", "deixis/evalDom", "chats/sendToCodex"];
-  await assertMethodDiscoveryParity({ methods, rpc, sampleIds });
-  return { sampled: sampleIds.length };
+  await assertMethodDiscoveryParity({ methods, rpc });
+  return { described: methods.length };
 });
 
 await check("rpc/call dispatch", async () => {
