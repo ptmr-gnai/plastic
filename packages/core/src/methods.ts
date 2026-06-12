@@ -68,6 +68,30 @@ export interface MethodRegistry {
   call: (methodId: string, input: unknown) => Effect.Effect<unknown, Error>;
 }
 
+export const withMethodAffordanceLinks = (method: PlasticMethod): PlasticMethod => ({
+  ...method,
+  links: upsertMethodAffordanceLinks(method)
+});
+
+const upsertMethodAffordanceLinks = (method: PlasticMethod): PlasticLink[] => {
+  const links = method.links ?? [];
+  const hasDescribe = links.some((link) =>
+    link.rel === "describe"
+    && link.method === "methods/describe"
+    && link.target === method.id
+  );
+  const hasInvoke = links.some((link) =>
+    link.rel === "invoke"
+    && link.method === "rpc/call"
+    && link.target === method.id
+  );
+  return [
+    ...links,
+    ...(hasDescribe ? [] : [{ rel: "describe", href: "methods/describe", method: "methods/describe", target: method.id }]),
+    ...(hasInvoke ? [] : [{ rel: "invoke", href: "rpc/call", method: "rpc/call", target: method.id }])
+  ];
+};
+
 export const createMethodRegistry = (): MethodRegistry => {
   const methods = new Map<string, PlasticMethod>();
 
@@ -75,10 +99,13 @@ export const createMethodRegistry = (): MethodRegistry => {
     register: (method) =>
       Effect.sync(() => {
         methods.set(method.id, method);
-        return method;
+        return withMethodAffordanceLinks(method);
       }),
-    list: () => Effect.sync(() => [...methods.values()]),
-    get: (methodId) => Effect.sync(() => methods.get(methodId)),
+    list: () => Effect.sync(() => [...methods.values()].map(withMethodAffordanceLinks)),
+    get: (methodId) => Effect.sync(() => {
+      const method = methods.get(methodId);
+      return method ? withMethodAffordanceLinks(method) : undefined;
+    }),
     call: (methodId, input) =>
       Effect.flatMap(
         Effect.sync(() => methods.get(methodId)),

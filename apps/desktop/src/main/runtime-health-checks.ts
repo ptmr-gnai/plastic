@@ -105,6 +105,38 @@ export const checkMethodRegistryHealth = (
   };
 };
 
+export const checkMethodAffordanceHealth = (methods: PlasticMethod[]) => {
+  const missingDescribeLinks = methods
+    .filter((method) =>
+      !method.links?.some((link) =>
+        link.rel === "describe"
+        && link.method === "methods/describe"
+        && link.target === method.id
+      )
+    )
+    .map((method) => method.id);
+  const missingInvokeLinks = methods
+    .filter((method) =>
+      !method.links?.some((link) =>
+        link.rel === "invoke"
+        && link.method === "rpc/call"
+        && link.target === method.id
+      )
+    )
+    .map((method) => method.id);
+  if (missingDescribeLinks.length > 0) {
+    throw new Error(`Methods missing describe links: ${missingDescribeLinks.join(", ")}`);
+  }
+  if (missingInvokeLinks.length > 0) {
+    throw new Error(`Methods missing invoke links: ${missingInvokeLinks.join(", ")}`);
+  }
+  return {
+    count: methods.length,
+    missingDescribeLinks,
+    missingInvokeLinks
+  };
+};
+
 export const checkCapabilityRegistryHealth = (capabilities: RuntimeCapability[]) => {
   const capabilityIds = new Set(capabilities.map((capability) => capability.id));
   const invalidStatuses = capabilities

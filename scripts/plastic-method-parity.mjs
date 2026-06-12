@@ -30,6 +30,7 @@ const sorted = (values) => [...(values ?? [])].sort();
 const sharedHealthCheckIds = [
   "event-store:list",
   "methods:list",
+  "methods:affordances",
   "capabilities:list",
   "build:surface",
   "runtime-modules:map",

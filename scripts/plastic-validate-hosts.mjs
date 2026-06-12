@@ -334,6 +334,11 @@ const runElectronValidation = async ({ parity }) => {
   await runHost({ label: "electron", script: "dev.mjs", parity });
 };
 
+const buildSharedRuntimePackages = async () => {
+  console.log("[plastic:validate-hosts] building shared runtime packages");
+  await run("pnpm", ["--filter", "@plastic/core", "build"]);
+};
+
 const runUnifiedValidation = async () => {
   await runHost({ label: "headless", script: "dev-headless.mjs", parity: "capture" });
   try {
@@ -360,6 +365,8 @@ process.on("SIGINT", () => {
 process.on("SIGTERM", () => {
   void stopHost().finally(() => process.exit(143));
 });
+
+await buildSharedRuntimePackages();
 
 if (validateScope === "unified") {
   await runUnifiedValidation();

@@ -7,7 +7,8 @@ import {
   type PlasticMethod,
   type PlasticEventMeta,
   type MethodRegistry,
-  type TimelineInput
+  type TimelineInput,
+  withMethodAffordanceLinks
 } from "@plastic/core";
 import { eventMetaSchema, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
@@ -153,14 +154,7 @@ const registerMethodDiscovery = async (input: {
   );
 };
 
-const enrichDiscoveredMethod = (method: PlasticMethod): PlasticMethod => ({
-  ...method,
-  links: [
-    ...(method.links ?? []),
-    { rel: "describe", href: "methods/describe", method: "methods/describe", target: method.id },
-    { rel: "invoke", href: "rpc/call", method: "rpc/call", target: method.id }
-  ]
-});
+const enrichDiscoveredMethod = (method: PlasticMethod): PlasticMethod => withMethodAffordanceLinks(method);
 
 const registerRpcCall = async (input: {
   methods: MethodRegistry;
