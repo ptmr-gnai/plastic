@@ -205,6 +205,41 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
   };
 };
 
+export const checkRuntimeModuleCoverageHealth = (modules: unknown, methods: PlasticMethod[]) => {
+  const items = Array.isArray((modules as { items?: unknown })?.items)
+    ? (modules as { items: unknown[] }).items
+    : [];
+  const registeredMethodIds = methods.map((method) => method.id).sort();
+  const moduleMethodIds = items.flatMap((item) =>
+    Array.isArray((item as { methodIds?: unknown }).methodIds)
+      ? (item as { methodIds: unknown[] }).methodIds.filter((id): id is string => typeof id === "string")
+      : []
+  );
+  const uniqueModuleMethodIds = [...new Set(moduleMethodIds)].sort();
+  const duplicateMethodIds = moduleMethodIds
+    .filter((id, index) => moduleMethodIds.indexOf(id) !== index)
+    .filter((id, index, all) => all.indexOf(id) === index)
+    .sort();
+  const unassignedMethodIds = registeredMethodIds.filter((id) => !uniqueModuleMethodIds.includes(id));
+  const unknownModuleMethodIds = uniqueModuleMethodIds.filter((id) => !registeredMethodIds.includes(id));
+  if (unassignedMethodIds.length > 0) {
+    throw new Error(`Registered methods missing from runtime module map: ${unassignedMethodIds.join(", ")}`);
+  }
+  if (unknownModuleMethodIds.length > 0) {
+    throw new Error(`Runtime module map references unknown methods: ${unknownModuleMethodIds.join(", ")}`);
+  }
+  if (duplicateMethodIds.length > 0) {
+    throw new Error(`Runtime module map assigns methods more than once: ${duplicateMethodIds.join(", ")}`);
+  }
+  return {
+    registeredMethods: registeredMethodIds.length,
+    moduleMethods: uniqueModuleMethodIds.length,
+    unassignedMethodIds,
+    unknownModuleMethodIds,
+    duplicateMethodIds
+  };
+};
+
 const hasModuleAvailabilitySummary = (item: unknown) => {
   const availability = (item as { availability?: Record<string, unknown> }).availability;
   return typeof availability?.available === "number"

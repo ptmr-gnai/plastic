@@ -11,6 +11,7 @@ import {
 import {
   checkCapabilityRegistryHealth,
   checkMethodAffordanceHealth,
+  checkRuntimeModuleCoverageHealth,
   checkRuntimeModuleMapHealth,
   checkMethodRegistryHealth
 } from "./runtime-health-checks.js";
@@ -389,9 +390,11 @@ export const createRuntimeHealthModule = (input: {
             await record("build:surface", async () =>
               checkBuildStatusHealth(await runPromise(methods.call("build/status", {})))
             );
+            const runtimeModules = await runPromise(methods.call("runtime/modules", {}));
             await record("runtime-modules:map", async () =>
-              checkRuntimeModuleMapHealth(await runPromise(methods.call("runtime/modules", {})))
+              checkRuntimeModuleMapHealth(runtimeModules)
             );
+            await record("runtime-modules:coverage", () => checkRuntimeModuleCoverageHealth(runtimeModules, methodList));
             await record("runtime-started:descriptor", () => checkRuntimeStartedDescriptorHealth(events));
             await record("runtime-audit:status", async () =>
               checkRuntimeAuditStatusHealth(await runPromise(methods.call("runtime/auditStatus", {})))
