@@ -125,7 +125,7 @@ export const createRuntimeHealthModule = (input: {
             await record("agent-orientation:packets", async () =>
               checkAgentOrientationHealth(
                 await runPromise(methods.call("agent/workbench", { limit: 3 })),
-                await runPromise(methods.call("agent/orient", { panelId: projectedPanels[0]?.id }))
+                await runPromise(methods.call("agent/orient", { panelId: projectedPanels[0]?.id })), methodIds
               )
             );
             await record("agent-transports:affordances", () => checkAgentTransportsHealth(events));

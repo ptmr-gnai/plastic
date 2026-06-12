@@ -26,5 +26,9 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(transportCheck.details?.ids?.includes("http-rpc"), "plastic/selfTest missing HTTP RPC transport health");
   assert(transportCheck.details?.ids?.includes("mcp-stdio"), "plastic/selfTest missing MCP transport health");
   assert(transportCheck.details?.mcpTool === "plastic_rpc", "plastic/selfTest missing plastic_rpc transport health");
+  const orientationCheck = selfTest.checks?.find((candidate) => candidate.id === "agent-orientation:packets");
+  assert(orientationCheck?.details?.unknownWorkbenchActions?.length === 0, "plastic/selfTest workbench action references unknown methods");
+  assert(orientationCheck.details.unknownOrientationActions?.length === 0, "plastic/selfTest orientation action references unknown methods");
+  assert(orientationCheck.details.unknownOrientationLinks?.length === 0, "plastic/selfTest orientation link references unknown methods");
   return { checks: selfTest.checks?.length ?? null };
 };

@@ -326,7 +326,7 @@ export const checkWindowRuntimeHealth = (windows: PlasticWindow[], panels: Plast
   };
 };
 
-export const checkAgentOrientationHealth = (workbench: unknown, orientation: unknown) => {
+export const checkAgentOrientationHealth = (workbench: unknown, orientation: unknown, methodIds: Set<string>) => {
   const workbenchRecord = asRecord(workbench);
   const orientationRecord = asRecord(orientation);
   const control = asRecord(workbenchRecord.control);
@@ -349,6 +349,9 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
   const missingOrientationLinks = requiredAgentLinkMethods.filter((method) =>
     !orientationLinks.some((link) => link.method === method)
   );
+  const unknownWorkbenchActions = unknownMethodReferences(workbenchActions, methodIds);
+  const unknownOrientationActions = unknownMethodReferences(orientationActions, methodIds);
+  const unknownOrientationLinks = unknownMethodReferences(orientationLinks, methodIds);
   if (runtimeControlPlane.transport !== "http" || buildControlPlane.transport !== "http") {
     throw new Error("agent/workbench missing shared runtime/build control plane");
   }
@@ -367,15 +370,26 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
   if (missingOrientationLinks.length > 0) {
     throw new Error(`agent/orient missing links: ${missingOrientationLinks.join(", ")}`);
   }
+  if (unknownWorkbenchActions.length > 0 || unknownOrientationActions.length > 0 || unknownOrientationLinks.length > 0) {
+    throw new Error("agent orientation packet references unknown methods");
+  }
   return {
     workbenchActions: workbenchActions.length,
     orientationActions: orientationActions.length,
     orientationLinks: orientationLinks.length,
+    unknownWorkbenchActions,
+    unknownOrientationActions,
+    unknownOrientationLinks,
     agentTransports: agentTransports.length,
     auditVerdict: auditStatus.verdict,
     auditFailureCount: failureSummary.count
   };
 };
+
+const unknownMethodReferences = (references: Record<string, unknown>[], methodIds: Set<string>) =>
+  references
+    .map((reference) => reference.method)
+    .filter((method): method is string => typeof method === "string" && !methodIds.has(method));
 
 const normalizeCapabilities = (capabilities: unknown[]) =>
   capabilities
