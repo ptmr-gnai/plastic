@@ -248,6 +248,7 @@ const runtimeMethodByPath: Record<string, string> = {
   "/capabilities": "runtime/capabilities",
   "/host": "runtime/host",
   "/methods": "plastic/methods",
+  "/self-test": "plastic/selfTest",
   "/snapshot": "plastic/snapshot",
   "/state": "plastic/state"
 };

@@ -8,6 +8,7 @@ export const assertControlPlaneEndpointUrls = ({ assert, controlPlane, source })
   assert(controlPlane.runtime.hostUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.hostPath}`, `${source} runtime hostUrl mismatch`);
   assert(controlPlane.runtime.capabilitiesUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.capabilitiesPath}`, `${source} runtime capabilitiesUrl mismatch`);
   assert(controlPlane.runtime.snapshotUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.snapshotPath}`, `${source} runtime snapshotUrl mismatch`);
+  assert(controlPlane.runtime.selfTestUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.selfTestPath}`, `${source} runtime selfTestUrl mismatch`);
   assert(controlPlane.runtime.eventStreamUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.eventStreamPath}`, `${source} runtime eventStreamUrl mismatch`);
   assert(controlPlane.runtime.healthUrl === `${controlPlane.runtime.baseUrl}${controlPlane.runtime.healthPath}`, `${source} runtime healthUrl mismatch`);
   assert(controlPlane?.build?.baseUrl?.startsWith("http://"), `${source} build baseUrl missing`);
@@ -20,6 +21,7 @@ export const assertControlPlaneEndpointUrls = ({ assert, controlPlane, source })
   assert(controlPlane.build.healthUrl === `${controlPlane.build.baseUrl}${controlPlane.build.healthPath}`, `${source} build healthUrl mismatch`);
   assert(controlPlane.build.statusUrl === `${controlPlane.build.baseUrl}${controlPlane.build.statusPath}`, `${source} build statusUrl mismatch`);
   assert(controlPlane.build.snapshotUrl === `${controlPlane.build.baseUrl}${controlPlane.build.snapshotPath}`, `${source} build snapshotUrl mismatch`);
+  assert(controlPlane.build.selfTestUrl === `${controlPlane.build.baseUrl}${controlPlane.build.selfTestPath}`, `${source} build selfTestUrl mismatch`);
 };
 
 export const controlPlaneDescriptor = (controlPlane) => ({

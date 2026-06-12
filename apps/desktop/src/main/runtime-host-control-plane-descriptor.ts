@@ -31,6 +31,8 @@ export const createRuntimeHostControlPlaneDescriptor = (
       capabilitiesUrl: `${runtimeBaseUrl}/capabilities`,
       snapshotPath: "/snapshot",
       snapshotUrl: `${runtimeBaseUrl}/snapshot`,
+      selfTestPath: "/self-test",
+      selfTestUrl: `${runtimeBaseUrl}/self-test`,
       eventStreamPath: "/events/stream",
       eventStreamUrl: `${runtimeBaseUrl}/events/stream`,
       healthPath: "/healthz",
@@ -58,6 +60,8 @@ export const createRuntimeHostControlPlaneDescriptor = (
       statusUrl: `${buildBaseUrl}/status`,
       snapshotPath: "/snapshot",
       snapshotUrl: `${buildBaseUrl}/snapshot`,
+      selfTestPath: "/self-test",
+      selfTestUrl: `${buildBaseUrl}/self-test`,
       healthUrl: `${buildBaseUrl}/healthz`
     }
   };

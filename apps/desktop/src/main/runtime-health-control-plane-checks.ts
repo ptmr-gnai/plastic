@@ -1,9 +1,9 @@
 export const invalidControlPlaneUrls = (controlPlane: Record<string, unknown>) => [
   ...invalidEndpointUrls("runtime", asRecord(controlPlane.runtime), [
-    "rpc", "state", "methods", "host", "capabilities", "snapshot", "eventStream", "health"
+    "rpc", "state", "methods", "host", "capabilities", "snapshot", "selfTest", "eventStream", "health"
   ]),
   ...invalidEndpointUrls("build", asRecord(controlPlane.build), [
-    "rpc", "state", "methods", "host", "capabilities", "eventStream", "health", "status", "snapshot"
+    "rpc", "state", "methods", "host", "capabilities", "eventStream", "health", "status", "snapshot", "selfTest"
   ])
 ];
 

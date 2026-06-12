@@ -84,6 +84,7 @@ const hostShape = (host) => ({
       hostPath: host.controlPlane?.runtime?.hostPath,
       capabilitiesPath: host.controlPlane?.runtime?.capabilitiesPath,
       snapshotPath: host.controlPlane?.runtime?.snapshotPath,
+      selfTestPath: host.controlPlane?.runtime?.selfTestPath,
       eventStreamPath: host.controlPlane?.runtime?.eventStreamPath,
       healthPath: host.controlPlane?.runtime?.healthPath
     }),
@@ -95,6 +96,7 @@ const hostShape = (host) => ({
       hostPath: host.controlPlane?.build?.hostPath,
       capabilitiesPath: host.controlPlane?.build?.capabilitiesPath,
       snapshotPath: host.controlPlane?.build?.snapshotPath,
+      selfTestPath: host.controlPlane?.build?.selfTestPath,
       eventStreamPath: host.controlPlane?.build?.eventStreamPath,
       healthPath: host.controlPlane?.build?.healthPath,
       statusPath: host.controlPlane?.build?.statusPath

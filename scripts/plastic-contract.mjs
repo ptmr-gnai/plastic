@@ -55,10 +55,12 @@ await check("plastic/state", async () => {
   assert(state.controlPlane.runtime.rpcPath === "/rpc", "state runtime control plane rpcPath mismatch");
   assert(state.controlPlane.runtime.statePath === "/state", "state runtime control plane statePath mismatch");
   assert(state.controlPlane.runtime.methodsPath === "/methods", "state runtime control plane methodsPath mismatch");
+  assert(state.controlPlane.runtime.selfTestPath === "/self-test", "state runtime control plane selfTestPath mismatch");
   assert(state.controlPlane?.build?.transport === "http", "state missing build control plane");
   assert(state.controlPlane.build.rpcPath === "/rpc", "state build control plane rpcPath mismatch");
   assert(state.controlPlane.build.statePath === "/state", "state build control plane statePath mismatch");
   assert(state.controlPlane.build.methodsPath === "/methods", "state build control plane methodsPath mismatch");
+  assert(state.controlPlane.build.selfTestPath === "/self-test", "state build control plane selfTestPath mismatch");
   assert(state.controlPlane.build.eventStreamPath === "/events/stream", "state build control plane eventStreamPath mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: state.controlPlane, source: "state" });
   assertMatchingControlPlaneDescriptors({ assert, actual: state.controlPlane, expected: runtimeStartedControlPlane, source: "plastic/state" });
@@ -122,10 +124,12 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.controlPlane.runtime.rpcPath === "/rpc", "snapshot runtime control plane rpcPath mismatch");
   assert(snapshot.controlPlane.runtime.statePath === "/state", "snapshot runtime control plane statePath mismatch");
   assert(snapshot.controlPlane.runtime.methodsPath === "/methods", "snapshot runtime control plane methodsPath mismatch");
+  assert(snapshot.controlPlane.runtime.selfTestPath === "/self-test", "snapshot runtime control plane selfTestPath mismatch");
   assert(snapshot.controlPlane?.build?.transport === "http", "snapshot missing build control plane");
   assert(snapshot.controlPlane.build.rpcPath === "/rpc", "snapshot build control plane rpcPath mismatch");
   assert(snapshot.controlPlane.build.statePath === "/state", "snapshot build control plane statePath mismatch");
   assert(snapshot.controlPlane.build.methodsPath === "/methods", "snapshot build control plane methodsPath mismatch");
+  assert(snapshot.controlPlane.build.selfTestPath === "/self-test", "snapshot build control plane selfTestPath mismatch");
   assert(snapshot.controlPlane.build.eventStreamPath === "/events/stream", "snapshot build control plane eventStreamPath mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: snapshot.controlPlane, source: "snapshot" });
   assertMatchingControlPlaneDescriptors({ assert, actual: snapshot.controlPlane, expected: runtimeStartedControlPlane, source: "snapshot" });
@@ -485,6 +489,14 @@ await check("events list/timeline", async () => {
 });
 await check("plastic/selfTest", async () => {
   const selfTest = await rpc("plastic/selfTest");
+  const runtimeSelfTest = await runtimeGet("/self-test");
+  const buildSelfTest = await buildGet("/self-test");
+  assert(runtimeSelfTest.value?.ok === true, "runtime /self-test did not return ok result");
+  assert(buildSelfTest.value?.ok === true, "build /self-test did not return ok result");
+  assert(runtimeSelfTest.value.summary?.total >= selfTest.summary.total, "runtime /self-test summary missing total");
+  assert(buildSelfTest.value.summary?.total >= selfTest.summary.total, "build /self-test summary missing total");
+  assertSelfTestSurface({ assert, selfTest: runtimeSelfTest.value });
+  assertSelfTestSurface({ assert, selfTest: buildSelfTest.value });
   const result = assertSelfTestSurface({ assert, selfTest });
   await assertSelfTestDurableEvent({ assert, assertArray, rpc, selfTest });
   return result;
