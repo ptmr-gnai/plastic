@@ -232,6 +232,7 @@ const buildControl = async (input: {
       { id: "read-methods", title: "Read methods", method: "plastic/methods" },
       { id: "read-host", title: "Read runtime host", method: "runtime/host" },
       { id: "read-modules", title: "Read runtime modules", method: "runtime/modules" },
+      { id: "run-self-test", title: "Run Plastic self-test", method: "plastic/selfTest" },
       { id: "read-audit-status", title: "Read latest runtime audit status", method: "runtime/auditStatus" },
       { id: "plan-audit-action", title: "Inspect a current runtime audit action", method: "runtime/auditActionPlan" },
       { id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction" },

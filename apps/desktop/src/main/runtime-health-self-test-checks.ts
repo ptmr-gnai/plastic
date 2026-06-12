@@ -39,6 +39,7 @@ const requiredWindowMethods = [
 
 const requiredAgentActionMethods = [
   "runtime/host",
+  "plastic/selfTest",
   "runtime/auditStatus",
   "runtime/auditActionPlan",
   "runtime/runAuditAction"
@@ -47,6 +48,7 @@ const requiredAgentActionMethods = [
 const requiredAgentLinkMethods = [
   "runtime/host",
   "runtime/modules",
+  "plastic/selfTest",
   "runtime/auditStatus",
   "runtime/auditActionPlan",
   "runtime/runAuditAction"

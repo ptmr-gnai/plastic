@@ -36,6 +36,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertKnownMethodReferences({ assert, references: workbench.control.recommendedActions, methodIds, source: "workbench recommendedActions" });
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"), "workbench missing runtime/modules recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/host"), "workbench missing runtime/host recommended action");
+  assert(workbench.control.recommendedActions.some((action) => action.method === "plastic/selfTest"), "workbench missing plastic/selfTest recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/auditStatus"), "workbench missing runtime/auditStatus recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/auditActionPlan"), "workbench missing runtime/auditActionPlan recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/runAuditAction"), "workbench missing runtime/runAuditAction recommended action");
@@ -97,6 +98,11 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
     orientation.capabilities.links?.some((link) => link.method === "runtime/host")
       && orientation.capabilities.recommendedActions?.some((action) => action.method === "runtime/host"),
     "agent/orient missing runtime/host affordance"
+  );
+  assert(
+    orientation.capabilities.links?.some((link) => link.method === "plastic/selfTest")
+      && orientation.capabilities.recommendedActions?.some((action) => action.method === "plastic/selfTest"),
+    "agent/orient missing plastic/selfTest affordance"
   );
   assert(
     orientation.capabilities.links?.some((link) => link.method === "runtime/auditStatus")
