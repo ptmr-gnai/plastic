@@ -8,6 +8,9 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertArray(workbench.control.capabilities.items, "workbench capabilities items missing");
   assert(workbench.control.modules?.count >= 1, "workbench runtime module count missing");
   assertArray(workbench.control.modules.items, "workbench runtime modules items missing");
+  assert(workbench.control.auditStatus?.verdict, "workbench missing compact audit status");
+  assertArray(workbench.control.auditStatus.actionIds, "workbench audit status action ids missing");
+  assertArray(workbench.control.auditStatus.recentActions, "workbench audit status recent actions missing");
   assert(workbench.control.controlPlane?.runtime?.transport === "http", "workbench missing runtime control plane");
   assert(workbench.control.controlPlane.runtime.rpcPath === "/rpc", "workbench runtime control plane rpcPath mismatch");
   assert(workbench.control.controlPlane.runtime.statePath === "/state", "workbench runtime control plane statePath mismatch");
@@ -47,6 +50,9 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation 
   assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
   assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
   assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
+  assert(orientation.capabilities.auditStatus?.verdict, "agent/orient missing compact audit status");
+  assertArray(orientation.capabilities.auditStatus.actionIds, "agent/orient audit status action ids missing");
+  assertArray(orientation.capabilities.auditStatus.recentActions, "agent/orient audit status recent actions missing");
   assert(orientation.capabilities.controlPlane?.runtime?.transport === "http", "agent/orient missing runtime control plane");
   assert(orientation.capabilities.controlPlane.runtime.rpcPath === "/rpc", "agent/orient runtime control plane rpcPath mismatch");
   assert(orientation.capabilities.controlPlane.runtime.statePath === "/state", "agent/orient runtime control plane statePath mismatch");

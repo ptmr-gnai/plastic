@@ -14,6 +14,7 @@ import type {
   RuntimeModule,
   RunPromise
 } from "./runtime-method-context.js";
+import { readAgentAuditStatus } from "./agent-audit-status.js";
 import { readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import { runtimeHostBaseDescriptor } from "./runtime-host-status.js";
@@ -257,6 +258,7 @@ const buildCapabilities = async (input: {
     items: input.capabilities.list()
   },
   modules: await readRuntimeModules(input),
+  auditStatus: await readAgentAuditStatus(input),
   controlPlane: input.controlPlane,
   methods: recommendedMethods(input.methodList),
   recommendedActions: [
