@@ -81,6 +81,13 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
         command: "PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS=10000 pnpm plastic:validate-electron",
         run: { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS: "10000" } },
         description: "Gives the minimal Electron app-mode smoke check more time before classifying app mode as unavailable."
+      }),
+      auditAction({
+        id: "probe-electron-launch-targets",
+        title: "Probe Electron launch targets",
+        command: "PLASTIC_ELECTRON_LAUNCH_PROBE_RUN=1 node scripts/plastic-electron-launch-probe.mjs",
+        run: { command: "node", args: ["scripts/plastic-electron-launch-probe.mjs"], env: { PLASTIC_ELECTRON_LAUNCH_PROBE_RUN: "1" } },
+        description: "Compares direct, CLI-wrapper, and isolated-profile Electron launch targets, child command lines, and brief entry-marker probes without starting the full validation loop."
       })
     ];
   }

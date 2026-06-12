@@ -123,6 +123,9 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   assert(auditStatus.verdict.actions.every((action) => typeof action.id === "string" && typeof action.command === "string"), "runtime/auditStatus diagnostic actions must expose id and command");
   assert(auditStatus.verdict.actions.every((action) => typeof action.run?.command === "string" && Array.isArray(action.run?.args)), "runtime/auditStatus diagnostic actions must expose structured run command");
   assert(auditStatus.verdict.actions.every((action) => action.method === "runtime/runAuditAction" && action.input?.id === action.id), "runtime/auditStatus diagnostic actions must expose Plastic invocation");
+  if (auditStatus.verdict.diagnosis?.code === "electron-app-mode-smoke-not-entered") {
+    assert(auditStatus.verdict.actions.some((action) => action.id === "probe-electron-launch-targets"), "runtime/auditStatus smoke failure missing launch probe action");
+  }
   if (auditStatus.available) {
     assert(typeof auditStatus.summary?.runtimeUnification?.usable === "boolean", "runtime/auditStatus missing structured verdict");
     const failedResults = auditStatus.summary.results?.filter((result) => result.ok === false) ?? [];
