@@ -13,6 +13,27 @@ const fallbackMethodCapabilities = {
   "windows/list": { required: ["electron.window", "window.projection"], degradedWhenMissing: ["electron.window"] }
 };
 
+const fallbackSharedCapabilities = [
+  { id: "runtime.capabilities", status: "available" },
+  { id: "window.projection", status: "available" },
+  { id: "event.projection", status: "available" }
+];
+
+const fallbackHostCapabilitiesForMode = (mode) => {
+  const status = mode === "electron" ? "available" : "unavailable";
+  return [
+    { id: "electron.window", status },
+    { id: "dom.refs", status },
+    { id: "dom.eval", status },
+    { id: "dom.input", status },
+    { id: "screenshot", status },
+    { id: "agent.codex", status }
+  ];
+};
+
+const runtimeCapabilities = await import("../apps/desktop/dist-electron/main/runtime-capabilities.js")
+  .catch(() => ({}));
+
 let runtimeMethodCapabilitiesPromise;
 let runtimeAgentBackendMethodIdsPromise;
 
@@ -81,21 +102,18 @@ const loadRuntimeAgentBackendMethodIds = async () => {
   return runtimeAgentBackendMethodIdsPromise;
 };
 
-export const capabilityExpectationsForMode = (mode) => {
-  const visualStatus = mode === "electron" ? "available" : "unavailable";
-  const backendStatus = mode === "electron" ? "available" : "unavailable";
-  return {
-    "runtime.capabilities": "available",
-    "window.projection": "available",
-    "event.projection": "available",
-    "electron.window": visualStatus,
-    "dom.refs": visualStatus,
-    "dom.eval": visualStatus,
-    "dom.input": visualStatus,
-    screenshot: visualStatus,
-    "agent.codex": backendStatus
-  };
+const capabilitiesForMode = (mode) => {
+  const factory = mode === "electron"
+    ? runtimeCapabilities.createElectronRuntimeCapabilities
+    : runtimeCapabilities.createHeadlessRuntimeCapabilities;
+  return factory?.() ?? [
+    ...fallbackSharedCapabilities,
+    ...fallbackHostCapabilitiesForMode(mode)
+  ];
 };
+
+export const capabilityExpectationsForMode = (mode) =>
+  Object.fromEntries(capabilitiesForMode(mode).map((capability) => [capability.id, capability.status]));
 
 const expectationsFromRequirements = (mode, requirements) => {
   const capabilities = capabilityExpectationsForMode(mode);
