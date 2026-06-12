@@ -3,6 +3,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const outPath = process.env.PLASTIC_RUNTIME_UNIFICATION_AUDIT_OUT ?? ".plastic/tmp/runtime-unification-audit.json";
+const electronDiagnosticEnv = {
+  PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS: process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? "3000",
+  PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS: process.env.PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS ?? "3000",
+  ...(process.env.PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE === "1" ? { PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE: "1" } : {}),
+  ...(process.env.PLASTIC_ELECTRON_LAUNCH_MODE ? { PLASTIC_ELECTRON_LAUNCH_MODE: process.env.PLASTIC_ELECTRON_LAUNCH_MODE } : {})
+};
 
 const steps = [
   { id: "typecheck", command: "pnpm", args: ["typecheck"] },
@@ -12,14 +18,14 @@ const steps = [
     id: "electron",
     command: "pnpm",
     args: ["plastic:validate-electron"],
-    env: { PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS: process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? "3000" },
+    env: electronDiagnosticEnv,
     continueOnFailure: true
   },
   {
     id: "unified",
     command: "pnpm",
     args: ["plastic:validate-unified"],
-    env: { PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS: process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? "3000" }
+    env: electronDiagnosticEnv
   }
 ];
 
@@ -49,8 +55,12 @@ const runStep = (step) =>
         id: step.id,
         ok: code === 0,
         exit: code ?? signal ?? "unknown",
-        ms: Date.now() - startedAt
+        ms: Date.now() - startedAt,
+        command: [step.command, ...step.args].join(" ")
       };
+      if (step.env) {
+        result.env = step.env;
+      }
       if (!result.ok) {
         result.diagnostics = {
           tail: output,
@@ -84,6 +94,9 @@ const summary = {
   checks: results.length,
   expectedChecks: steps.length,
   continuedAfterFailure: failed.length > 0,
+  diagnosticEnvironment: {
+    electron: electronDiagnosticEnv
+  },
   runtimeUnification: {
     usable: blockingFailures.length === 0 && byId.headless?.ok === true && byId.unified?.ok === true,
     strictElectron,
