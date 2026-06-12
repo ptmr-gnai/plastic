@@ -149,22 +149,19 @@ await check("runtime/runAuditAction description", async () => {
   assert(description.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === description.id), "runtime/runAuditAction missing invoke link");
   const auditStatus = await rpc("runtime/auditStatus");
   assert(auditStatus.verdict?.actions?.every((action) => action.run?.command && Array.isArray(action.run?.args)), "runtime/runAuditAction actions missing structured run metadata");
-  return {
-    id: description.id,
-    required: description.inputSchema.required,
-    durableEvents: description.effects.durableEvents
-  };
+  return { id: description.id, required: description.inputSchema.required, durableEvents: description.effects.durableEvents };
+});
+
+await check("bridge/callPlasticRpcTool description", async () => {
+  const description = await rpc("methods/describe", { id: "bridge/callPlasticRpcTool" });
+  assert(description.description?.includes("agent/orient"), "bridge/callPlasticRpcTool must teach agent/orient orientation");
+  assert(description.description?.includes("runtime/auditStatus"), "bridge/callPlasticRpcTool must teach runtime/auditStatus");
+  assert(description.examples?.some((example) => example.input?.method === "agent/orient"), "bridge/callPlasticRpcTool example must call agent/orient");
+  return { id: description.id, examples: description.examples.length };
 });
 
 await check("method discovery parity", async () => {
-  const sampleIds = [
-    "plastic/state",
-    "panels/create",
-    "events/append",
-    "windows/screenshot",
-    "deixis/evalDom",
-    "chats/sendToCodex"
-  ];
+  const sampleIds = ["plastic/state", "panels/create", "events/append", "windows/screenshot", "deixis/evalDom", "chats/sendToCodex"];
   await assertMethodDiscoveryParity({ methods, rpc, sampleIds });
   return { sampled: sampleIds.length };
 });

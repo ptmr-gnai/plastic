@@ -139,7 +139,7 @@ export const bridgeTestMetadata = {
 };
 
 export const bridgeCallPlasticRpcToolMetadata = {
-  description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works.",
+  description: "Calls the plastic_rpc MCP tool through Codex app-server to prove the agent tool path works. Agents should use agent/orient or agent/workbench for orientation and runtime/auditStatus for headed/headless audit state.",
   inputSchema: {
     type: "object",
     required: ["method"],
@@ -151,8 +151,8 @@ export const bridgeCallPlasticRpcToolMetadata = {
   },
   examples: [
     {
-      title: "Call Plastic state through the MCP bridge",
-      input: { method: "plastic/state", input: {} },
+      title: "Orient through the MCP bridge",
+      input: { method: "agent/orient", input: {} },
       expectedEvents: ["bridge.plastic_rpc_tool.called"],
       verifyWith: { method: "events/timeline", input: { scope: { agentId: "codex" } } }
     }
