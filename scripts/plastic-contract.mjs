@@ -147,6 +147,8 @@ await check("runtime/runAuditAction description", async () => {
   assert(description.effects?.durableEvents?.includes("runtime.auditAction.completed"), "runtime/runAuditAction missing durable event effect");
   assert(description.examples?.some((example) => example.input?.id && example.verifyWith?.method === "runtime/auditStatus"), "runtime/runAuditAction example must teach audit-status verification");
   assert(description.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === description.id), "runtime/runAuditAction missing invoke link");
+  const auditStatus = await rpc("runtime/auditStatus");
+  assert(auditStatus.verdict?.actions?.every((action) => action.run?.command && Array.isArray(action.run?.args)), "runtime/runAuditAction actions missing structured run metadata");
   return {
     id: description.id,
     required: description.inputSchema.required,

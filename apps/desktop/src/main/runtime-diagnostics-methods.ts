@@ -34,6 +34,11 @@ type DiagnosticAction = {
   id: string;
   title: string;
   command: string;
+  run: {
+    command: string;
+    args: Array<string>;
+    env?: Record<string, string>;
+  };
   description: string;
   method: "runtime/runAuditAction";
   input: { id: string };
@@ -56,6 +61,7 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
         id: "run-runtime-unification-audit",
         title: "Run runtime unification audit",
         command: "pnpm plastic:audit-runtime-unification",
+        run: { command: "pnpm", args: ["plastic:audit-runtime-unification"] },
         description: "Creates the persisted headed/headless audit that runtime/auditStatus reads."
       })
     ];
@@ -66,12 +72,14 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
         id: "force-full-electron-launch-diagnostics",
         title: "Force full Electron launch diagnostics",
         command: "PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron",
+        run: { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE: "1" } },
         description: "Skips the minimal app-mode smoke gate and attempts the full Plastic Electron launch path."
       }),
       auditAction({
         id: "extend-electron-app-mode-smoke-timeout",
         title: "Extend Electron app-mode smoke timeout",
         command: "PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS=10000 pnpm plastic:validate-electron",
+        run: { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS: "10000" } },
         description: "Gives the minimal Electron app-mode smoke check more time before classifying app mode as unavailable."
       })
     ];
@@ -82,6 +90,7 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
         id: "try-electron-package-launch-mode",
         title: "Try Electron package launch mode",
         command: "PLASTIC_ELECTRON_LAUNCH_MODE=package PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron",
+        run: { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_LAUNCH_MODE: "package", PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE: "1" } },
         description: "Compares package launch behavior against compiled-main launch behavior while preserving full Electron diagnostics."
       })
     ];
@@ -91,6 +100,7 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
       id: "rerun-runtime-unification-audit",
       title: "Rerun runtime unification audit",
       command: "pnpm plastic:audit-runtime-unification",
+      run: { command: "pnpm", args: ["plastic:audit-runtime-unification"] },
       description: "Refreshes the persisted audit after the diagnosed issue is addressed."
     })
   ];
@@ -217,22 +227,6 @@ const auditActionInputSchema = {
   }
 };
 
-const commandForDiagnosticAction = (action: DiagnosticAction) => {
-  if (action.command === "pnpm plastic:audit-runtime-unification") {
-    return { command: "pnpm", args: ["plastic:audit-runtime-unification"] };
-  }
-  if (action.command === "PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron") {
-    return { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE: "1" } };
-  }
-  if (action.command === "PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS=10000 pnpm plastic:validate-electron") {
-    return { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS: "10000" } };
-  }
-  if (action.command === "PLASTIC_ELECTRON_LAUNCH_MODE=package PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron") {
-    return { command: "pnpm", args: ["plastic:validate-electron"], env: { PLASTIC_ELECTRON_LAUNCH_MODE: "package", PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE: "1" } };
-  }
-  throw new Error(`Unsupported diagnostic action command: ${action.command}`);
-};
-
 const createAuditStatusReader = (plasticDir: string) => async () => {
   const path = join(plasticDir, "tmp", "runtime-unification-audit.json");
   try {
@@ -343,7 +337,7 @@ const registerRunAuditAction = async (input: {
           if (!action) {
             throw new Error(`No current runtime audit action found for id ${actionId}`);
           }
-          const command = commandForDiagnosticAction(action);
+          const command = action.run;
           const startedAt = new Date().toISOString();
           const result = await input.runCommand(command.command, command.args, command.env);
           const completed = {
