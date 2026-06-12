@@ -52,6 +52,15 @@ const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
   if (
     failurePhase === "electron"
     && hints.some((hint) => hint.includes("[plastic:entry-preflight]"))
+    && hints.some((hint) => hint.includes("electron-launch") && hint.includes("mode=compiled-main"))
+    && hints.some((hint) => hint.includes("electron-child-status") && hint.includes("exitCode=running"))
+    && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
+  ) {
+    return diagnosis("electron-child-running-compiled-main-not-entered", "electron-app-main-resolution", "Electron child process stayed alive with the compiled main path as its launch target, but Plastic's compiled main bootstrap was not observed in normal app mode.");
+  }
+  if (
+    failurePhase === "electron"
+    && hints.some((hint) => hint.includes("[plastic:entry-preflight]"))
     && hints.some((hint) => hint.includes("electron-launch"))
     && hints.some((hint) => hint.includes("electron-child-status") && hint.includes("exitCode=running"))
     && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
