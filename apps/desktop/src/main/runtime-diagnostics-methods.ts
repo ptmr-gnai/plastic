@@ -35,6 +35,12 @@ const diagnosis = (code: string, phase: string | null, summary: string) => ({ co
 const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
   if (
     failurePhase === "electron"
+    && hints.some((hint) => hint.includes("electronAppModeSmokeHint"))
+  ) {
+    return diagnosis("electron-app-mode-smoke-not-entered", "electron-host-app-mode", "Electron app mode did not enter a minimal app main module in this host, before Plastic-specific startup was attempted.");
+  }
+  if (
+    failurePhase === "electron"
     && hints.some((hint) => hint.includes("[plastic:entry]"))
     && !hints.some((hint) => hint.includes("[plastic:entry-preflight]"))
     && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))

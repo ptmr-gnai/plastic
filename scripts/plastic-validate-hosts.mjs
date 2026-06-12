@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -97,7 +98,7 @@ const runWithTimeout = (command, args, timeoutMs, options = {}) =>
     child.on("exit", (code, signal) => {
       clearTimeout(timeout);
       if (code === 0) {
-        resolve({ code, signal });
+        resolve({ code, signal, stdout, stderr });
         return;
       }
       reject(describeFailure(`exited with ${code ?? signal}`));
@@ -139,6 +140,42 @@ const runElectronPreflight = async () => {
       ELECTRON_RUN_AS_NODE: "1"
     }
   });
+};
+
+const runElectronAppModeSmoke = async () => {
+  if (process.env.PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE === "1") {
+    console.log("[plastic:validate-hosts] electron app-mode smoke skipped");
+    return;
+  }
+  const electronExecutable = desktopRequire("electron");
+  const smokeDir = await mkdtemp(`${tmpdir()}/plastic-electron-smoke-`);
+  try {
+    await writeFile(`${smokeDir}/package.json`, JSON.stringify({ name: "plastic-electron-smoke", version: "0.0.0", main: "main.js" }));
+    await writeFile(`${smokeDir}/main.js`, [
+      "const { app } = require('electron');",
+      "console.log('[plastic:electron-smoke] main entered');",
+      "app.whenReady().then(() => { console.log('[plastic:electron-smoke] app ready'); app.quit(); });",
+      "setTimeout(() => { console.log('[plastic:electron-smoke] timeout'); app.quit(); }, 3000);",
+      ""
+    ].join("\n"));
+    console.log(`[plastic:validate-hosts] electron app-mode smoke ${smokeDir}`);
+    const result = await runWithTimeout(electronExecutable, [smokeDir], electronPreflightTimeoutMs, {
+      cwd: smokeDir,
+      env: {
+        ...process.env,
+        ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1"
+      },
+      failureDetails: () => [
+        "electronAppModeSmokeHint: Electron app mode did not enter a minimal app main module in this host.",
+        "Set PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 to continue to full Plastic Electron launch diagnostics."
+      ]
+    });
+    if (!result.stdout.includes("[plastic:electron-smoke] main entered")) {
+      throw new Error("electron app-mode smoke exited without entering the minimal app main module");
+    }
+  } finally {
+    await rm(smokeDir, { recursive: true, force: true });
+  }
 };
 
 const startHost = (script) => {
@@ -289,6 +326,7 @@ const runHost = async ({ label, script, parity }) => {
 
 const runElectronValidation = async ({ parity }) => {
   await runElectronPreflight();
+  await runElectronAppModeSmoke();
   await runHost({ label: "electron", script: "dev.mjs", parity });
 };
 
