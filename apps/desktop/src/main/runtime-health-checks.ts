@@ -3,21 +3,21 @@ import { standardRuntimeCapabilityIds } from "./runtime-capabilities.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 import { standardRuntimeModuleIds } from "./runtime-module-ids.js";
 
-export const requiredRuntimeMethods = [
-  "plastic/state",
-  "plastic/methods",
-  "methods/describe",
-  "rpc/call",
-  "runtime/capabilities",
-  "runtime/host",
-  "runtime/modules",
-  "runtime/auditStatus",
-  "runtime/auditActionPlan",
-  "runtime/runAuditAction",
-  "panels/create",
-  "events/list",
-  "events/timeline",
-  "plastic/selfTest"
+const requiredRuntimeModuleContributions = [
+  { moduleId: "runtime-state", methodId: "plastic/state" },
+  { moduleId: "runtime-control", methodId: "plastic/methods" },
+  { moduleId: "runtime-control", methodId: "methods/describe" },
+  { moduleId: "runtime-control", methodId: "rpc/call" },
+  { moduleId: "runtime-control", methodId: "runtime/capabilities" },
+  { moduleId: "runtime-control", methodId: "events/list" },
+  { moduleId: "runtime-control", methodId: "events/timeline" },
+  { moduleId: "runtime-host", methodId: "runtime/host" },
+  { moduleId: "runtime-modules", methodId: "runtime/modules" },
+  { moduleId: "runtime-diagnostics", methodId: "runtime/auditStatus" },
+  { moduleId: "runtime-diagnostics", methodId: "runtime/auditActionPlan" },
+  { moduleId: "runtime-diagnostics", methodId: "runtime/runAuditAction" },
+  { moduleId: "panel-control", methodId: "panels/create" },
+  { moduleId: "runtime-health", methodId: "plastic/selfTest" }
 ];
 
 export const checkMethodRegistryHealth = (
@@ -48,7 +48,6 @@ export const checkMethodRegistryHealth = (
       .filter((capabilityId) => !capabilityIds.has(capabilityId))
       .map((capabilityId) => `${method.id}:${capabilityId}`)
   );
-  const missingRequiredMethods = requiredRuntimeMethods.filter((id) => !methodIds.has(id));
   if (invalidIdentity.length > 0) {
     throw new Error(`Methods with invalid identity metadata: ${invalidIdentity.join(", ")}`);
   }
@@ -61,16 +60,12 @@ export const checkMethodRegistryHealth = (
   if (missingReferencedCapabilities.length > 0) {
     throw new Error(`Methods reference missing capabilities: ${missingReferencedCapabilities.join(", ")}`);
   }
-  if (missingRequiredMethods.length > 0) {
-    throw new Error(`Required methods missing: ${missingRequiredMethods.join(", ")}`);
-  }
   return {
     count: methods.length,
     invalidIdentity,
     missingAvailability,
     invalidAvailabilityStatuses,
     missingReferencedCapabilities,
-    missingRequiredMethods,
     requiredDiagnosticsMethods: methodIds.has("runtime/auditStatus") && methodIds.has("runtime/auditActionPlan") && methodIds.has("runtime/runAuditAction")
   };
 };
@@ -224,12 +219,9 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
     .filter((item) => hasModuleAvailabilitySummary(item))
     .filter((item) => !moduleAvailabilityCountsMatch(item))
     .map((item) => (item as { id?: string }).id ?? "<missing-id>");
-  const missingContributions = [
-    moduleMethodMissing(items, "runtime-control", "plastic/methods"),
-    moduleMethodMissing(items, "panel-control", "panels/create"),
-    moduleMethodMissing(items, "runtime-host", "runtime/host"),
-    moduleMethodMissing(items, "runtime-modules", "runtime/modules")
-  ].filter((item): item is string => Boolean(item));
+  const missingContributions = requiredRuntimeModuleContributions
+    .map(({ moduleId, methodId }) => moduleMethodMissing(items, moduleId, methodId))
+    .filter((item): item is string => Boolean(item));
   if (missingRequiredModules.length > 0) {
     throw new Error(`Required runtime modules missing: ${missingRequiredModules.join(", ")}`);
   }

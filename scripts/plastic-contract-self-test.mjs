@@ -9,7 +9,6 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(methodCheck?.details?.missingAvailability?.length === 0, "plastic/selfTest method availability check failed");
   assert(methodCheck.details.invalidAvailabilityStatuses?.length === 0, "plastic/selfTest method availability status check failed");
   assert(methodCheck.details.missingReferencedCapabilities?.length === 0, "plastic/selfTest method capability reference check failed");
-  assert(methodCheck.details.missingRequiredMethods?.length === 0, "plastic/selfTest required method check failed");
   assert(methodCheck.details.requiredDiagnosticsMethods === true, "plastic/selfTest diagnostics method check failed");
   const methodAffordanceCheck = selfTest.checks?.find((candidate) => candidate.id === "methods:affordances");
   assert(methodAffordanceCheck?.details?.missingDescribeLinks?.length === 0, "plastic/selfTest method describe links missing");
