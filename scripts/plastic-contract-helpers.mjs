@@ -118,6 +118,10 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   assert(["missing", "passed", "degraded", "failed"].includes(auditStatus.verdict?.status), "runtime/auditStatus missing compact verdict");
   assert(typeof auditStatus.verdict?.diagnosis?.code === "string", "runtime/auditStatus missing diagnosis code");
   assert(typeof auditStatus.verdict?.diagnosis?.summary === "string", "runtime/auditStatus missing diagnosis summary");
+  assert(typeof auditStatus.verdict?.failureSummary?.count === "number", "runtime/auditStatus missing verdict failure count");
+  assert(Array.isArray(auditStatus.verdict.failureSummary.ids), "runtime/auditStatus missing verdict failure ids");
+  assert(Array.isArray(auditStatus.verdict.failureSummary.blockingIds), "runtime/auditStatus missing verdict blocking failure ids");
+  assert(auditStatus.verdict.failureSummary.first === null || typeof auditStatus.verdict.failureSummary.first?.id === "string", "runtime/auditStatus invalid verdict first failure");
   assert(typeof auditStatus.verdict?.nextAction === "string", "runtime/auditStatus missing next action");
   assert(Array.isArray(auditStatus.verdict?.actions), "runtime/auditStatus missing diagnostic actions");
   assert(auditStatus.verdict.actions.every((action) => typeof action.id === "string" && typeof action.command === "string"), "runtime/auditStatus diagnostic actions must expose id and command");

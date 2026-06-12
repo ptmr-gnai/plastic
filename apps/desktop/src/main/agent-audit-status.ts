@@ -20,6 +20,8 @@ export const readAgentAuditStatus = async (input: {
   }
   const verdict = asRecord(status.verdict);
   const diagnosis = asRecord(verdict.diagnosis);
+  const failureSummary = asRecord(verdict.failureSummary);
+  const firstFailure = asRecord(failureSummary.first);
   const actions = Array.isArray(verdict.actions) ? verdict.actions.map(asRecord) : [];
   const recentActions = Array.isArray(status.recentActions) ? status.recentActions.map(asRecord) : [];
   return {
@@ -28,6 +30,18 @@ export const readAgentAuditStatus = async (input: {
     diagnosis: {
       code: typeof diagnosis.code === "string" ? diagnosis.code : "unknown",
       phase: typeof diagnosis.phase === "string" ? diagnosis.phase : null
+    },
+    failureSummary: {
+      count: typeof failureSummary.count === "number" ? failureSummary.count : 0,
+      ids: Array.isArray(failureSummary.ids) ? failureSummary.ids.filter((id): id is string => typeof id === "string") : [],
+      blockingIds: Array.isArray(failureSummary.blockingIds) ? failureSummary.blockingIds.filter((id): id is string => typeof id === "string") : [],
+      first: typeof firstFailure.id === "string"
+        ? {
+          id: firstFailure.id,
+          command: typeof firstFailure.command === "string" ? firstFailure.command : null,
+          exit: typeof firstFailure.exit === "number" || typeof firstFailure.exit === "string" ? firstFailure.exit : null
+        }
+        : null
     },
     nextAction: typeof verdict.nextAction === "string" ? verdict.nextAction : null,
     actionIds: actions.map((action) => action.id).filter((id): id is string => typeof id === "string"),

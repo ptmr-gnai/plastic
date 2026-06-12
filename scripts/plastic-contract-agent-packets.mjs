@@ -10,6 +10,8 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assert(workbench.control.modules?.count >= 1, "workbench runtime module count missing");
   assertArray(workbench.control.modules.items, "workbench runtime modules items missing");
   assert(workbench.control.auditStatus?.verdict, "workbench missing compact audit status");
+  assert(typeof workbench.control.auditStatus.failureSummary?.count === "number", "workbench audit status missing failure summary");
+  assert(Array.isArray(workbench.control.auditStatus.failureSummary.ids), "workbench audit status missing failure ids");
   assertArray(workbench.control.auditStatus.actionIds, "workbench audit status action ids missing");
   assertArray(workbench.control.auditStatus.recentActions, "workbench audit status recent actions missing");
   assert(workbench.control.controlPlane?.runtime?.transport === "http", "workbench missing runtime control plane");
@@ -55,6 +57,8 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation 
   assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
   assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
   assert(orientation.capabilities.auditStatus?.verdict, "agent/orient missing compact audit status");
+  assert(typeof orientation.capabilities.auditStatus.failureSummary?.count === "number", "agent/orient audit status missing failure summary");
+  assert(Array.isArray(orientation.capabilities.auditStatus.failureSummary.ids), "agent/orient audit status missing failure ids");
   assertArray(orientation.capabilities.auditStatus.actionIds, "agent/orient audit status action ids missing");
   assertArray(orientation.capabilities.auditStatus.recentActions, "agent/orient audit status recent actions missing");
   assert(orientation.capabilities.controlPlane?.runtime?.transport === "http", "agent/orient missing runtime control plane");

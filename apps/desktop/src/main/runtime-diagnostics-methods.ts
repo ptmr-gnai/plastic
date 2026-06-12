@@ -21,6 +21,7 @@ type AuditResult = {
 
 type AuditSummary = {
   ok?: unknown;
+  failures?: unknown;
   runtimeUnification?: {
     usable?: unknown;
     strictElectron?: unknown;
@@ -105,6 +106,27 @@ const probeElectronLaunchTargetsAction = () =>
   });
 
 const asStringArray = (value: unknown): Array<string> => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
+const compactFailureSummary = (summary: AuditSummary | null) => {
+  const failures = asRecord(summary?.failures);
+  const first = asRecord(failures.first);
+  return {
+    count: typeof failures.count === "number" ? failures.count : 0,
+    ids: asStringArray(failures.ids),
+    blockingIds: asStringArray(failures.blockingIds),
+    first: typeof first.id === "string"
+      ? {
+        id: first.id,
+        command: typeof first.command === "string" ? first.command : null,
+        exit: typeof first.exit === "number" || typeof first.exit === "string" ? first.exit : null,
+        hints: asStringArray(first.hints).slice(0, 5)
+      }
+      : null
+  };
+};
 
 const diagnosis = (code: string, phase: string | null, summary: string) => ({ code, phase, summary });
 
@@ -206,6 +228,7 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
       usable: false,
       strictElectron: "not-run",
       unified: "not-run",
+      failureSummary: compactFailureSummary(null),
       failurePhase: null,
       diagnosis: {
         code: "audit-missing",
@@ -226,6 +249,7 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
   const usable = summary.runtimeUnification?.usable === true;
   const status = usable ? strictElectron === "passed" && unified === "passed" ? "passed" : "degraded" : "failed";
   const failurePhase = typeof firstFailed?.id === "string" ? firstFailed.id : null;
+  const failureSummary = compactFailureSummary(summary);
   const diagnosisResult = diagnoseFailure(failurePhase, hints);
   const nextAction = diagnosisResult.code === "electron-app-mode-smoke-not-entered"
     ? "Electron app mode cannot enter a minimal app in this host. Fix host Electron app-mode launch or run PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron to force full Plastic launch diagnostics."
@@ -237,7 +261,7 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
         ? "Continue closing headed/headless runtime gaps; strict Electron is the remaining proof when degraded."
         : "Rerun pnpm plastic:audit-runtime-unification and inspect failed check diagnostics.";
 
-  return { status, usable, strictElectron, unified, failurePhase, diagnosis: diagnosisResult, hints, nextAction, actions: diagnosticActionsFor(diagnosisResult) };
+  return { status, usable, strictElectron, unified, failureSummary, failurePhase, diagnosis: diagnosisResult, hints, nextAction, actions: diagnosticActionsFor(diagnosisResult) };
 };
 
 const auditActionInputSchema = {
