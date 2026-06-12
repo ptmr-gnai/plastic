@@ -181,6 +181,10 @@ await check("runtime/runAuditAction description", async () => {
   assert(plan.command === action.run.command, "runtime/auditActionPlan command mismatch");
   assert(JSON.stringify(plan.args) === JSON.stringify(action.run.args), "runtime/auditActionPlan args mismatch");
   assert(plan.invocation?.method === "runtime/runAuditAction" && plan.invocation?.input?.id === action.id, "runtime/auditActionPlan invocation mismatch");
+  assert(plan.audit?.metadata?.schemaVersion === auditStatus.summary?.schemaVersion, "runtime/auditActionPlan audit schema mismatch");
+  assert(plan.audit.metadata.generatedAt === auditStatus.summary?.generatedAt, "runtime/auditActionPlan audit timestamp mismatch");
+  assert(plan.audit.metadata.usable === auditStatus.summary?.runtimeUnification?.usable, "runtime/auditActionPlan audit usability mismatch");
+  assert(JSON.stringify(plan.audit.metadata.expectedStepIds) === JSON.stringify(auditStatus.summary?.expectedStepIds), "runtime/auditActionPlan audit step ids mismatch");
   return { id: description.id, planId: planDescription.id, plannedAction: plan.id, durableEvents: description.effects.durableEvents };
 });
 

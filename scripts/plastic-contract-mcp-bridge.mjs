@@ -54,6 +54,8 @@ const run = async () => {
     assert(planPayload.ok === true, "MCP auditActionPlan call failed");
     assert(planPayload.value?.id === actionId, "MCP auditActionPlan id mismatch");
     assert(planPayload.value?.invocation?.method === "runtime/runAuditAction", "MCP auditActionPlan invocation mismatch");
+    assert(planPayload.value?.audit?.metadata?.schemaVersion === payload.value?.summary?.schemaVersion, "MCP auditActionPlan metadata schema mismatch");
+    assert(planPayload.value?.audit?.metadata?.generatedAt === payload.value?.summary?.generatedAt, "MCP auditActionPlan metadata timestamp mismatch");
     assert(planPayload.methodEffects?.reversibility?.reversible === true, "MCP auditActionPlan missing read-only reversibility");
     assert(planPayload.methodEffects?.effects?.durableEvents?.length === 0, "MCP auditActionPlan should not append durable events");
 

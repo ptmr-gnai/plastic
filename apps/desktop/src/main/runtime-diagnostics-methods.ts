@@ -322,6 +322,17 @@ const recentAuditActions = (events: Array<PlasticEvent>) =>
       };
     });
 
+const compactAuditMetadata = (summary: AuditSummary | null) => ({
+  schemaVersion: typeof summary?.schemaVersion === "number" ? summary.schemaVersion : null,
+  generatedAt: typeof summary?.generatedAt === "string" ? summary.generatedAt : null,
+  checks: typeof summary?.checks === "number" ? summary.checks : null,
+  expectedChecks: typeof summary?.expectedChecks === "number" ? summary.expectedChecks : null,
+  expectedStepIds: Array.isArray(summary?.expectedStepIds) ? summary.expectedStepIds.filter((id): id is string => typeof id === "string") : [],
+  usable: summary?.runtimeUnification?.usable === true,
+  strictElectron: typeof summary?.runtimeUnification?.strictElectron === "string" ? summary.runtimeUnification.strictElectron : "unknown",
+  unified: typeof summary?.runtimeUnification?.unified === "string" ? summary.runtimeUnification.unified : "unknown"
+});
+
 const createAuditStatusReader = (plasticDir: string, listAuditEvents: () => Promise<Array<PlasticEvent>>) => async () => {
   const path = join(plasticDir, "tmp", "runtime-unification-audit.json");
   const recentActions = recentAuditActions(await listAuditEvents());
@@ -436,6 +447,7 @@ const registerAuditActionPlan = async (input: {
               input: action.input
             },
             audit: {
+              metadata: compactAuditMetadata(auditStatus.summary),
               status: auditStatus.verdict.status,
               diagnosis: auditStatus.verdict.diagnosis
             }
