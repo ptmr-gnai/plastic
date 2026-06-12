@@ -35,7 +35,15 @@ type DiagnosticAction = {
   title: string;
   command: string;
   description: string;
+  method: "runtime/runAuditAction";
+  input: { id: string };
 };
+
+const auditAction = (action: Omit<DiagnosticAction, "method" | "input">): DiagnosticAction => ({
+  ...action,
+  method: "runtime/runAuditAction",
+  input: { id: action.id }
+});
 
 const asStringArray = (value: unknown): Array<string> => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
@@ -44,47 +52,47 @@ const diagnosis = (code: string, phase: string | null, summary: string) => ({ co
 const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Array<DiagnosticAction> => {
   if (diagnosisResult.code === "audit-missing") {
     return [
-      {
+      auditAction({
         id: "run-runtime-unification-audit",
         title: "Run runtime unification audit",
         command: "pnpm plastic:audit-runtime-unification",
         description: "Creates the persisted headed/headless audit that runtime/auditStatus reads."
-      }
+      })
     ];
   }
   if (diagnosisResult.code === "electron-app-mode-smoke-not-entered") {
     return [
-      {
+      auditAction({
         id: "force-full-electron-launch-diagnostics",
         title: "Force full Electron launch diagnostics",
         command: "PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron",
         description: "Skips the minimal app-mode smoke gate and attempts the full Plastic Electron launch path."
-      },
-      {
+      }),
+      auditAction({
         id: "extend-electron-app-mode-smoke-timeout",
         title: "Extend Electron app-mode smoke timeout",
         command: "PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS=10000 pnpm plastic:validate-electron",
         description: "Gives the minimal Electron app-mode smoke check more time before classifying app mode as unavailable."
-      }
+      })
     ];
   }
   if (diagnosisResult.code === "electron-child-running-compiled-main-not-entered") {
     return [
-      {
+      auditAction({
         id: "try-electron-package-launch-mode",
         title: "Try Electron package launch mode",
         command: "PLASTIC_ELECTRON_LAUNCH_MODE=package PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron",
         description: "Compares package launch behavior against compiled-main launch behavior while preserving full Electron diagnostics."
-      }
+      })
     ];
   }
   return [
-    {
+    auditAction({
       id: "rerun-runtime-unification-audit",
       title: "Rerun runtime unification audit",
       command: "pnpm plastic:audit-runtime-unification",
       description: "Refreshes the persisted audit after the diagnosed issue is addressed."
-    }
+    })
   ];
 };
 

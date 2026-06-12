@@ -121,6 +121,7 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   assert(typeof auditStatus.verdict?.nextAction === "string", "runtime/auditStatus missing next action");
   assert(Array.isArray(auditStatus.verdict?.actions), "runtime/auditStatus missing diagnostic actions");
   assert(auditStatus.verdict.actions.every((action) => typeof action.id === "string" && typeof action.command === "string"), "runtime/auditStatus diagnostic actions must expose id and command");
+  assert(auditStatus.verdict.actions.every((action) => action.method === "runtime/runAuditAction" && action.input?.id === action.id), "runtime/auditStatus diagnostic actions must expose Plastic invocation");
   if (auditStatus.available) {
     assert(typeof auditStatus.summary?.runtimeUnification?.usable === "boolean", "runtime/auditStatus missing structured verdict");
     const failedResults = auditStatus.summary.results?.filter((result) => result.ok === false) ?? [];
