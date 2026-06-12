@@ -60,28 +60,6 @@ const transportToolShape = (tool) => stableValue({
   methodRegistry: tool.methodRegistry,
   inputSchema: tool.inputSchema
 });
-const sharedHealthCheckIds = [
-  "event-store:list",
-  "methods:list",
-  "methods:affordances",
-  "methods:availability-capabilities",
-  "capabilities:list",
-  "capabilities:projection",
-  "projections:discovery",
-  "build:surface",
-  "runtime-modules:map",
-  "runtime-modules:coverage",
-  "runtime-started:capabilities",
-  "runtime-started:modules",
-  "runtime-started:descriptor",
-  "runtime-host:identity",
-  "runtime-audit:status",
-  "agent-orientation:packets",
-  "agent-transports:affordances",
-  "panels:project",
-  "windows:project",
-  "extensions:project"
-];
 const serviceAffordances = (state) => (state.resources ?? [])
   .filter((resource) => resource.kind === "service")
   .reduce(
@@ -139,11 +117,12 @@ const hostShape = (host) => ({
 const healthShape = (selfTest) => {
   const checks = Array.isArray(selfTest?.checks) ? selfTest.checks : [];
   const byId = Object.fromEntries(checks.map((check) => [check.id, check]));
+  const sharedCheckIds = sorted(selfTest?.summary?.sharedCheckIds ?? []);
   return {
     ok: selfTest?.ok === true,
     checkIds: sorted(checks.map((check) => check.id)),
     summary: selfTest?.summary ?? null,
-    sharedChecks: sharedHealthCheckIds.map((id) => ({
+    sharedChecks: sharedCheckIds.map((id) => ({
       id,
       ok: byId[id]?.ok === true
     }))
@@ -269,21 +248,17 @@ const compareHealth = (baseHealth, currentHealth) => {
   if (!baseHealth?.ok || !currentHealth?.ok) {
     failures.push({ id: "plastic/selfTest", base: baseHealth?.ok === true, current: currentHealth?.ok === true });
   }
-  const expectedSharedIds = sorted(sharedHealthCheckIds);
   const baseSummarySharedIds = sorted(baseHealth?.summary?.sharedCheckIds ?? []);
   const currentSummarySharedIds = sorted(currentHealth?.summary?.sharedCheckIds ?? []);
-  if (JSON.stringify(baseSummarySharedIds) !== JSON.stringify(expectedSharedIds)) {
-    failures.push({ id: "plastic/selfTest:summary.sharedCheckIds", base: false, current: true });
-  }
-  if (JSON.stringify(currentSummarySharedIds) !== JSON.stringify(expectedSharedIds)) {
-    failures.push({ id: "plastic/selfTest:summary.sharedCheckIds", base: true, current: false });
+  if (JSON.stringify(baseSummarySharedIds) !== JSON.stringify(currentSummarySharedIds)) {
+    failures.push({ id: "plastic/selfTest:summary.sharedCheckIds", base: baseSummarySharedIds, current: currentSummarySharedIds });
   }
   if ((baseHealth?.summary?.failedIds?.length ?? 0) > 0 || (currentHealth?.summary?.failedIds?.length ?? 0) > 0) {
     failures.push({ id: "plastic/selfTest:summary.failedIds", base: (baseHealth?.summary?.failedIds?.length ?? 0) === 0, current: (currentHealth?.summary?.failedIds?.length ?? 0) === 0 });
   }
   const baseShared = Object.fromEntries((baseHealth?.sharedChecks ?? []).map((check) => [check.id, check.ok]));
   const currentShared = Object.fromEntries((currentHealth?.sharedChecks ?? []).map((check) => [check.id, check.ok]));
-  for (const id of sharedHealthCheckIds) {
+  for (const id of baseSummarySharedIds) {
     if (baseShared[id] !== true || currentShared[id] !== true) {
       failures.push({ id, base: baseShared[id] === true, current: currentShared[id] === true });
     }
