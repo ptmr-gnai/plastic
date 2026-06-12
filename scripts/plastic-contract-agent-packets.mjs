@@ -22,6 +22,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/modules"), "workbench missing runtime/modules recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/host"), "workbench missing runtime/host recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/auditStatus"), "workbench missing runtime/auditStatus recommended action");
+  assert(workbench.control.recommendedActions.some((action) => action.method === "runtime/runAuditAction"), "workbench missing runtime/runAuditAction recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.method === "events/list" && action.input?.types?.includes("runtime.started")), "workbench missing control plane recommended action");
   assert(workbench.control.recommendedActions.some((action) => action.id === "read-timeline" && action.method === "events/timeline"), "workbench read-timeline action must use shared events/timeline");
   assert(workbench.observability?.timeline, "workbench timeline missing");
@@ -66,6 +67,11 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation 
     orientation.capabilities.links?.some((link) => link.method === "runtime/auditStatus")
       && orientation.capabilities.recommendedActions?.some((action) => action.method === "runtime/auditStatus"),
     "agent/orient missing runtime/auditStatus affordance"
+  );
+  assert(
+    orientation.capabilities.links?.some((link) => link.method === "runtime/runAuditAction")
+      && orientation.capabilities.recommendedActions?.some((action) => action.method === "runtime/runAuditAction"),
+    "agent/orient missing runtime/runAuditAction affordance"
   );
   assert(orientation.capabilities.links?.some((link) => link.rel === "control-plane" && link.method === "events/list"), "agent/orient missing control plane link");
   assert(orientation.memory?.eventCount >= 1, "agent/orient missing event memory");
