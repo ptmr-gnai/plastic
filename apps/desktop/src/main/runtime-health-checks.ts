@@ -1,5 +1,6 @@
 import type { PlasticEvent, PlasticMethod } from "@plastic/core";
 import type { RuntimeCapability } from "./runtime-method-context.js";
+import { standardRuntimeModuleIds } from "./runtime-module-ids.js";
 
 export const requiredRuntimeMethods = [
   "plastic/state",
@@ -16,27 +17,6 @@ export const requiredRuntimeMethods = [
   "events/list",
   "events/timeline",
   "plastic/selfTest"
-];
-
-const requiredRuntimeModules = [
-  "runtime-state",
-  "runtime-snapshot",
-  "agent-workbench",
-  "agent-orient",
-  "runtime-build",
-  "runtime-diagnostics",
-  "extension-authoring",
-  "renderer-control",
-  "agent-backend",
-  "runtime-control",
-  "panel-control",
-  "window-capability",
-  "deixis",
-  "runtime-health",
-  "extension-runtime",
-  "panel-mailbox",
-  "runtime-host",
-  "runtime-modules"
 ];
 
 export const requiredRuntimeCapabilities = [
@@ -233,7 +213,7 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
     ? (modules as { items: unknown[] }).items
     : [];
   const ids = new Set(items.map((item) => (item as { id?: string }).id).filter(Boolean));
-  const missingRequiredModules = requiredRuntimeModules.filter((id) => !ids.has(id));
+  const missingRequiredModules = standardRuntimeModuleIds.filter((id) => !ids.has(id));
   const missingAgentBackend = !ids.has("agent-backend");
   const missingMethodIds = items
     .filter((item) => !Array.isArray((item as { methodIds?: unknown }).methodIds))
@@ -242,11 +222,11 @@ export const checkRuntimeModuleMapHealth = (modules: unknown) => {
     .filter((item) => !hasModuleAvailabilitySummary(item))
     .map((item) => (item as { id?: string }).id ?? "<missing-id>");
   const moduleIds = items.map((item) => (item as { id?: string }).id).filter(Boolean);
-  const invalidModuleOrder = JSON.stringify(moduleIds) === JSON.stringify(requiredRuntimeModules)
+  const invalidModuleOrder = JSON.stringify(moduleIds) === JSON.stringify(standardRuntimeModuleIds)
     ? []
     : [{
-      expected: requiredRuntimeModules,
-      actual: moduleIds
+        expected: standardRuntimeModuleIds,
+        actual: moduleIds
     }];
   const invalidOrderFields = items
     .filter((item, index) => (item as { order?: unknown }).order !== index)

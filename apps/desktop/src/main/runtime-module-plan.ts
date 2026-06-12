@@ -4,6 +4,7 @@ import type { RuntimeModule } from "./runtime-method-context.js";
 import { panelControlModule } from "./panel-control-methods.js";
 import { runtimeControlModule } from "./runtime-control-methods.js";
 import { createRuntimeHealthModule } from "./runtime-health-methods.js";
+export { standardRuntimeModuleIds } from "./runtime-module-ids.js";
 import { createRuntimeModulesModule } from "./runtime-modules-method.js";
 
 export type RuntimeModulePlanInput = {
@@ -21,27 +22,6 @@ export type RuntimeModulePlanInput = {
   health?: RuntimeModule | null;
   tailModules?: RuntimeModule[];
 };
-
-export const standardRuntimeModuleIds = [
-  "runtime-state",
-  "runtime-snapshot",
-  "agent-workbench",
-  "agent-orient",
-  "runtime-build",
-  "runtime-diagnostics",
-  "extension-authoring",
-  "renderer-control",
-  "agent-backend",
-  "runtime-control",
-  "panel-control",
-  "window-capability",
-  "deixis",
-  "runtime-health",
-  "extension-runtime",
-  "panel-mailbox",
-  "runtime-host",
-  "runtime-modules"
-];
 
 export const createRuntimeModulePlan = (input: RuntimeModulePlanInput): RuntimeModule[] => {
   const agentBackend = input.agentBackend === undefined ? agentBackendFallbackModule : input.agentBackend;

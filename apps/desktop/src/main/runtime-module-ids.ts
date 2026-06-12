@@ -1,0 +1,20 @@
+export const standardRuntimeModuleIds = [
+  "runtime-state",
+  "runtime-snapshot",
+  "agent-workbench",
+  "agent-orient",
+  "runtime-build",
+  "runtime-diagnostics",
+  "extension-authoring",
+  "renderer-control",
+  "agent-backend",
+  "runtime-control",
+  "panel-control",
+  "window-capability",
+  "deixis",
+  "runtime-health",
+  "extension-runtime",
+  "panel-mailbox",
+  "runtime-host",
+  "runtime-modules"
+];
