@@ -11,8 +11,9 @@ import {
   type PlasticEvent,
   type TimelineInput
 } from "@plastic/core";
+import { deixisAvailability } from "./deixis-availability.js";
 import type { RefInput, ScreenshotInput, VerifyRefActionInput } from "./deixis-types.js";
-import { availabilityFromCapabilities, type RuntimeMethodContext, type RuntimeModule } from "./runtime-method-context.js";
+import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
 type ResolvedVisibleRef = {
   windowId: number;
@@ -60,11 +61,7 @@ const registerListVisibleRefs = async (
       id: "deixis/listVisibleRefs",
       title: "List visible UI references",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["dom.refs"],
-        "Requires a rendered DOM that exposes data-plastic-ref elements."
-      ),
+      availability: deixisAvailability(context.capabilities, "deixis/listVisibleRefs"),
       handler: () => Effect.promise(async () => {
         if (!host.listVisibleRefs) {
           throw new Error("deixis/listVisibleRefs is unavailable: missing dom.refs capability");
@@ -86,11 +83,7 @@ const registerScreenshot = async (
       title: "Capture window screenshot",
       description: "Captures the focused window, a specific window id, or a visible data-plastic-ref region as a data URL.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["electron.window", "screenshot"],
-        "Requires a host that can capture Electron BrowserWindow pixels."
-      ),
+      availability: deixisAvailability(context.capabilities, "windows/screenshot"),
       handler: (input) => Effect.promise(async () => {
         if (!host.captureWindow) {
           throw new Error("windows/screenshot is unavailable: missing electron.window or screenshot capability");
@@ -112,11 +105,7 @@ const registerResolveRef = async (
       title: "Resolve visible UI reference",
       description: "Explains a data-plastic-ref with DOM, panel, extension, command, source hints, and recent event lineage.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["dom.refs"],
-        "Requires visible data-plastic-ref elements in a rendered DOM."
-      ),
+      availability: deixisAvailability(context.capabilities, "deixis/resolveRef"),
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.resolveVisibleRef || !host.panelIdFromRef || !host.sourceHintsFor) {
@@ -250,11 +239,7 @@ const registerEvalDom = async (
       title: "Evaluate DOM script",
       description: "Permissive v0 DOM evaluation in the focused window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["dom.eval"],
-        "Requires a renderer DOM execution host."
-      ),
+      availability: deixisAvailability(context.capabilities, "deixis/evalDom"),
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.findWindow) {
@@ -285,11 +270,7 @@ const registerVerifyRefAction = async (
       title: "Verify ref action",
       description: "Verifies that a recent ref-driven action produced the expected durable event.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["dom.refs", "event.projection"],
-        "Requires visible refs plus the durable event projection."
-      ),
+      availability: deixisAvailability(context.capabilities, "deixis/verifyRefAction"),
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.panelIdFromRef) {
@@ -384,11 +365,7 @@ const registerClickRef = async (
       title: "Click visible UI reference",
       description: "Clicks a visible data-plastic-ref in the focused or selected window and records the action.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["dom.refs", "dom.input"],
-        "Requires a rendered DOM and input control."
-      ),
+      availability: deixisAvailability(context.capabilities, "deixis/clickRef"),
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.findWindow || !host.resolveVisibleRef || !host.panelIdFromRef || !host.scrollRefIntoViewScript) {
@@ -477,11 +454,7 @@ const registerFillRef = async (
       title: "Fill visible UI reference",
       description: "Fills an input or textarea inside a visible data-plastic-ref and records the action.",
       owner: { kind: "runtime", id: "plastic.runtime" },
-      availability: availabilityFromCapabilities(
-        context.capabilities,
-        ["dom.refs", "dom.input"],
-        "Requires a rendered DOM and input control."
-      ),
+      availability: deixisAvailability(context.capabilities, "deixis/fillRef"),
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.findWindow || !host.resolveVisibleRef || !host.panelIdFromRef || !host.scrollRefIntoViewScript) {
