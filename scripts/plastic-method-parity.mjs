@@ -31,6 +31,7 @@ const sharedHealthCheckIds = [
   "event-store:list",
   "methods:list",
   "capabilities:list",
+  "build:status",
   "runtime-modules:map",
   "runtime-started:descriptor",
   "runtime-audit:status",

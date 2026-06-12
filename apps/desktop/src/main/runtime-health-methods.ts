@@ -77,6 +77,37 @@ const requiredAgentLinkMethods = [
   "runtime/runAuditAction"
 ];
 
+const checkBuildStatusHealth = (buildStatus: unknown) => {
+  const status = asRecord(buildStatus);
+  const hostBase = asRecord(status.hostBase);
+  const controlPlane = asRecord(status.controlPlane);
+  const runtimeControlPlane = asRecord(controlPlane.runtime);
+  const buildControlPlane = asRecord(controlPlane.build);
+  const transports = Array.isArray(status.agentTransports) ? status.agentTransports.map(asRecord) : [];
+  if (status.status !== "running") {
+    throw new Error("build/status did not report running");
+  }
+  if (hostBase.id !== "runtime-host-base" || hostBase.version !== 1) {
+    throw new Error("build/status missing shared host base marker");
+  }
+  if (runtimeControlPlane.transport !== "http" || buildControlPlane.transport !== "http") {
+    throw new Error("build/status missing runtime/build HTTP control plane");
+  }
+  if (typeof status.workspaceDir !== "string" || typeof status.eventPath !== "string") {
+    throw new Error("build/status missing workspace paths");
+  }
+  if (!transports.some((transport) => transport.id === "http-rpc") || !transports.some((transport) => transport.id === "mcp-stdio")) {
+    throw new Error("build/status missing agent transport affordances");
+  }
+  return {
+    service: status.service ?? null,
+    mode: status.mode ?? null,
+    runtimeTransport: runtimeControlPlane.transport,
+    buildTransport: buildControlPlane.transport,
+    agentTransports: transports.length
+  };
+};
+
 const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   const verdict = (auditStatus as { verdict?: Record<string, unknown> })?.verdict;
   const status = verdict?.status;
@@ -353,6 +384,9 @@ export const createRuntimeHealthModule = (input: {
             await record("event-store:list", () => ({ count: events.length }));
             await record("methods:list", () => checkMethodRegistryHealth(methodList, capabilityList));
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
+            await record("build:status", async () =>
+              checkBuildStatusHealth(await runPromise(methods.call("build/status", {})))
+            );
             await record("runtime-modules:map", async () =>
               checkRuntimeModuleMapHealth(await runPromise(methods.call("runtime/modules", {})))
             );
