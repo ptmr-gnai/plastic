@@ -13,6 +13,8 @@ const require = createRequire(import.meta.url);
 const electronExecutable = require("electron");
 
 const children = new Set();
+const skipCorePrebuild = process.env.PLASTIC_SKIP_CORE_PREBUILD === "1";
+const skipCoreWatch = process.env.PLASTIC_SKIP_CORE_WATCH === "1";
 
 const run = (command, args, options = {}) => {
   const child = spawn(command, args, {
@@ -96,6 +98,12 @@ process.on("SIGTERM", () => {
 
 rmSync(new URL("../dist-electron", import.meta.url), { force: true, recursive: true });
 
+if (!skipCorePrebuild) {
+  await runOnce("pnpm", ["--filter", "@plastic/core", "build"], { cwd: workspaceDir });
+}
+if (!skipCoreWatch) {
+  run("pnpm", ["--filter", "@plastic/core", "dev"], { cwd: workspaceDir });
+}
 run("pnpm", ["exec", "tsc", "-p", "tsconfig.node.json", "--watch", "--preserveWatchOutput"]);
 run("pnpm", ["exec", "vite", "--host", "127.0.0.1"]);
 

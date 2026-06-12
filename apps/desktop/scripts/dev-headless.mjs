@@ -10,6 +10,8 @@ const headlessMain = new URL("../dist-electron/main/headless.js", import.meta.ur
 const tscBin = new URL("../node_modules/typescript/bin/tsc", import.meta.url).pathname;
 const distDir = new URL("../dist", import.meta.url).pathname;
 const staticPort = Number(process.env.PLASTIC_STATIC_PORT ?? 5173);
+const skipCorePrebuild = process.env.PLASTIC_SKIP_CORE_PREBUILD === "1";
+const skipCoreWatch = process.env.PLASTIC_SKIP_CORE_WATCH === "1";
 let staticServer;
 
 const children = new Set();
@@ -25,6 +27,23 @@ const run = (command, args, options = {}) => {
   child.on("exit", () => children.delete(child));
   return child;
 };
+
+const runOnce = (command, args, options = {}) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+      ...options
+    });
+    child.on("exit", (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(`${[command, ...args].join(" ")} exited with ${code ?? signal ?? "unknown"}`));
+    });
+  });
 
 const cleanup = () => {
   for (const child of children) {
@@ -45,6 +64,12 @@ process.on("SIGTERM", () => {
 
 rmSync(new URL("../dist-electron", import.meta.url), { force: true, recursive: true });
 
+if (!skipCorePrebuild) {
+  await runOnce("pnpm", ["--filter", "@plastic/core", "build"], { cwd: workspaceDir });
+}
+if (!skipCoreWatch) {
+  run("pnpm", ["--filter", "@plastic/core", "dev"], { cwd: workspaceDir });
+}
 run("node", [tscBin, "-p", "tsconfig.node.json", "--watch", "--preserveWatchOutput"]);
 
 const mimeTypes = new Map([

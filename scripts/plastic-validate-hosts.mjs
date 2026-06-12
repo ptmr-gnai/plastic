@@ -187,6 +187,8 @@ const startHost = (script) => {
     detached: process.platform !== "win32",
     env: {
       ...process.env,
+      PLASTIC_SKIP_CORE_PREBUILD: "1",
+      PLASTIC_SKIP_CORE_WATCH: "1",
       ...(script === "dev.mjs" ? { PLASTIC_DEV_EXIT_ON_ELECTRON_EXIT: "1" } : {})
     }
   });

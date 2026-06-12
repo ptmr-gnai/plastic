@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "pnpm --parallel --filter @plastic/core --filter @plastic/desktop dev",
+    "dev": "pnpm --filter @plastic/core build && PLASTIC_SKIP_CORE_PREBUILD=1 PLASTIC_SKIP_CORE_WATCH=1 pnpm --parallel --filter @plastic/core --filter @plastic/desktop dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "guardrails": "node scripts/guardrails.mjs",
