@@ -45,6 +45,18 @@ const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
   }
   if (
     failurePhase === "electron"
+    && hints.some((hint) => hint.includes("[plastic:entry-cjs]"))
+    && !hints.some((hint) => hint.includes("[plastic:entry]"))
+    && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))
+  ) {
+    return {
+      code: "electron-cjs-entry-entered-esm-missing",
+      phase: "electron-esm-main-import",
+      summary: "Electron entered the CommonJS package launcher, but the compiled ESM main bootstrap was not observed."
+    };
+  }
+  if (
+    failurePhase === "electron"
     && hints.some((hint) => hint.includes("[plastic:entry-preflight]"))
     && hints.some((hint) => hint.includes("electron-launch"))
     && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))

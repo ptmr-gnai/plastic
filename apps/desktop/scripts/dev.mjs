@@ -94,7 +94,7 @@ while (!viteReady) {
 }
 console.log(`[plastic:dev] vite-ready url=${viteUrl}`);
 
-console.log(`[plastic:dev] electron-launch cwd=${cwd} main=${electronMain}`);
+console.log(`[plastic:dev] electron-launch cwd=${cwd} packageMain=main.cjs compiledMain=${electronMain}`);
 const electronChild = run(electronExecutable, ["."], {
   env: {
     ...process.env,
