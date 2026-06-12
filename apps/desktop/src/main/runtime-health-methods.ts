@@ -4,6 +4,7 @@ import {
   projectPanels,
   projectWindows,
   type PlasticExtension,
+  type PlasticPanel,
   type PlasticEvent
 } from "@plastic/core";
 import {
@@ -36,6 +37,20 @@ const requiredExtensionMethods = [
   "extensions/forkBundled",
   "extensions/registerPanel",
   "extensions/scaffold"
+];
+
+const requiredPanelMethods = [
+  "panels/list",
+  "panels/get",
+  "panels/create",
+  "panels/rename",
+  "panels/move",
+  "panels/remove",
+  "panels/close",
+  "panels/sendMessage",
+  "panels/listMessages",
+  "panels/markMessageRead",
+  "panels/mailboxes"
 ];
 
 const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
@@ -156,6 +171,27 @@ const checkExtensionRuntimeHealth = (extensions: PlasticExtension[], methodIds: 
   };
 };
 
+const checkPanelRuntimeHealth = (panels: PlasticPanel[], extensions: PlasticExtension[], methodIds: Set<string>) => {
+  const extensionIds = new Set(extensions.map((extension) => extension.id));
+  const extensionBackedPanels = panels.filter((panel) => extensionIds.has(panel.extensionId));
+  const missingMethods = requiredPanelMethods.filter((id) => !methodIds.has(id));
+  if (panels.length === 0) {
+    throw new Error("No panels are projected");
+  }
+  if (extensionBackedPanels.length === 0) {
+    throw new Error("No extension-backed panels are projected");
+  }
+  if (missingMethods.length > 0) {
+    throw new Error(`Panel runtime methods missing: ${missingMethods.join(", ")}`);
+  }
+  return {
+    count: panels.length,
+    extensionBacked: extensionBackedPanels.length,
+    extensionBackedIds: extensionBackedPanels.map((panel) => panel.id),
+    requiredMethods: requiredPanelMethods.length
+  };
+};
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
 
@@ -208,6 +244,7 @@ export const createRuntimeHealthModule = (input: {
             const methodIds = new Set(methodList.map((method) => method.id));
             const capabilityList = capabilities.list();
             const projectedExtensions = projectExtensions(events);
+            const projectedPanels = projectPanels(events);
             await record("event-store:list", () => ({ count: events.length }));
             await record("methods:list", () => checkMethodRegistryHealth(methodList, capabilityList));
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
@@ -219,8 +256,8 @@ export const createRuntimeHealthModule = (input: {
               checkRuntimeAuditStatusHealth(await runPromise(methods.call("runtime/auditStatus", {})))
             );
             await record("agent-transports:affordances", () => checkAgentTransportsHealth(events));
-            await record("panels:project", () => ({ count: projectPanels(events).length }));
-            await record("windows:project", () => ({ count: projectWindows(events).length }));
+            await record("panels:project", () => checkPanelRuntimeHealth(projectedPanels, projectedExtensions, methodIds));
+            await record("windows:project", () => ({ count: projectWindows(events, projectedPanels).length }));
             await record("extensions:project", () => checkExtensionRuntimeHealth(projectedExtensions, methodIds));
             for (const check of input.hostChecks ?? []) {
               await record(check.id, check.run);
