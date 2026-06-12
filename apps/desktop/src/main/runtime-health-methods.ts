@@ -5,6 +5,7 @@ import {
   projectWindows,
   type PlasticExtension,
   type PlasticPanel,
+  type PlasticWindow,
   type PlasticEvent
 } from "@plastic/core";
 import {
@@ -51,6 +52,14 @@ const requiredPanelMethods = [
   "panels/listMessages",
   "panels/markMessageRead",
   "panels/mailboxes"
+];
+
+const requiredWindowMethods = [
+  "windows/list",
+  "windows/create",
+  "windows/focusPanel",
+  "windows/scrollToRef",
+  "windows/screenshot"
 ];
 
 const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
@@ -192,6 +201,35 @@ const checkPanelRuntimeHealth = (panels: PlasticPanel[], extensions: PlasticExte
   };
 };
 
+const checkWindowRuntimeHealth = (windows: PlasticWindow[], panels: PlasticPanel[], methodList: Array<{ id: string; availability?: { status?: string; missingCapabilities?: string[] } }>) => {
+  const byId = new Map(methodList.map((method) => [method.id, method]));
+  const missingMethods = requiredWindowMethods.filter((id) => !byId.has(id));
+  const windowsList = byId.get("windows/list");
+  if (windows.length === 0) {
+    throw new Error("No windows are projected");
+  }
+  if (!windows.every((window) => Array.isArray(window.panelIds))) {
+    throw new Error("Projected windows must include panelIds");
+  }
+  if (panels.length > 0 && windows.every((window) => window.panelIds.length === 0)) {
+    throw new Error("Projected windows are not connected to projected panels");
+  }
+  if (missingMethods.length > 0) {
+    throw new Error(`Window runtime methods missing: ${missingMethods.join(", ")}`);
+  }
+  if (!["available", "degraded"].includes(String(windowsList?.availability?.status))) {
+    throw new Error("windows/list must be available or degraded, not unavailable");
+  }
+  return {
+    count: windows.length,
+    open: windows.filter((window) => window.open).length,
+    panelSlots: windows.reduce((count, window) => count + window.panelIds.length, 0),
+    windowsListStatus: windowsList?.availability?.status ?? null,
+    missingCapabilities: windowsList?.availability?.missingCapabilities ?? [],
+    requiredMethods: requiredWindowMethods.length
+  };
+};
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
 
@@ -245,6 +283,7 @@ export const createRuntimeHealthModule = (input: {
             const capabilityList = capabilities.list();
             const projectedExtensions = projectExtensions(events);
             const projectedPanels = projectPanels(events);
+            const projectedWindows = projectWindows(events, projectedPanels);
             await record("event-store:list", () => ({ count: events.length }));
             await record("methods:list", () => checkMethodRegistryHealth(methodList, capabilityList));
             await record("capabilities:list", () => checkCapabilityRegistryHealth(capabilityList));
@@ -257,7 +296,7 @@ export const createRuntimeHealthModule = (input: {
             );
             await record("agent-transports:affordances", () => checkAgentTransportsHealth(events));
             await record("panels:project", () => checkPanelRuntimeHealth(projectedPanels, projectedExtensions, methodIds));
-            await record("windows:project", () => ({ count: projectWindows(events, projectedPanels).length }));
+            await record("windows:project", () => checkWindowRuntimeHealth(projectedWindows, projectedPanels, methodList));
             await record("extensions:project", () => checkExtensionRuntimeHealth(projectedExtensions, methodIds));
             for (const check of input.hostChecks ?? []) {
               await record(check.id, check.run);
