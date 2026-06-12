@@ -26,13 +26,24 @@ const steps = [
 const runStep = (step) =>
   new Promise((resolve) => {
     const startedAt = Date.now();
+    const output = [];
+    const pushOutput = (stream, chunk) => {
+      const text = chunk.toString();
+      stream.write(text);
+      output.push(...text.split(/\r?\n/).filter(Boolean).map((line) => line.slice(0, 500)));
+      if (output.length > 160) {
+        output.splice(0, output.length - 160);
+      }
+    };
     console.log(`[plastic:runtime-unification-audit] start ${step.id}`);
     const child = spawn(step.command, step.args, {
       cwd: new URL("..", import.meta.url).pathname,
-      stdio: "inherit",
+      stdio: ["ignore", "pipe", "pipe"],
       shell: process.platform === "win32",
       env: { ...process.env, ...(step.env ?? {}) }
     });
+    child.stdout?.on("data", (chunk) => pushOutput(process.stdout, chunk));
+    child.stderr?.on("data", (chunk) => pushOutput(process.stderr, chunk));
     child.on("exit", (code, signal) => {
       const result = {
         id: step.id,
@@ -40,6 +51,14 @@ const runStep = (step) =>
         exit: code ?? signal ?? "unknown",
         ms: Date.now() - startedAt
       };
+      if (!result.ok) {
+        result.diagnostics = {
+          tail: output,
+          hints: output
+            .filter((line) => /electronStartupHint|did not become ready|lsof -nP -iTCP:7331|lsof -nP -iTCP:7332|activeHostPid|activeHostExit/.test(line))
+            .slice(-20)
+        };
+      }
       console.log(`[plastic:runtime-unification-audit] ${result.ok ? "pass" : "fail"} ${step.id}`);
       resolve(result);
     });

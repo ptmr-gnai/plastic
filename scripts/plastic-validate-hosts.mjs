@@ -21,6 +21,16 @@ if (!["all", "headless", "electron", "unified"].includes(validateScope)) {
 let activeHost = null;
 let activeHostOutput = [];
 
+const killProcess = (pid, signal) => {
+  try {
+    process.kill(pid, signal);
+  } catch (error) {
+    if (error?.code !== "ESRCH") {
+      throw error;
+    }
+  }
+};
+
 const rememberHostOutput = (source, chunk) => {
   for (const line of chunk.toString().split(/\r?\n/)) {
     if (!line) {
@@ -136,6 +146,7 @@ const startHost = (script) => {
     cwd: desktopDir,
     stdio: ["ignore", "pipe", "pipe"],
     shell: process.platform === "win32",
+    detached: process.platform !== "win32",
     env: {
       ...process.env,
       ...(script === "dev.mjs" ? { PLASTIC_DEV_EXIT_ON_ELECTRON_EXIT: "1" } : {})
@@ -160,8 +171,25 @@ const stopHost = async () => {
   if (!child || child.exitCode !== null) {
     return;
   }
-  child.kill("SIGINT");
-  await new Promise((resolve) => child.once("exit", resolve));
+  if (process.platform === "win32") {
+    child.kill("SIGINT");
+  } else {
+    killProcess(-child.pid, "SIGINT");
+  }
+  await Promise.race([
+    new Promise((resolve) => child.once("exit", resolve)),
+    delay(2_500).then(() => {
+      if (child.exitCode === null) {
+        if (process.platform === "win32") {
+          child.kill("SIGKILL");
+        } else {
+          killProcess(-child.pid, "SIGKILL");
+        }
+      }
+    })
+  ]);
+  child.stdout?.destroy();
+  child.stderr?.destroy();
 };
 
 const waitForHealth = async (url, label) => {
