@@ -79,6 +79,63 @@ const tool = {
   }
 };
 
+const toolErrorResult = (error) => ({
+  content: [{ type: "text", text: JSON.stringify({ ok: false, error }) }],
+  isError: true
+});
+
+const handleToolCall = async (id, params) => {
+  const name = params?.name;
+  const args = params?.arguments ?? {};
+  if (name !== "plastic_rpc") {
+    sendResult(id, toolErrorResult(`Unknown tool: ${name}`));
+    return;
+  }
+
+  const methodId = typeof args.method === "string" ? args.method : "";
+  const input = args.input && typeof args.input === "object" ? args.input : {};
+  if (!methodId) {
+    sendResult(id, toolErrorResult("plastic_rpc requires method"));
+    return;
+  }
+
+  const startedAt = new Date().toISOString();
+  const correlationId = crypto.randomUUID();
+  const methodEffects = await readMethodEffects(methodId);
+  await appendBridgeEvent("bridge.plastic_rpc.requested", {
+    correlationId,
+    method: methodId,
+    methodEffects,
+    input,
+    rpcUrl,
+    startedAt
+  });
+
+  try {
+    const value = await callPlastic(methodId, input);
+    const result = { ok: true, value, methodEffects };
+    await appendBridgeEvent("bridge.plastic_rpc.completed", {
+      correlationId,
+      method: methodId,
+      methodEffects,
+      ok: true,
+      completedAt: new Date().toISOString()
+    });
+    sendResult(id, { content: [{ type: "text", text: JSON.stringify(result) }] });
+  } catch (error) {
+    const result = { ok: false, error: error instanceof Error ? error.message : String(error), methodEffects };
+    await appendBridgeEvent("bridge.plastic_rpc.completed", {
+      correlationId,
+      method: methodId,
+      methodEffects,
+      ok: false,
+      error: result.error,
+      completedAt: new Date().toISOString()
+    });
+    sendResult(id, { content: [{ type: "text", text: JSON.stringify(result) }], isError: true });
+  }
+};
+
 const handleRequest = async (message) => {
   const { id, method, params } = message;
   if (id === undefined && method?.startsWith("notifications/")) {
@@ -105,61 +162,7 @@ const handleRequest = async (message) => {
   }
 
   if (method === "tools/call") {
-    const name = params?.name;
-    const args = params?.arguments ?? {};
-    if (name !== "plastic_rpc") {
-      sendResult(id, {
-        content: [{ type: "text", text: JSON.stringify({ ok: false, error: `Unknown tool: ${name}` }) }],
-        isError: true
-      });
-      return;
-    }
-
-    const methodId = typeof args.method === "string" ? args.method : "";
-    const input = args.input && typeof args.input === "object" ? args.input : {};
-    if (!methodId) {
-      sendResult(id, {
-        content: [{ type: "text", text: JSON.stringify({ ok: false, error: "plastic_rpc requires method" }) }],
-        isError: true
-      });
-      return;
-    }
-
-    const startedAt = new Date().toISOString();
-    const correlationId = crypto.randomUUID();
-    const methodEffects = await readMethodEffects(methodId);
-    await appendBridgeEvent("bridge.plastic_rpc.requested", {
-      correlationId,
-      method: methodId,
-      methodEffects,
-      input,
-      rpcUrl,
-      startedAt
-    });
-
-    try {
-      const value = await callPlastic(methodId, input);
-      const result = { ok: true, value, methodEffects };
-      await appendBridgeEvent("bridge.plastic_rpc.completed", {
-        correlationId,
-        method: methodId,
-        methodEffects,
-        ok: true,
-        completedAt: new Date().toISOString()
-      });
-      sendResult(id, { content: [{ type: "text", text: JSON.stringify(result) }] });
-    } catch (error) {
-      const result = { ok: false, error: error instanceof Error ? error.message : String(error), methodEffects };
-      await appendBridgeEvent("bridge.plastic_rpc.completed", {
-        correlationId,
-        method: methodId,
-        methodEffects,
-        ok: false,
-        error: result.error,
-        completedAt: new Date().toISOString()
-      });
-      sendResult(id, { content: [{ type: "text", text: JSON.stringify(result) }], isError: true });
-    }
+    await handleToolCall(id, params);
     return;
   }
 
