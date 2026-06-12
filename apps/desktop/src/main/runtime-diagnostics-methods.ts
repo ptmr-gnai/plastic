@@ -96,9 +96,9 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
       auditAction({
         id: "probe-electron-launch-targets",
         title: "Probe Electron launch targets",
-        command: "node scripts/plastic-electron-launch-probe.mjs",
-        run: { command: "node", args: ["scripts/plastic-electron-launch-probe.mjs"] },
-        description: "Prints the Electron executable, package launch target, compiled-main target, and relevant launch env without starting the full validation loop."
+        command: "PLASTIC_ELECTRON_LAUNCH_PROBE_RUN=1 node scripts/plastic-electron-launch-probe.mjs",
+        run: { command: "node", args: ["scripts/plastic-electron-launch-probe.mjs"], env: { PLASTIC_ELECTRON_LAUNCH_PROBE_RUN: "1" } },
+        description: "Prints launch targets and briefly probes compiled-main/package Electron entry markers without starting the full validation loop."
       })
     ];
   }
