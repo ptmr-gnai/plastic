@@ -322,7 +322,7 @@ await check("runtime/auditStatus", async () => {
   return assertRuntimeAuditStatus(await rpc("runtime/auditStatus"));
 });
 await check("renderer/reload metadata", async () => {
-  const expectations = capabilityBackedMethodExpectationsForMode(state.app.mode);
+  const expectations = await capabilityBackedMethodExpectationsForMode(state.app.mode);
   const description = await rpc("methods/describe", { id: "renderer/reload" });
   const expected = expectations["renderer/reload"];
   assert(description.id === "renderer/reload", "described wrong renderer method");
@@ -335,7 +335,7 @@ await check("renderer/reload metadata", async () => {
 });
 
 await check("capability-backed method metadata", async () => {
-  const expectations = capabilityBackedMethodExpectationsForMode(state.app.mode);
+  const expectations = await capabilityBackedMethodExpectationsForMode(state.app.mode);
   const descriptions = await Promise.all(
     Object.keys(expectations).map((id) => rpc("methods/describe", { id }))
   );
