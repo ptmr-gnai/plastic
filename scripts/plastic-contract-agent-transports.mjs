@@ -1,12 +1,13 @@
 export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl, source }) => {
   const items = assertArray(transports, `${source} agentTransports is not an array`);
+  const methodsUrl = rpcUrl.replace(/\/rpc$/, "/methods");
   const selfTestUrl = rpcUrl.replace(/\/rpc$/, "/self-test");
   const http = items.find((transport) => transport.id === "http-rpc");
   const mcp = items.find((transport) => transport.id === "mcp-stdio");
   assert(http?.status === "available", `${source} missing available HTTP RPC transport`);
   assert(http.methodRegistry === "shared", `${source} HTTP transport must use shared registry`);
   assert(http.rpcUrl === rpcUrl, `${source} HTTP transport URL mismatch`);
-  assert(http.links?.some((link) => link.rel === "methods" && link.method === "http/get"), `${source} HTTP transport missing methods link`);
+  assert(http.links?.some((link) => link.rel === "methods" && link.method === "http/get" && link.href === methodsUrl), `${source} HTTP transport missing methods link`);
   assert(http.links?.some((link) => link.rel === "self-test" && link.method === "http/get" && link.href === selfTestUrl), `${source} HTTP transport missing self-test link`);
   assert(http.actions?.some((action) => action.id === "call-plastic-rpc" && action.method === "http/post" && action.href === rpcUrl), `${source} HTTP transport missing call action`);
   assert(mcp?.status === "available", `${source} missing available MCP stdio transport`);
