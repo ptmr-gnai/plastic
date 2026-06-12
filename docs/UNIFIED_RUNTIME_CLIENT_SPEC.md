@@ -494,6 +494,6 @@ Keep the audit loop bounded. Contract-generated durable validation events must r
 Proof:
 
 1. `pnpm plastic:validate-headless` can run repeatedly without increasing active contract panel or workspace extension projections.
-2. `pnpm plastic:method-parity` remains clean after repeated headless/Electron audit runs.
+2. `pnpm plastic:method-parity` remains clean after repeated headless/Electron audit runs and includes `runtime-audit:status` in shared health checks.
 3. `plastic/selfTest` stays green while reporting stable shared projection health, required diagnostics methods, and the current audit-status verdict shape.
 4. Validation events remain durable and inspectable, but are identifiable as validation scope rather than user workspace state.

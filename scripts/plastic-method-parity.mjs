@@ -30,6 +30,7 @@ const sharedHealthCheckIds = [
   "methods:list",
   "capabilities:list",
   "runtime-modules:map",
+  "runtime-audit:status",
   "panels:project",
   "windows:project",
   "extensions:project"
@@ -292,6 +293,7 @@ const main = async () => {
     modules: current.moduleCount,
     capabilities: current.capabilityCount,
     healthChecks: current.healthCheckCount,
+    sharedHealthChecks: current.health.sharedChecks.map((check) => check.id),
     comparison
   }, null, 2));
 };
