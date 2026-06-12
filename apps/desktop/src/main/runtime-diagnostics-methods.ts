@@ -253,6 +253,7 @@ const recentAuditActions = (events: Array<PlasticEvent>) =>
         completedAt?: unknown;
         command?: unknown;
         args?: unknown;
+        env?: unknown;
         exitCode?: unknown;
         signal?: unknown;
         stdout?: unknown;
@@ -260,6 +261,9 @@ const recentAuditActions = (events: Array<PlasticEvent>) =>
       };
       const stdout = typeof payload.stdout === "string" ? payload.stdout : "";
       const stderr = typeof payload.stderr === "string" ? payload.stderr : "";
+      const env = payload.env && typeof payload.env === "object" && !Array.isArray(payload.env)
+        ? Object.fromEntries(Object.entries(payload.env).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+        : {};
       return {
         eventId: event.id,
         timestamp: event.timestamp,
@@ -269,6 +273,7 @@ const recentAuditActions = (events: Array<PlasticEvent>) =>
         completedAt: typeof payload.completedAt === "string" ? payload.completedAt : event.timestamp,
         command: typeof payload.command === "string" ? payload.command : null,
         args: Array.isArray(payload.args) ? payload.args.filter((arg): arg is string => typeof arg === "string") : [],
+        env,
         exitCode: typeof payload.exitCode === "number" ? payload.exitCode : null,
         signal: typeof payload.signal === "string" ? payload.signal : null,
         stdoutTail: stdout.slice(-4000),
