@@ -53,6 +53,30 @@ const runOnce = (command, args, options = {}) =>
     });
   });
 
+const runCaptured = (command, args, options = {}) =>
+  new Promise((resolve) => {
+    let stdout = "";
+    let stderr = "";
+    const child = spawn(command, args, {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32",
+      ...options
+    });
+    child.stdout?.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", (error) => {
+      resolve({ code: null, signal: null, stdout, stderr: String(error) });
+    });
+    child.on("exit", (code, signal) => {
+      resolve({ code, signal, stdout, stderr });
+    });
+  });
+
 const cleanup = () => {
   for (const child of children) {
     child.kill();
@@ -114,6 +138,20 @@ setTimeout(() => {
     `[plastic:dev] electron-child-status pid=${electronChild.pid ?? "unknown"} exitCode=${electronChild.exitCode ?? "running"} signalCode=${electronChild.signalCode ?? "null"}`
   );
 }, 2_500).unref();
+
+setTimeout(() => {
+  if (!electronChild.pid || electronChild.exitCode !== null) {
+    return;
+  }
+  void runCaptured("lsof", ["-nP", "-p", String(electronChild.pid)]).then((result) => {
+    const interesting = result.stdout
+      .split("\n")
+      .filter((line) => /Plastic|Electron Framework|main\.cjs|dist-electron|apps\/desktop/.test(line))
+      .slice(0, 20);
+    console.log(`[plastic:dev] electron-child-lsof pid=${electronChild.pid} exit=${result.code ?? result.signal ?? "unknown"}`);
+    console.log(interesting.length > 0 ? interesting.join("\n") : "[plastic:dev] electron-child-lsof no matching app files");
+  });
+}, 3_000).unref();
 
 electronChild.on("exit", (code, signal) => {
   if (process.env.PLASTIC_DEV_EXIT_ON_ELECTRON_EXIT === "1") {
