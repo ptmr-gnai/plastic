@@ -234,6 +234,18 @@ const compareHealth = (baseHealth, currentHealth) => {
   if (!baseHealth?.ok || !currentHealth?.ok) {
     failures.push({ id: "plastic/selfTest", base: baseHealth?.ok === true, current: currentHealth?.ok === true });
   }
+  const expectedSharedIds = sorted(sharedHealthCheckIds);
+  const baseSummarySharedIds = sorted(baseHealth?.summary?.sharedCheckIds ?? []);
+  const currentSummarySharedIds = sorted(currentHealth?.summary?.sharedCheckIds ?? []);
+  if (JSON.stringify(baseSummarySharedIds) !== JSON.stringify(expectedSharedIds)) {
+    failures.push({ id: "plastic/selfTest:summary.sharedCheckIds", base: false, current: true });
+  }
+  if (JSON.stringify(currentSummarySharedIds) !== JSON.stringify(expectedSharedIds)) {
+    failures.push({ id: "plastic/selfTest:summary.sharedCheckIds", base: true, current: false });
+  }
+  if ((baseHealth?.summary?.failedIds?.length ?? 0) > 0 || (currentHealth?.summary?.failedIds?.length ?? 0) > 0) {
+    failures.push({ id: "plastic/selfTest:summary.failedIds", base: (baseHealth?.summary?.failedIds?.length ?? 0) === 0, current: (currentHealth?.summary?.failedIds?.length ?? 0) === 0 });
+  }
   const baseShared = Object.fromEntries((baseHealth?.sharedChecks ?? []).map((check) => [check.id, check.ok]));
   const currentShared = Object.fromEntries((currentHealth?.sharedChecks ?? []).map((check) => [check.id, check.ok]));
   for (const id of sharedHealthCheckIds) {
