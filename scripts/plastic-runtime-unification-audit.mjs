@@ -29,6 +29,27 @@ const steps = [
   }
 ];
 
+const assertSummaryInvariant = (condition, message) => {
+  if (!condition) {
+    throw new Error(`[plastic:runtime-unification-audit] invalid summary: ${message}`);
+  }
+};
+
+const assertSummaryShape = (summary) => {
+  assertSummaryInvariant(summary.schemaVersion === 1, "schemaVersion must be 1");
+  assertSummaryInvariant(typeof summary.generatedAt === "string" && !Number.isNaN(Date.parse(summary.generatedAt)), "generatedAt must be an ISO timestamp");
+  assertSummaryInvariant(Array.isArray(summary.expectedStepIds), "expectedStepIds must be an array");
+  assertSummaryInvariant(JSON.stringify(summary.expectedStepIds) === JSON.stringify(steps.map((step) => step.id)), "expectedStepIds must match audit steps");
+  assertSummaryInvariant(summary.results.every((result) => summary.expectedStepIds.includes(result.id)), "results must only contain expected steps");
+  assertSummaryInvariant(summary.checks === summary.results.length, "checks must match result count");
+  assertSummaryInvariant(summary.expectedChecks === summary.expectedStepIds.length, "expectedChecks must match expected step count");
+  assertSummaryInvariant(summary.failures.count === summary.failures.ids.length, "failure count must match failure ids");
+  assertSummaryInvariant(Array.isArray(summary.failures.blockingIds), "blocking failure ids must be an array");
+  assertSummaryInvariant(typeof summary.runtimeUnification.usable === "boolean", "runtimeUnification.usable must be boolean");
+  assertSummaryInvariant(["passed", "failed", "not-run"].includes(summary.runtimeUnification.strictElectron), "strictElectron must be a known status");
+  assertSummaryInvariant(["passed", "failed", "degraded", "not-run"].includes(summary.runtimeUnification.unified), "unified must be a known status");
+};
+
 const writeSummary = async (results) => {
   const byId = Object.fromEntries(results.map((result) => [result.id, result]));
   const failed = results.filter((result) => !result.ok);
@@ -37,9 +58,12 @@ const writeSummary = async (results) => {
   const unified = byId.unified?.ok ? strictElectron === "passed" ? "passed" : "degraded" : byId.unified ? "failed" : "not-run";
   const firstFailure = failed[0] ?? null;
   const summary = {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
     ok: results.every((result) => result.ok) && results.length === steps.length,
     checks: results.length,
     expectedChecks: steps.length,
+    expectedStepIds: steps.map((step) => step.id),
     continuedAfterFailure: failed.length > 0,
     failures: {
       count: failed.length,
@@ -67,6 +91,7 @@ const writeSummary = async (results) => {
     },
     results
   };
+  assertSummaryShape(summary);
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, `${JSON.stringify(summary, null, 2)}\n`);
   return summary;

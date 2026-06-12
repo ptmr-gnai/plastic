@@ -20,7 +20,12 @@ type AuditResult = {
 };
 
 type AuditSummary = {
+  schemaVersion?: unknown;
+  generatedAt?: unknown;
   ok?: unknown;
+  checks?: unknown;
+  expectedChecks?: unknown;
+  expectedStepIds?: unknown;
   failures?: unknown;
   runtimeUnification?: {
     usable?: unknown;
