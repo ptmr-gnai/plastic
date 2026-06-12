@@ -1,4 +1,5 @@
 import type { PlasticEvent, PlasticMethod } from "@plastic/core";
+import { standardRuntimeCapabilityIds } from "./runtime-capabilities.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 import { standardRuntimeModuleIds } from "./runtime-module-ids.js";
 
@@ -17,18 +18,6 @@ export const requiredRuntimeMethods = [
   "events/list",
   "events/timeline",
   "plastic/selfTest"
-];
-
-export const requiredRuntimeCapabilities = [
-  "runtime.capabilities",
-  "window.projection",
-  "event.projection",
-  "electron.window",
-  "dom.refs",
-  "dom.eval",
-  "dom.input",
-  "screenshot",
-  "agent.codex"
 ];
 
 export const checkMethodRegistryHealth = (
@@ -151,7 +140,7 @@ export const checkCapabilityRegistryHealth = (capabilities: RuntimeCapability[])
   const invalidStatuses = capabilities
     .filter((capability) => !["available", "degraded", "unavailable"].includes(capability.status))
     .map((capability) => capability.id);
-  const missingRequiredCapabilities = requiredRuntimeCapabilities.filter((id) => !capabilityIds.has(id));
+  const missingRequiredCapabilities = standardRuntimeCapabilityIds.filter((id) => !capabilityIds.has(id));
   if (invalidStatuses.length > 0) {
     throw new Error(`Capabilities with invalid status: ${invalidStatuses.join(", ")}`);
   }

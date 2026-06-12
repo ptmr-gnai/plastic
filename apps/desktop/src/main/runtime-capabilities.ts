@@ -1,5 +1,25 @@
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
+const sharedCapabilityIds = [
+  "runtime.capabilities",
+  "window.projection",
+  "event.projection"
+];
+
+const hostCapabilityIds = [
+  "electron.window",
+  "dom.refs",
+  "dom.eval",
+  "dom.input",
+  "screenshot",
+  "agent.codex"
+];
+
+export const standardRuntimeCapabilityIds = [
+  ...sharedCapabilityIds,
+  ...hostCapabilityIds
+];
+
 const sharedCapabilities = (): RuntimeCapability[] => [
   { id: "runtime.capabilities", title: "Runtime capability registry", status: "available" },
   { id: "window.projection", title: "Window projection", status: "available" },
