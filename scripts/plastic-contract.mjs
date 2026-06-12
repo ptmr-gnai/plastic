@@ -222,12 +222,12 @@ await check("runtime/modules", async () => {
 
 await check("agent/workbench", async () => {
   const workbench = await rpc("agent/workbench", { limit: 5 });
-  return assertAgentWorkbenchPacket({ assert, assertArray, workbench, mode: state.app.mode });
+  return assertAgentWorkbenchPacket({ assert, assertArray, workbench, mode: state.app.mode, methodCount: methods.length });
 });
 
 await check("agent/orient", async () => {
   const orientation = await rpc("agent/orient", { panelId: "chat-main" });
-  return assertAgentOrientationPacket({ assert, assertArray, orientation });
+  return assertAgentOrientationPacket({ assert, assertArray, orientation, methodCount: methods.length });
 });
 
 await check("agent backend metadata", async () => {

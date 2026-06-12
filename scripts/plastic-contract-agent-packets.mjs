@@ -1,10 +1,11 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertAgentTransports } from "./plastic-contract-agent-transports.mjs";
 
-export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode }) => {
+export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount }) => {
   assert(workbench?.app?.mode === mode, "workbench app mode does not match state");
   assert(workbench.app.hostBase?.id === "runtime-host-base" && workbench.app.hostBase?.version === 1, "workbench shared host base marker mismatch");
   assert(workbench.control?.methodCount >= 1, "workbench method count missing");
+  assert(workbench.control.methodCount === methodCount, "workbench method count does not match plastic/methods");
   assert(workbench.control.capabilities?.count >= 1, "workbench capabilities count missing");
   assertArray(workbench.control.capabilities.items, "workbench capabilities items missing");
   assert(workbench.control.modules?.count >= 1, "workbench runtime module count missing");
@@ -47,7 +48,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   };
 };
 
-export const assertAgentOrientationPacket = ({ assert, assertArray, orientation }) => {
+export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount }) => {
   assert(orientation?.agent?.id, "agent/orient missing agent id");
   assert(orientation.embodiment?.projectDir, "agent/orient missing projectDir");
   assert(orientation.capabilities?.hostBase?.id === "runtime-host-base" && orientation.capabilities.hostBase?.version === 1, "agent/orient shared host base marker mismatch");
@@ -56,6 +57,12 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation 
   assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
   assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
   assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
+  assert(orientation.capabilities.methodCount === methodCount, "agent/orient method count does not match plastic/methods");
+  assertArray(orientation.capabilities.methods, "agent/orient recommended methods missing");
+  assert(
+    orientation.capabilities.methods.every((method) => typeof method.id === "string" && typeof method.title === "string"),
+    "agent/orient recommended methods have invalid shape"
+  );
   assert(orientation.capabilities.auditStatus?.verdict, "agent/orient missing compact audit status");
   assert(typeof orientation.capabilities.auditStatus.failureSummary?.count === "number", "agent/orient audit status missing failure summary");
   assert(Array.isArray(orientation.capabilities.auditStatus.failureSummary.ids), "agent/orient audit status missing failure ids");
@@ -99,6 +106,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation 
     agentId: orientation.agent.id,
     panelId: orientation.embodiment.panelId,
     capabilities: orientation.capabilities.host.count,
+    methods: orientation.capabilities.methodCount,
     modules: orientation.capabilities.modules.count,
     controlPlane: orientation.capabilities.controlPlane.runtime.transport,
     agentTransports: orientation.capabilities.agentTransports.length,

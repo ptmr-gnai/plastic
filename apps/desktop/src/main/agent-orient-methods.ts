@@ -263,6 +263,7 @@ const buildCapabilities = async (input: {
   auditStatus: await readAgentAuditStatus(input),
   controlPlane: input.controlPlane,
   agentTransports: input.agentTransports,
+  methodCount: input.methodList.length,
   methods: recommendedMethods(input.methodList),
   recommendedActions: [
     { id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId: input.panelId, eventCursor: input.latestEventId } },
