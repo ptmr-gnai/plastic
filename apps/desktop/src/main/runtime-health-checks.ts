@@ -125,16 +125,44 @@ export const checkMethodAffordanceHealth = (methods: PlasticMethod[]) => {
       )
     )
     .map((method) => method.id);
+  const invalidDescribeLinks = methods
+    .filter((method) =>
+      !method.links?.some((link) =>
+        link.rel === "describe"
+        && link.href === "methods/describe"
+        && link.method === "methods/describe"
+        && link.target === method.id
+      )
+    )
+    .map((method) => method.id);
+  const invalidInvokeLinks = methods
+    .filter((method) =>
+      !method.links?.some((link) =>
+        link.rel === "invoke"
+        && link.href === "rpc/call"
+        && link.method === "rpc/call"
+        && link.target === method.id
+      )
+    )
+    .map((method) => method.id);
   if (missingDescribeLinks.length > 0) {
     throw new Error(`Methods missing describe links: ${missingDescribeLinks.join(", ")}`);
   }
   if (missingInvokeLinks.length > 0) {
     throw new Error(`Methods missing invoke links: ${missingInvokeLinks.join(", ")}`);
   }
+  if (invalidDescribeLinks.length > 0) {
+    throw new Error(`Methods with invalid describe links: ${invalidDescribeLinks.join(", ")}`);
+  }
+  if (invalidInvokeLinks.length > 0) {
+    throw new Error(`Methods with invalid invoke links: ${invalidInvokeLinks.join(", ")}`);
+  }
   return {
     count: methods.length,
     missingDescribeLinks,
-    missingInvokeLinks
+    missingInvokeLinks,
+    invalidDescribeLinks,
+    invalidInvokeLinks
   };
 };
 

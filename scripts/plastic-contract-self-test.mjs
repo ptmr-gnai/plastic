@@ -11,6 +11,11 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(methodCheck.details.missingReferencedCapabilities?.length === 0, "plastic/selfTest method capability reference check failed");
   assert(methodCheck.details.missingRequiredMethods?.length === 0, "plastic/selfTest required method check failed");
   assert(methodCheck.details.requiredDiagnosticsMethods === true, "plastic/selfTest diagnostics method check failed");
+  const methodAffordanceCheck = selfTest.checks?.find((candidate) => candidate.id === "methods:affordances");
+  assert(methodAffordanceCheck?.details?.missingDescribeLinks?.length === 0, "plastic/selfTest method describe links missing");
+  assert(methodAffordanceCheck.details.missingInvokeLinks?.length === 0, "plastic/selfTest method invoke links missing");
+  assert(methodAffordanceCheck.details.invalidDescribeLinks?.length === 0, "plastic/selfTest method describe links invalid");
+  assert(methodAffordanceCheck.details.invalidInvokeLinks?.length === 0, "plastic/selfTest method invoke links invalid");
   const buildCheck = selfTest.checks?.find((candidate) => candidate.id === "build:surface");
   assert(buildCheck?.details?.invalidControlPlaneEndpointUrls?.length === 0, "plastic/selfTest build/status control-plane URLs are invalid");
   assert(buildCheck?.details?.invalidTransportAffordances?.length === 0, "plastic/selfTest build/status transport affordances are invalid");
