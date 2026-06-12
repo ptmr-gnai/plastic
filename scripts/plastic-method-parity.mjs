@@ -27,6 +27,25 @@ const byId = (methods) => Object.fromEntries(methods.map((method) => [method.id,
 const modulesById = (modules) => Object.fromEntries(modules.map((module) => [module.id, module]));
 const capabilitiesById = (capabilities) => Object.fromEntries(capabilities.map((capability) => [capability.id, capability]));
 const sorted = (values) => [...(values ?? [])].sort();
+const sortedStableObjects = (values) =>
+  [...(values ?? [])]
+    .map(stableValue)
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+const linkShape = (link) => stableValue({
+  rel: link.rel,
+  href: link.href,
+  method: link.method,
+  target: link.target,
+  input: link.input
+});
+const actionShape = (action) => stableValue({
+  id: action.id,
+  title: action.title,
+  href: action.href,
+  method: action.method,
+  target: action.target,
+  input: action.input
+});
 const sharedHealthCheckIds = [
   "event-store:list",
   "methods:list",
@@ -53,12 +72,12 @@ const serviceAffordances = (state) => (state.resources ?? [])
   .filter((resource) => resource.kind === "service")
   .reduce(
     (surface, resource) => ({
-      links: sorted([...surface.links, ...(resource.links ?? []).map((link) => `${link.rel}:${link.method}`)]),
-      actions: sorted([...surface.actions, ...(resource.actions ?? []).map((action) => `${action.id}:${action.method}`)])
+      links: sortedStableObjects([...surface.links, ...(resource.links ?? []).map(linkShape)]),
+      actions: sortedStableObjects([...surface.actions, ...(resource.actions ?? []).map(actionShape)])
     }),
     { links: [], actions: [] }
   );
-const snapshotAffordances = (snapshot) => sorted((snapshot.links ?? []).map((link) => `${link.rel}:${link.method}`));
+const snapshotAffordances = (snapshot) => sortedStableObjects((snapshot.links ?? []).map(linkShape));
 const transportShape = (transport) => stableValue({
   id: transport.id,
   status: transport.status,
