@@ -227,6 +227,7 @@ const buildControl = async (input: {
       { id: "read-methods", title: "Read methods", method: "plastic/methods" },
       { id: "read-host", title: "Read runtime host", method: "runtime/host" },
       { id: "read-modules", title: "Read runtime modules", method: "runtime/modules" },
+      { id: "read-audit-status", title: "Read latest runtime audit status", method: "runtime/auditStatus" },
       { id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
       { id: "read-timeline", title: "Read timeline", method: "events/timeline", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } },
       ...(host.visualActions?.({
