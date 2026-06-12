@@ -62,6 +62,21 @@ const requiredWindowMethods = [
   "windows/screenshot"
 ];
 
+const requiredAgentActionMethods = [
+  "runtime/host",
+  "runtime/auditStatus",
+  "runtime/auditActionPlan",
+  "runtime/runAuditAction"
+];
+
+const requiredAgentLinkMethods = [
+  "runtime/host",
+  "runtime/modules",
+  "runtime/auditStatus",
+  "runtime/auditActionPlan",
+  "runtime/runAuditAction"
+];
+
 const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   const verdict = (auditStatus as { verdict?: Record<string, unknown> })?.verdict;
   const status = verdict?.status;
@@ -230,6 +245,57 @@ const checkWindowRuntimeHealth = (windows: PlasticWindow[], panels: PlasticPanel
   };
 };
 
+const checkAgentOrientationHealth = (workbench: unknown, orientation: unknown) => {
+  const workbenchRecord = asRecord(workbench);
+  const orientationRecord = asRecord(orientation);
+  const control = asRecord(workbenchRecord.control);
+  const capabilities = asRecord(orientationRecord.capabilities);
+  const workbenchActions = Array.isArray(control.recommendedActions) ? control.recommendedActions.map(asRecord) : [];
+  const orientationActions = Array.isArray(capabilities.recommendedActions) ? capabilities.recommendedActions.map(asRecord) : [];
+  const orientationLinks = Array.isArray(capabilities.links) ? capabilities.links.map(asRecord) : [];
+  const agentTransports = Array.isArray(control.agentTransports) ? control.agentTransports.map(asRecord) : [];
+  const auditStatus = asRecord(control.auditStatus);
+  const failureSummary = asRecord(auditStatus.failureSummary);
+  const controlPlane = asRecord(control.controlPlane);
+  const runtimeControlPlane = asRecord(controlPlane.runtime);
+  const buildControlPlane = asRecord(controlPlane.build);
+  const missingWorkbenchActions = requiredAgentActionMethods.filter((method) =>
+    !workbenchActions.some((action) => action.method === method)
+  );
+  const missingOrientationActions = requiredAgentActionMethods.filter((method) =>
+    !orientationActions.some((action) => action.method === method)
+  );
+  const missingOrientationLinks = requiredAgentLinkMethods.filter((method) =>
+    !orientationLinks.some((link) => link.method === method)
+  );
+  if (runtimeControlPlane.transport !== "http" || buildControlPlane.transport !== "http") {
+    throw new Error("agent/workbench missing shared runtime/build control plane");
+  }
+  if (!agentTransports.some((transport) => transport.id === "http-rpc") || !agentTransports.some((transport) => transport.id === "mcp-stdio")) {
+    throw new Error("agent/workbench missing HTTP RPC or MCP transport affordance");
+  }
+  if (typeof auditStatus.verdict !== "string" || typeof failureSummary.count !== "number") {
+    throw new Error("agent/workbench missing compact audit status");
+  }
+  if (missingWorkbenchActions.length > 0) {
+    throw new Error(`agent/workbench missing actions: ${missingWorkbenchActions.join(", ")}`);
+  }
+  if (missingOrientationActions.length > 0) {
+    throw new Error(`agent/orient missing actions: ${missingOrientationActions.join(", ")}`);
+  }
+  if (missingOrientationLinks.length > 0) {
+    throw new Error(`agent/orient missing links: ${missingOrientationLinks.join(", ")}`);
+  }
+  return {
+    workbenchActions: workbenchActions.length,
+    orientationActions: orientationActions.length,
+    orientationLinks: orientationLinks.length,
+    agentTransports: agentTransports.length,
+    auditVerdict: auditStatus.verdict,
+    auditFailureCount: failureSummary.count
+  };
+};
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
 
@@ -293,6 +359,12 @@ export const createRuntimeHealthModule = (input: {
             await record("runtime-started:descriptor", () => checkRuntimeStartedDescriptorHealth(events));
             await record("runtime-audit:status", async () =>
               checkRuntimeAuditStatusHealth(await runPromise(methods.call("runtime/auditStatus", {})))
+            );
+            await record("agent-orientation:packets", async () =>
+              checkAgentOrientationHealth(
+                await runPromise(methods.call("agent/workbench", { limit: 3 })),
+                await runPromise(methods.call("agent/orient", { panelId: projectedPanels[0]?.id }))
+              )
             );
             await record("agent-transports:affordances", () => checkAgentTransportsHealth(events));
             await record("panels:project", () => checkPanelRuntimeHealth(projectedPanels, projectedExtensions, methodIds));

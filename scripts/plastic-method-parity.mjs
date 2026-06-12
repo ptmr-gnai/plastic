@@ -34,6 +34,7 @@ const sharedHealthCheckIds = [
   "runtime-modules:map",
   "runtime-started:descriptor",
   "runtime-audit:status",
+  "agent-orientation:packets",
   "agent-transports:affordances",
   "panels:project",
   "windows:project",
