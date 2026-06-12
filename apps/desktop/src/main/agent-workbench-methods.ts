@@ -233,6 +233,7 @@ const buildControl = async (input: {
       { id: "read-host", title: "Read runtime host", method: "runtime/host" },
       { id: "read-modules", title: "Read runtime modules", method: "runtime/modules" },
       { id: "read-audit-status", title: "Read latest runtime audit status", method: "runtime/auditStatus" },
+      { id: "plan-audit-action", title: "Inspect a current runtime audit action", method: "runtime/auditActionPlan" },
       { id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction" },
       { id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
       { id: "read-timeline", title: "Read timeline", method: "events/timeline", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } },
