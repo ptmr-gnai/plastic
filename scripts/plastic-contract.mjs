@@ -32,6 +32,8 @@ const validationMeta = { tags: validationTags };
 let state;
 let snapshot;
 let methods;
+let runtimeCapabilities;
+let runtimeModules;
 let createdPanelEvent;
 let extensions;
 let events;
@@ -197,6 +199,7 @@ await check("control method legibility and theme projection", async () => {
 await check("runtime/capabilities", async () => {
   const live = await assertRuntimeCapabilityInventory({ rpc });
   const durable = await assertRuntimeStartedCapabilityInventory({ rpc });
+  runtimeCapabilities = live;
   assertMatchingCapabilityInventories({ live, durable });
   const expectations = assertCapabilityStatuses({ items: live.items, mode: state.app.mode });
   assertCapabilityStatuses({ items: durable.items, mode: state.app.mode });
@@ -212,6 +215,7 @@ await check("runtime/host", async () => {
 await check("runtime/modules", async () => {
   const live = await assertRuntimeModuleInventory({ rpc });
   const durable = await assertRuntimeStartedModuleInventory({ rpc });
+  runtimeModules = live;
   assertMatchingModuleInventories({ live, durable });
   assertRuntimeModuleOrder({ assert, modules: live, source: "runtime/modules" });
   assertRuntimeModuleOrder({ assert, modules: durable, source: "runtime.started modules" });
@@ -222,12 +226,27 @@ await check("runtime/modules", async () => {
 
 await check("agent/workbench", async () => {
   const workbench = await rpc("agent/workbench", { limit: 5 });
-  return assertAgentWorkbenchPacket({ assert, assertArray, workbench, mode: state.app.mode, methodCount: methods.length });
+  return assertAgentWorkbenchPacket({
+    assert,
+    assertArray,
+    workbench,
+    mode: state.app.mode,
+    methodCount: methods.length,
+    capabilityCount: runtimeCapabilities.count,
+    moduleIds: runtimeModules.ids
+  });
 });
 
 await check("agent/orient", async () => {
   const orientation = await rpc("agent/orient", { panelId: "chat-main" });
-  return assertAgentOrientationPacket({ assert, assertArray, orientation, methodCount: methods.length });
+  return assertAgentOrientationPacket({
+    assert,
+    assertArray,
+    orientation,
+    methodCount: methods.length,
+    capabilityCount: runtimeCapabilities.count,
+    moduleIds: runtimeModules.ids
+  });
 });
 
 await check("agent backend metadata", async () => {

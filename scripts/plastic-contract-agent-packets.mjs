@@ -1,15 +1,18 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertAgentTransports } from "./plastic-contract-agent-transports.mjs";
 
-export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount }) => {
+export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount, capabilityCount, moduleIds }) => {
   assert(workbench?.app?.mode === mode, "workbench app mode does not match state");
   assert(workbench.app.hostBase?.id === "runtime-host-base" && workbench.app.hostBase?.version === 1, "workbench shared host base marker mismatch");
   assert(workbench.control?.methodCount >= 1, "workbench method count missing");
   assert(workbench.control.methodCount === methodCount, "workbench method count does not match plastic/methods");
   assert(workbench.control.capabilities?.count >= 1, "workbench capabilities count missing");
+  assert(workbench.control.capabilities.count === capabilityCount, "workbench capability count does not match runtime/capabilities");
   assertArray(workbench.control.capabilities.items, "workbench capabilities items missing");
   assert(workbench.control.modules?.count >= 1, "workbench runtime module count missing");
+  assert(workbench.control.modules.count === moduleIds.length, "workbench module count does not match runtime/modules");
   assertArray(workbench.control.modules.items, "workbench runtime modules items missing");
+  assertSameModuleIds({ assert, actual: workbench.control.modules.items, expected: moduleIds, source: "workbench" });
   assert(workbench.control.auditStatus?.verdict, "workbench missing compact audit status");
   assert(typeof workbench.control.auditStatus.failureSummary?.count === "number", "workbench audit status missing failure summary");
   assert(Array.isArray(workbench.control.auditStatus.failureSummary.ids), "workbench audit status missing failure ids");
@@ -48,15 +51,18 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   };
 };
 
-export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount }) => {
+export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount, capabilityCount, moduleIds }) => {
   assert(orientation?.agent?.id, "agent/orient missing agent id");
   assert(orientation.embodiment?.projectDir, "agent/orient missing projectDir");
   assert(orientation.capabilities?.hostBase?.id === "runtime-host-base" && orientation.capabilities.hostBase?.version === 1, "agent/orient shared host base marker mismatch");
   assert(orientation.capabilities.host?.count >= 1, "agent/orient missing host capability count");
+  assert(orientation.capabilities.host.count === capabilityCount, "agent/orient capability count does not match runtime/capabilities");
   assertArray(orientation.capabilities.host.items, "agent/orient host capabilities missing");
   assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
   assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
+  assert(orientation.capabilities.modules.count === moduleIds.length, "agent/orient module count does not match runtime/modules");
   assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
+  assertSameModuleIds({ assert, actual: orientation.capabilities.modules.items, expected: moduleIds, source: "agent/orient" });
   assert(orientation.capabilities.methodCount === methodCount, "agent/orient method count does not match plastic/methods");
   assertArray(orientation.capabilities.methods, "agent/orient recommended methods missing");
   assert(
@@ -113,4 +119,10 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
     visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
     recommendedActions: orientation.capabilities.recommendedActions.length
   };
+};
+
+const assertSameModuleIds = ({ assert, actual, expected, source }) => {
+  const actualIds = actual.map((module) => module.id).sort();
+  const expectedIds = [...expected].sort();
+  assert(JSON.stringify(actualIds) === JSON.stringify(expectedIds), `${source} module ids do not match runtime/modules`);
 };
