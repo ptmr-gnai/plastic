@@ -230,7 +230,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["plastic/methods", "methods/describe", "runtime/capabilities", "runtime/modules"] });
   assertReadMethodLegibility({ methods, ids: ["plastic/state", "plastic/snapshot"] });
   assertReadMethodLegibility({ methods, ids: ["agent/orient", "agent/workbench"] });
-  assertReadMethodLegibility({ methods, ids: ["app/diagnostics", "build/status", "runtime/auditStatus"] });
+  assertReadMethodLegibility({ methods, ids: ["app/diagnostics", "build/status", "runtime/auditStatus", "runtime/auditActionPlan"] });
   assertReadMethodLegibility({ methods, ids: ["extensions/list", "extensions/get"] });
   assertReadMethodLegibility({ methods, ids: ["extensions/verificationStatus"] });
   assertReadMethodLegibility({ methods, ids: ["panels/listMessages", "panels/mailboxes"] });

@@ -128,16 +128,7 @@ const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Ar
   return [rerunRuntimeUnificationAuditAction()];
 };
 
-const electronLaunchDiagnosisCodes = new Set([
-  "electron-child-running-compiled-main-not-entered",
-  "electron-main-entered-startup-missing",
-  "electron-cjs-entry-entered-esm-missing",
-  "electron-child-running-main-not-entered",
-  "electron-app-main-not-entered",
-  "electron-main-entry-not-observed",
-  "electron-main-startup-missing",
-  "electron-runtime-ports-missing"
-]);
+const electronLaunchDiagnosisCodes = new Set(["electron-child-running-compiled-main-not-entered", "electron-main-entered-startup-missing", "electron-cjs-entry-entered-esm-missing", "electron-child-running-main-not-entered", "electron-app-main-not-entered", "electron-main-entry-not-observed", "electron-main-startup-missing", "electron-runtime-ports-missing"]);
 
 const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
   if (
@@ -260,6 +251,8 @@ const auditActionInputSchema = {
   }
 };
 
+const auditActionPlanEffects = { durableEvents: [], mutatesProjection: [] };
+
 const recentAuditActions = (events: Array<PlasticEvent>) =>
   events
     .filter((event) => event.type === "runtime.auditAction.completed")
@@ -369,6 +362,59 @@ const registerAuditStatus = async (input: {
     })
   );
 
+const registerAuditActionPlan = async (input: {
+  methods: MethodRegistry;
+  runPromise: RunPromise;
+  readAuditStatus: ReadAuditStatus;
+}) =>
+  input.runPromise(
+    input.methods.register({
+      id: "runtime/auditActionPlan",
+      title: "Runtime audit action plan",
+      description: "Resolves a current runtime/auditStatus action id to its exact command, args, env, and invocation metadata without running it.",
+      owner: { kind: "runtime", id: "plastic.runtime" },
+      availability: runtimeDiagnosticsAvailability,
+      inputSchema: auditActionInputSchema,
+      examples: [
+        {
+          title: "Inspect a current audit action",
+          input: { id: "probe-electron-launch-targets" },
+          verifyWith: { method: "runtime/auditStatus", input: {} }
+        }
+      ],
+      effects: auditActionPlanEffects,
+      reversibility: readOnlyReversibility,
+      handler: (rawInput: unknown) =>
+        Effect.promise(async () => {
+          const actionId = (rawInput as { id?: unknown })?.id;
+          if (typeof actionId !== "string") {
+            throw new Error("runtime/auditActionPlan requires string id");
+          }
+          const auditStatus = await input.readAuditStatus();
+          const action = auditStatus.verdict.actions.find((candidate) => candidate.id === actionId);
+          if (!action) {
+            throw new Error(`No current runtime audit action found for id ${actionId}`);
+          }
+          return {
+            id: action.id,
+            title: action.title,
+            description: action.description,
+            command: action.run.command,
+            args: action.run.args,
+            env: action.run.env ?? {},
+            invocation: {
+              method: action.method,
+              input: action.input
+            },
+            audit: {
+              status: auditStatus.verdict.status,
+              diagnosis: auditStatus.verdict.diagnosis
+            }
+          };
+        })
+    })
+  );
+
 const registerRunAuditAction = async (input: {
   methods: MethodRegistry;
   runPromise: RunPromise;
@@ -446,6 +492,7 @@ export const createRuntimeDiagnosticsModule = (input: {
     const readAuditStatus = createAuditStatusReader(input.plasticDir, () => runPromise(eventStore.list()));
     await registerAppDiagnostics({ methods, runPromise, getDiagnostics: input.getDiagnostics });
     await registerAuditStatus({ methods, runPromise, readAuditStatus });
+    await registerAuditActionPlan({ methods, runPromise, readAuditStatus });
     await registerRunAuditAction({ methods, runPromise, appendEvent, readAuditStatus, runCommand: input.runCommand });
   }
 });

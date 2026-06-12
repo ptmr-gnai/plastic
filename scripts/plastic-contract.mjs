@@ -142,14 +142,26 @@ await check("methods/describe", async () => {
 
 await check("runtime/runAuditAction description", async () => {
   const description = await rpc("methods/describe", { id: "runtime/runAuditAction" });
+  const planDescription = await rpc("methods/describe", { id: "runtime/auditActionPlan" });
   assert(description.id === "runtime/runAuditAction", "described wrong audit action method");
+  assert(planDescription.id === "runtime/auditActionPlan", "described wrong audit action plan method");
   assert(description.inputSchema?.required?.includes("id"), "runtime/runAuditAction input schema must require id");
+  assert(planDescription.inputSchema?.required?.includes("id"), "runtime/auditActionPlan input schema must require id");
   assert(description.effects?.durableEvents?.includes("runtime.auditAction.completed"), "runtime/runAuditAction missing durable event effect");
+  assert(planDescription.effects?.durableEvents?.length === 0, "runtime/auditActionPlan should not append durable events");
   assert(description.examples?.some((example) => example.input?.id && example.verifyWith?.method === "runtime/auditStatus"), "runtime/runAuditAction example must teach audit-status verification");
+  assert(planDescription.examples?.some((example) => example.input?.id && example.verifyWith?.method === "runtime/auditStatus"), "runtime/auditActionPlan example must teach audit-status verification");
   assert(description.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === description.id), "runtime/runAuditAction missing invoke link");
+  assert(planDescription.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === planDescription.id), "runtime/auditActionPlan missing invoke link");
   const auditStatus = await rpc("runtime/auditStatus");
   assert(auditStatus.verdict?.actions?.every((action) => action.run?.command && Array.isArray(action.run?.args)), "runtime/runAuditAction actions missing structured run metadata");
-  return { id: description.id, required: description.inputSchema.required, durableEvents: description.effects.durableEvents };
+  const action = auditStatus.verdict.actions[0];
+  const plan = await rpc("runtime/auditActionPlan", { id: action.id });
+  assert(plan.id === action.id, "runtime/auditActionPlan id mismatch");
+  assert(plan.command === action.run.command, "runtime/auditActionPlan command mismatch");
+  assert(JSON.stringify(plan.args) === JSON.stringify(action.run.args), "runtime/auditActionPlan args mismatch");
+  assert(plan.invocation?.method === "runtime/runAuditAction" && plan.invocation?.input?.id === action.id, "runtime/auditActionPlan invocation mismatch");
+  return { id: description.id, planId: planDescription.id, plannedAction: plan.id, durableEvents: description.effects.durableEvents };
 });
 
 await check("bridge/callPlasticRpcTool description", async () => {

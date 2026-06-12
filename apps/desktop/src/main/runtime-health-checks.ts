@@ -10,6 +10,7 @@ export const requiredRuntimeMethods = [
   "runtime/host",
   "runtime/modules",
   "runtime/auditStatus",
+  "runtime/auditActionPlan",
   "runtime/runAuditAction",
   "panels/create",
   "events/list",
@@ -100,7 +101,7 @@ export const checkMethodRegistryHealth = (
     invalidAvailabilityStatuses,
     missingReferencedCapabilities,
     missingRequiredMethods,
-    requiredDiagnosticsMethods: methodIds.has("runtime/auditStatus") && methodIds.has("runtime/runAuditAction")
+    requiredDiagnosticsMethods: methodIds.has("runtime/auditStatus") && methodIds.has("runtime/auditActionPlan") && methodIds.has("runtime/runAuditAction")
   };
 };
 

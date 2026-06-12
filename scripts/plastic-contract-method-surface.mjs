@@ -74,6 +74,7 @@ export const expectedMethodIds = [
   "plastic/state",
   "renderer/reload",
   "rpc/call",
+  "runtime/auditActionPlan",
   "runtime/auditStatus",
   "runtime/capabilities",
   "runtime/host",
