@@ -8,6 +8,7 @@ import {
   hasLinkAffordance,
   hasServiceAffordance
 } from "./runtime-health-affordance-checks.js";
+import { checkAuditMetadata } from "./runtime-health-audit-checks.js";
 import { invalidControlPlaneUrls } from "./runtime-health-control-plane-checks.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
@@ -88,6 +89,7 @@ export const checkBuildStatusHealth = (buildStatus: unknown) => {
 };
 
 export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
+  const statusRecord = asRecord(auditStatus);
   const verdict = (auditStatus as { verdict?: Record<string, unknown> })?.verdict;
   const status = verdict?.status;
   const actions = Array.isArray(verdict?.actions) ? verdict.actions.map(asRecord) : [];
@@ -122,8 +124,9 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   if (invalidActionInvocations.length > 0) {
     throw new Error(`runtime/auditStatus actions have invalid invocation metadata: ${invalidActionInvocations.join(", ")}`);
   }
+  const summary = statusRecord.available === true ? checkAuditMetadata(statusRecord.summary, "runtime/auditStatus") : null;
   return {
-    available: (auditStatus as { available?: unknown }).available === true,
+    available: statusRecord.available === true,
     status,
     diagnosisCode: diagnosis.code,
     failureCount: failureSummary.count,
@@ -131,7 +134,8 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
     blockingFailureIds: failureSummary.blockingIds.filter((id): id is string => typeof id === "string"),
     firstFailureId: firstFailure?.id ?? null,
     actions: actions.length,
-    invalidActionInvocations
+    invalidActionInvocations,
+    summary
   };
 };
 
@@ -386,6 +390,9 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
   const orientationLinks = Array.isArray(capabilities.links) ? capabilities.links.map(asRecord) : [];
   const agentTransports = Array.isArray(control.agentTransports) ? control.agentTransports.map(asRecord) : [];
   const auditStatus = asRecord(control.auditStatus);
+  const auditMetadata = checkAuditMetadata(auditStatus.audit, "agent/workbench audit status");
+  const orientationAuditStatus = asRecord(capabilities.auditStatus);
+  const orientationAuditMetadata = checkAuditMetadata(orientationAuditStatus.audit, "agent/orient audit status");
   const failureSummary = asRecord(auditStatus.failureSummary);
   const controlPlane = asRecord(control.controlPlane);
   const runtimeControlPlane = asRecord(controlPlane.runtime);
@@ -426,7 +433,9 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
     unknownOrientationLinks,
     agentTransports: agentTransports.length,
     auditVerdict: auditStatus.verdict,
-    auditFailureCount: failureSummary.count
+    auditFailureCount: failureSummary.count,
+    auditMetadata,
+    orientationAuditMetadata
   };
 };
 
