@@ -60,6 +60,8 @@ const eventStream = async ({ baseUrl, label, trigger, timeoutMs = 5000 }) => {
   let text = "";
   let ready = false;
   let event = false;
+  let deliveredEvent = null;
+  let triggeredEvent = null;
   try {
     while (!event) {
       const chunk = await reader.read();
@@ -67,16 +69,30 @@ const eventStream = async ({ baseUrl, label, trigger, timeoutMs = 5000 }) => {
       text += decoder.decode(chunk.value, { stream: true });
       if (!ready && text.includes("event: plastic.ready")) {
         ready = true;
-        await trigger();
+        triggeredEvent = await trigger();
       }
-      event = text.includes("event: plastic.event");
+      deliveredEvent = parseLastSseData(text, "plastic.event");
+      event = deliveredEvent !== null;
     }
   } finally {
     clearTimeout(timeout);
     controller.abort();
     await reader.cancel().catch(() => {});
   }
-  return { ready, event };
+  return {
+    ready, event, triggeredEventId: triggeredEvent?.id ?? null,
+    deliveredEventId: deliveredEvent?.id ?? null, deliveredType: deliveredEvent?.type ?? null
+  };
+};
+
+const parseLastSseData = (text, eventName) => {
+  for (const event of text.split("\n\n").filter(Boolean).reverse()) {
+    if (!event.includes(`event: ${eventName}`)) continue;
+    const data = event.split("\n").find((line) => line.startsWith("data: "))?.slice("data: ".length);
+    if (!data) return null;
+    try { return JSON.parse(data); } catch { return null; }
+  }
+  return null;
 };
 
 export const runtimeEventStream = (input) => eventStream({ ...input, baseUrl: runtimeUrl, label: "runtime" });

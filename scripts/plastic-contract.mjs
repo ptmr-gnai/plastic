@@ -383,25 +383,17 @@ await check("events/append", async () => {
 
 await check("runtime event stream", async () => {
   const runtimeStream = await runtimeEventStream({
-    trigger: () => rpc("events/append", {
-      type: "contract.event_stream.appended",
-      payload: { runId },
-      scope: { workspaceId: "default" },
-      meta: validationMeta
-    })
+    trigger: () => rpc("events/append", { type: "contract.event_stream.appended", payload: { runId }, scope: { workspaceId: "default" }, meta: validationMeta })
   });
   assert(runtimeStream.ready, "runtime event stream did not emit ready");
   assert(runtimeStream.event, "runtime event stream did not emit appended event");
+  assert(runtimeStream.deliveredEventId === runtimeStream.triggeredEventId && runtimeStream.deliveredType === "contract.event_stream.appended", "runtime event stream delivered wrong event");
   const buildStream = await buildEventStream({
-    trigger: () => rpc("events/append", {
-      type: "contract.build_event_stream.appended",
-      payload: { runId },
-      scope: { workspaceId: "default" },
-      meta: validationMeta
-    })
+    trigger: () => rpc("events/append", { type: "contract.build_event_stream.appended", payload: { runId }, scope: { workspaceId: "default" }, meta: validationMeta })
   });
   assert(buildStream.ready, "build event stream did not emit ready");
   assert(buildStream.event, "build event stream did not emit appended event");
+  assert(buildStream.deliveredEventId === buildStream.triggeredEventId && buildStream.deliveredType === "contract.build_event_stream.appended", "build event stream delivered wrong event");
   return { runtime: runtimeStream, build: buildStream };
 });
 await check("panel lifecycle", async () => {
