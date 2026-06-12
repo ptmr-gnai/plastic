@@ -24,6 +24,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertSameModuleIds({ assert, actual: workbench.control.modules.items, expected: moduleIds, source: "workbench" });
   assertSameModuleAvailability({ assert, actual: workbench.control.modules.items, expected: modules.items, source: "workbench" });
   assert(workbench.control.auditStatus?.verdict, "workbench missing compact audit status");
+  assertAgentAuditMetadata({ assert, auditStatus: workbench.control.auditStatus, source: "workbench" });
   assert(typeof workbench.control.auditStatus.failureSummary?.count === "number", "workbench audit status missing failure summary");
   assert(Array.isArray(workbench.control.auditStatus.failureSummary.ids), "workbench audit status missing failure ids");
   assertArray(workbench.control.auditStatus.actionIds, "workbench audit status action ids missing");
@@ -80,6 +81,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
     "agent/orient recommended methods have invalid shape"
   );
   assert(orientation.capabilities.auditStatus?.verdict, "agent/orient missing compact audit status");
+  assertAgentAuditMetadata({ assert, auditStatus: orientation.capabilities.auditStatus, source: "agent/orient" });
   assert(typeof orientation.capabilities.auditStatus.failureSummary?.count === "number", "agent/orient audit status missing failure summary");
   assert(Array.isArray(orientation.capabilities.auditStatus.failureSummary.ids), "agent/orient audit status missing failure ids");
   assertArray(orientation.capabilities.auditStatus.actionIds, "agent/orient audit status action ids missing");
@@ -114,6 +116,17 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
     visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
     recommendedActions: orientation.capabilities.recommendedActions.length
   };
+};
+
+const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {
+  assert(auditStatus.audit?.schemaVersion === 1, `${source} audit status missing schema version`);
+  assert(typeof auditStatus.audit.generatedAt === "string" && !Number.isNaN(Date.parse(auditStatus.audit.generatedAt)), `${source} audit status missing generated timestamp`);
+  assert(typeof auditStatus.audit.checks === "number", `${source} audit status missing check count`);
+  assert(typeof auditStatus.audit.expectedChecks === "number", `${source} audit status missing expected check count`);
+  assert(Array.isArray(auditStatus.audit.expectedStepIds), `${source} audit status missing expected step ids`);
+  assert(typeof auditStatus.audit.usable === "boolean", `${source} audit status missing usable flag`);
+  assert(typeof auditStatus.audit.strictElectron === "string", `${source} audit status missing strict Electron status`);
+  assert(typeof auditStatus.audit.unified === "string", `${source} audit status missing unified status`);
 };
 
 const assertSameModuleIds = ({ assert, actual, expected, source }) => {
