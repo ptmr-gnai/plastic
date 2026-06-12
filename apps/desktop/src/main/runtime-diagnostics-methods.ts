@@ -32,6 +32,53 @@ const asStringArray = (value: unknown): Array<string> => Array.isArray(value) ? 
 
 const diagnosis = (code: string, phase: string | null, summary: string) => ({ code, phase, summary });
 
+const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>) => {
+  if (diagnosisResult.code === "audit-missing") {
+    return [
+      {
+        id: "run-runtime-unification-audit",
+        title: "Run runtime unification audit",
+        command: "pnpm plastic:audit-runtime-unification",
+        description: "Creates the persisted headed/headless audit that runtime/auditStatus reads."
+      }
+    ];
+  }
+  if (diagnosisResult.code === "electron-app-mode-smoke-not-entered") {
+    return [
+      {
+        id: "force-full-electron-launch-diagnostics",
+        title: "Force full Electron launch diagnostics",
+        command: "PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron",
+        description: "Skips the minimal app-mode smoke gate and attempts the full Plastic Electron launch path."
+      },
+      {
+        id: "extend-electron-app-mode-smoke-timeout",
+        title: "Extend Electron app-mode smoke timeout",
+        command: "PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS=10000 pnpm plastic:validate-electron",
+        description: "Gives the minimal Electron app-mode smoke check more time before classifying app mode as unavailable."
+      }
+    ];
+  }
+  if (diagnosisResult.code === "electron-child-running-compiled-main-not-entered") {
+    return [
+      {
+        id: "try-electron-package-launch-mode",
+        title: "Try Electron package launch mode",
+        command: "PLASTIC_ELECTRON_LAUNCH_MODE=package PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron",
+        description: "Compares package launch behavior against compiled-main launch behavior while preserving full Electron diagnostics."
+      }
+    ];
+  }
+  return [
+    {
+      id: "rerun-runtime-unification-audit",
+      title: "Rerun runtime unification audit",
+      command: "pnpm plastic:audit-runtime-unification",
+      description: "Refreshes the persisted audit after the diagnosed issue is addressed."
+    }
+  ];
+};
+
 const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
   if (
     failurePhase === "electron"
@@ -115,7 +162,8 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
         summary: "No runtime unification audit has been written yet."
       },
       hints: [],
-      nextAction: "Run pnpm plastic:audit-runtime-unification to create a runtime unification audit."
+      nextAction: "Run pnpm plastic:audit-runtime-unification to create a runtime unification audit.",
+      actions: diagnosticActionsFor(diagnosis("audit-missing", null, "No runtime unification audit has been written yet."))
     };
   }
 
@@ -127,8 +175,10 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
   const usable = summary.runtimeUnification?.usable === true;
   const status = usable ? strictElectron === "passed" && unified === "passed" ? "passed" : "degraded" : "failed";
   const failurePhase = typeof firstFailed?.id === "string" ? firstFailed.id : null;
-  const diagnosis = diagnoseFailure(failurePhase, hints);
-  const nextAction = failurePhase === "electron"
+  const diagnosisResult = diagnoseFailure(failurePhase, hints);
+  const nextAction = diagnosisResult.code === "electron-app-mode-smoke-not-entered"
+    ? "Electron app mode cannot enter a minimal app in this host. Fix host Electron app-mode launch or run PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE=1 pnpm plastic:validate-electron to force full Plastic launch diagnostics."
+    : failurePhase === "electron"
     ? "Investigate Electron launch before Plastic main-process startup; compare host output, port listeners, and runtime startup logs."
     : failurePhase
       ? `Fix the ${failurePhase} validation failure, then rerun pnpm plastic:audit-runtime-unification.`
@@ -136,7 +186,7 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
         ? "Continue closing headed/headless runtime gaps; strict Electron is the remaining proof when degraded."
         : "Rerun pnpm plastic:audit-runtime-unification and inspect failed check diagnostics.";
 
-  return { status, usable, strictElectron, unified, failurePhase, diagnosis, hints, nextAction };
+  return { status, usable, strictElectron, unified, failurePhase, diagnosis: diagnosisResult, hints, nextAction, actions: diagnosticActionsFor(diagnosisResult) };
 };
 
 export const createRuntimeDiagnosticsModule = (input: {

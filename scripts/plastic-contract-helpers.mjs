@@ -119,6 +119,8 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   assert(typeof auditStatus.verdict?.diagnosis?.code === "string", "runtime/auditStatus missing diagnosis code");
   assert(typeof auditStatus.verdict?.diagnosis?.summary === "string", "runtime/auditStatus missing diagnosis summary");
   assert(typeof auditStatus.verdict?.nextAction === "string", "runtime/auditStatus missing next action");
+  assert(Array.isArray(auditStatus.verdict?.actions), "runtime/auditStatus missing diagnostic actions");
+  assert(auditStatus.verdict.actions.every((action) => typeof action.id === "string" && typeof action.command === "string"), "runtime/auditStatus diagnostic actions must expose id and command");
   if (auditStatus.available) {
     assert(typeof auditStatus.summary?.runtimeUnification?.usable === "boolean", "runtime/auditStatus missing structured verdict");
     const failedResults = auditStatus.summary.results?.filter((result) => result.ok === false) ?? [];
