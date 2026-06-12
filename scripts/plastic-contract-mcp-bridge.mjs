@@ -38,6 +38,22 @@ const callMcpTool = async ({ mcp, responses, stderr, id, method, input }) => {
   return JSON.parse(response.result.content[0].text);
 };
 
+const assertMcpToolMetadata = async ({ mcp, responses, stderr }) => {
+  mcp.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }) + "\n");
+  const listedTools = await waitForResponse(responses, 2, stderr);
+  const plasticTool = listedTools.result?.tools?.find((candidate) => candidate.name === "plastic_rpc");
+  assert(plasticTool, "MCP tools/list missing plastic_rpc");
+  assert(plasticTool.description?.includes("agent/orient"), "MCP plastic_rpc description must teach agent/orient");
+  assert(plasticTool.description?.includes("runtime/auditStatus"), "MCP plastic_rpc description must teach runtime/auditStatus");
+  assert(plasticTool.description?.includes("runtime/auditActionPlan"), "MCP plastic_rpc description must teach runtime/auditActionPlan");
+};
+
+const initializeMcp = async ({ mcp, responses, stderr }) => {
+  mcp.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }) + "\n");
+  const initialized = await waitForResponse(responses, 1, stderr);
+  assert(initialized.result?.serverInfo?.name === "plastic", "MCP initialize returned wrong server");
+};
+
 const run = async () => {
   const mcp = spawn("node", ["scripts/plastic-mcp-server.mjs"], {
     cwd: new URL("..", import.meta.url).pathname,
@@ -63,15 +79,14 @@ const run = async () => {
   });
 
   try {
-    mcp.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }) + "\n");
-    const initialized = await waitForResponse(responses, 1, () => stderrText);
-    assert(initialized.result?.serverInfo?.name === "plastic", "MCP initialize returned wrong server");
+    await initializeMcp({ mcp, responses, stderr: () => stderrText });
+    await assertMcpToolMetadata({ mcp, responses, stderr: () => stderrText });
 
     const payload = await callMcpTool({
       mcp,
       responses,
       stderr: () => stderrText,
-      id: 2,
+      id: 3,
       method: "runtime/auditStatus",
       input: {}
     });
@@ -85,7 +100,7 @@ const run = async () => {
       mcp,
       responses,
       stderr: () => stderrText,
-      id: 3,
+      id: 4,
       method: "runtime/auditActionPlan",
       input: { id: actionId }
     });

@@ -60,7 +60,7 @@ const appendBridgeEvent = async (type, payload) => {
 
 const tool = {
   name: "plastic_rpc",
-  description: "Call any registered Plastic RPC method through the shared Plastic method registry. The result includes delegated method effects and reversibility when available. For orientation, call agent/orient or agent/workbench first; for headed/headless audit state, call runtime/auditStatus.",
+  description: "Call any registered Plastic RPC method through the shared Plastic method registry. The result includes delegated method effects and reversibility when available. For orientation, call agent/orient or agent/workbench first. For headed/headless audit state, call runtime/auditStatus, inspect a current action with runtime/auditActionPlan, then call runtime/runAuditAction only when execution is intended.",
   inputSchema: {
     type: "object",
     properties: {
