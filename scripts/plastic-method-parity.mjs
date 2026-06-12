@@ -107,6 +107,7 @@ const healthShape = (selfTest) => {
   return {
     ok: selfTest?.ok === true,
     checkIds: sorted(checks.map((check) => check.id)),
+    summary: selfTest?.summary ?? null,
     sharedChecks: sharedHealthCheckIds.map((id) => ({
       id,
       ok: byId[id]?.ok === true

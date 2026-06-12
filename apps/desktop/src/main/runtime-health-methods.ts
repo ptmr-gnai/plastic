@@ -128,18 +128,31 @@ export const createRuntimeHealthModule = (input: {
             await record("panels:project", () => checkPanelRuntimeHealth(projectedPanels, projectedExtensions, methodIds));
             await record("windows:project", () => checkWindowRuntimeHealth(projectedWindows, projectedPanels, methodList));
             await record("extensions:project", () => checkExtensionRuntimeHealth(projectedExtensions, methodIds));
+            const sharedCheckIds = checks.map((check) => check.id);
             for (const check of input.hostChecks ?? []) {
               await record(check.id, check.run);
             }
-
             const ok = checks.every((check) => check.ok);
+            const summary = summarizeHealthChecks(checks, sharedCheckIds);
             const event = await appendEvent({
               type: "plastic.self_test.completed",
-              payload: { ok, checks }
+              payload: { ok, summary, checks }
             });
-            return { ok, checks, eventId: event.id };
+            return { ok, summary, checks, eventId: event.id };
           })
       })
     );
   }
 });
+
+const summarizeHealthChecks = (checks: HealthCheck[], sharedCheckIds: string[]) => {
+  const hostCheckIds = checks.map((check) => check.id).filter((id) => !sharedCheckIds.includes(id));
+  return {
+    total: checks.length,
+    shared: sharedCheckIds.length,
+    host: hostCheckIds.length,
+    failedIds: checks.filter((check) => !check.ok).map((check) => check.id),
+    sharedCheckIds,
+    hostCheckIds
+  };
+};

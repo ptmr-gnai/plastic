@@ -1,5 +1,9 @@
 export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(selfTest.ok === true, "plastic/selfTest failed");
+  assert(selfTest.summary?.total === selfTest.checks?.length, "plastic/selfTest summary total does not match checks");
+  assert(selfTest.summary?.shared > 0, "plastic/selfTest summary missing shared checks");
+  assert(Array.isArray(selfTest.summary?.hostCheckIds), "plastic/selfTest summary missing host check ids");
+  assert(selfTest.summary?.failedIds?.length === 0, "plastic/selfTest summary reported failed checks");
   const methodCheck = selfTest.checks?.find((candidate) => candidate.id === "methods:list");
   assert(methodCheck?.details?.invalidIdentity?.length === 0, "plastic/selfTest method identity check failed");
   assert(methodCheck?.details?.missingAvailability?.length === 0, "plastic/selfTest method availability check failed");
