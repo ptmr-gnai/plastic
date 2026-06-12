@@ -20,6 +20,9 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(moduleCheck.details.missingAvailabilitySummary?.length === 0, "plastic/selfTest module availability summary check failed");
   assert(moduleCheck.details.invalidAvailabilityCounts?.length === 0, "plastic/selfTest module availability count check failed");
   assert(moduleCheck.details.missingContributions?.length === 0, "plastic/selfTest module contribution check failed");
+  const hostIdentityCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-host:identity");
+  assert(hostIdentityCheck?.details?.mismatchedIdentityFields?.length === 0, "plastic/selfTest host identity check failed");
+  assert(hostIdentityCheck.details.agentTransportsMatch === true, "plastic/selfTest host transport identity check failed");
   const auditCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-audit:status");
   assert(["missing", "passed", "degraded", "failed"].includes(auditCheck?.details?.status), "plastic/selfTest audit status check failed");
   assert(typeof auditCheck.details.actions === "number", "plastic/selfTest audit status actions check failed");

@@ -39,6 +39,7 @@ const sharedHealthCheckIds = [
   "runtime-modules:map",
   "runtime-modules:coverage",
   "runtime-started:descriptor",
+  "runtime-host:identity",
   "runtime-audit:status",
   "agent-orientation:packets",
   "agent-transports:affordances",

@@ -20,6 +20,7 @@ import {
   checkExtensionRuntimeHealth,
   checkPanelRuntimeHealth,
   checkProjectionDiscoveryHealth,
+  checkRuntimeHostIdentityHealth,
   checkRuntimeAuditStatusHealth,
   checkRuntimeStartedDescriptorHealth,
   checkWindowRuntimeHealth
@@ -114,14 +115,11 @@ export const createRuntimeHealthModule = (input: {
               checkBuildStatusHealth(await runPromise(methods.call("build/status", {})))
             );
             const runtimeModules = await runPromise(methods.call("runtime/modules", {}));
-            await record("runtime-modules:map", async () =>
-              checkRuntimeModuleMapHealth(runtimeModules)
-            );
+            await record("runtime-modules:map", async () => checkRuntimeModuleMapHealth(runtimeModules));
             await record("runtime-modules:coverage", () => checkRuntimeModuleCoverageHealth(runtimeModules, methodList));
             await record("runtime-started:descriptor", () => checkRuntimeStartedDescriptorHealth(events));
-            await record("runtime-audit:status", async () =>
-              checkRuntimeAuditStatusHealth(await runPromise(methods.call("runtime/auditStatus", {})))
-            );
+            await record("runtime-host:identity", async () => checkRuntimeHostIdentityHealth(await runPromise(methods.call("runtime/host", {})), events));
+            await record("runtime-audit:status", async () => checkRuntimeAuditStatusHealth(await runPromise(methods.call("runtime/auditStatus", {}))));
             await record("agent-orientation:packets", async () =>
               checkAgentOrientationHealth(
                 await runPromise(methods.call("agent/workbench", { limit: 3 })),
