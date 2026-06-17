@@ -43,6 +43,15 @@ export const assertRuntimeAuditActionPlanMethodDescription = ({ assert, descript
   return { id: description.id, required: description.outputSchema.required };
 };
 
+export const assertRunAuditActionMethodDescription = ({ assert, description }) => {
+  assert(description.id === "runtime/runAuditAction", "described wrong audit action method");
+  assert(description.outputSchema?.required?.includes("eventId"), "runtime/runAuditAction output schema must require eventId");
+  assert(description.outputSchema?.required?.includes("auditMetadata"), "runtime/runAuditAction output schema must require auditMetadata");
+  assert(description.outputSchema?.properties?.ok?.type === "boolean", "runtime/runAuditAction output schema must expose ok");
+  assert(description.outputSchema?.properties?.exitCode?.type?.includes("number"), "runtime/runAuditAction output schema must expose numeric exitCode");
+  return { id: description.id, required: description.outputSchema.required };
+};
+
 const assertPersistedAuditSummary = (summary) => {
   assert(summary?.schemaVersion === 1, "runtime/auditStatus missing audit schema version");
   assert(typeof summary.generatedAt === "string" && !Number.isNaN(Date.parse(summary.generatedAt)), "runtime/auditStatus missing audit generated timestamp");

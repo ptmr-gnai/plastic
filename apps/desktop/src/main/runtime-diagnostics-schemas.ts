@@ -70,3 +70,23 @@ export const auditActionPlanOutputSchema = {
     }
   }
 };
+
+export const runAuditActionOutputSchema = {
+  type: "object",
+  required: ["ok", "action", "startedAt", "completedAt", "auditMetadata", "command", "args", "env", "exitCode", "stdout", "stderr", "eventId"],
+  properties: {
+    ok: { type: "boolean" },
+    action: { type: "object" },
+    startedAt: { type: "string" },
+    completedAt: { type: "string" },
+    auditMetadata: { type: "object" },
+    command: { type: "string" },
+    args: { type: "array", items: { type: "string" } },
+    env: { type: "object" },
+    exitCode: { type: ["number", "null"] },
+    signal: { type: ["string", "null"] },
+    stdout: { type: "string" },
+    stderr: { type: "string" },
+    eventId: { type: "string" }
+  }
+};
