@@ -21,6 +21,7 @@ const require = createRequire(import.meta.url);
 const electron = require("electron") as typeof import("electron");
 const { app, BrowserWindow, ipcMain } = electron;
 const windows = new Set<ElectronBrowserWindow>();
+const viteDevServerUrl = process.env.PLASTIC_VITE_URL ?? process.env.VITE_DEV_SERVER_URL ?? null;
 const {
   hostConfig,
   hostStatus,
@@ -35,7 +36,7 @@ const {
   runtimeRpcUrl: (config) => config.preferredRuntimeRpcUrl,
   getBuildStatusExtra: (config) => ({
     extensionsDir: join(config.plasticDir, "extensions"),
-    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null,
+    viteUrl: viteDevServerUrl,
     runtimeSocket: config.controlPlane.runtime.baseUrl,
     runtimeRpcUrls: config.runtimeRpcUrls
   }),
@@ -43,7 +44,7 @@ const {
     appReady: app.isReady(),
     windowCount: BrowserWindow.getAllWindows().length,
     retainedWindowCount: windows.size,
-    viteUrl: process.env.VITE_DEV_SERVER_URL ?? null
+    viteUrl: viteDevServerUrl
   })
 });
 const {
@@ -108,8 +109,8 @@ async function createWindow(title = "Plastic") {
       )
   );
 
-  if (process.env.VITE_DEV_SERVER_URL) {
-    await window.loadURL(process.env.VITE_DEV_SERVER_URL);
+  if (viteDevServerUrl) {
+    await window.loadURL(viteDevServerUrl);
   } else {
     await window.loadFile(new URL("../../dist/index.html", import.meta.url).pathname);
   }
@@ -120,8 +121,8 @@ async function createWindow(title = "Plastic") {
 const electronIpcTransport = startElectronIpcTransport({ ipcMain, methods, runPromise });
 
 const electronDeixisHost = createElectronDeixisHost(BrowserWindow);
-const viteRuntimeCorsOrigin = process.env.VITE_DEV_SERVER_URL
-  ? new URL(process.env.VITE_DEV_SERVER_URL).origin
+const viteRuntimeCorsOrigin = viteDevServerUrl
+  ? new URL(viteDevServerUrl).origin
   : "http://127.0.0.1:5173";
 const codexAgentBackendModule: RuntimeModule = {
   id: "agent-backend",
