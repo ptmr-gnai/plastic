@@ -34,6 +34,15 @@ export const assertRuntimeAuditStatusMethodDescription = ({ assert, description 
   return { id: description.id, statuses: description.outputSchema.properties.verdict.properties.status.enum };
 };
 
+export const assertRuntimeAuditActionPlanMethodDescription = ({ assert, description }) => {
+  assert(description.id === "runtime/auditActionPlan", "described wrong audit action plan method");
+  assert(description.outputSchema?.required?.includes("invocation"), "runtime/auditActionPlan output schema must require invocation");
+  assert(description.outputSchema?.required?.includes("audit"), "runtime/auditActionPlan output schema must require audit");
+  assert(description.outputSchema?.properties?.invocation?.properties?.method?.enum?.includes("runtime/runAuditAction"), "runtime/auditActionPlan output schema must expose run invocation method");
+  assert(description.outputSchema?.properties?.audit?.properties?.status?.enum?.includes("running"), "runtime/auditActionPlan output schema must expose audit running status");
+  return { id: description.id, required: description.outputSchema.required };
+};
+
 const assertPersistedAuditSummary = (summary) => {
   assert(summary?.schemaVersion === 1, "runtime/auditStatus missing audit schema version");
   assert(typeof summary.generatedAt === "string" && !Number.isNaN(Date.parse(summary.generatedAt)), "runtime/auditStatus missing audit generated timestamp");

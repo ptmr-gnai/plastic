@@ -40,3 +40,33 @@ export const auditStatusOutputSchema = {
     recentActions: { type: "array" }
   }
 };
+
+export const auditActionPlanOutputSchema = {
+  type: "object",
+  required: ["id", "title", "description", "command", "args", "env", "invocation", "audit"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    description: { type: "string" },
+    command: { type: "string" },
+    args: { type: "array", items: { type: "string" } },
+    env: { type: "object" },
+    invocation: {
+      type: "object",
+      required: ["method", "input"],
+      properties: {
+        method: { type: "string", enum: ["runtime/runAuditAction"] },
+        input: { type: "object", required: ["id"], properties: { id: { type: "string" } } }
+      }
+    },
+    audit: {
+      type: "object",
+      required: ["metadata", "status", "diagnosis"],
+      properties: {
+        metadata: { type: "object" },
+        status: { type: "string", enum: ["missing", "running", "passed", "degraded", "failed"] },
+        diagnosis: { type: "object" }
+      }
+    }
+  }
+};
