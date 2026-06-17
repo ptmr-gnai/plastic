@@ -26,6 +26,14 @@ export type PlasticEvent = {
   payload: unknown;
 };
 
+type RuntimeHost = {
+  controlPlane?: {
+    runtime?: {
+      eventStreamUrl?: string;
+    };
+  };
+};
+
 export type PlasticExtension = {
   id: string;
   title: string;
@@ -85,6 +93,18 @@ export const callPlastic = async (method: string, input?: unknown): Promise<unkn
     throw new Error(result.error);
   }
   return result.value;
+};
+
+export const runtimeEventStreamUrl = async (): Promise<string> => {
+  try {
+    const host = await callPlastic("runtime/host") as RuntimeHost;
+    if (host.controlPlane?.runtime?.eventStreamUrl) {
+      return host.controlPlane.runtime.eventStreamUrl;
+    }
+  } catch {
+    // Browser-only development can still fall back to the default local runtime.
+  }
+  return "http://127.0.0.1:7331/events/stream";
 };
 
 export const buttonFromEvent = (event: PlasticEvent): ChatButton | undefined =>

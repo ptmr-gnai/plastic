@@ -17,6 +17,7 @@ import {
   buttonFromEvent,
   callPlastic,
   escapeHtml,
+  runtimeEventStreamUrl,
   type CodexStatus,
   type PlasticEvent,
   type PlasticExtension,
@@ -156,17 +157,21 @@ const render = async (force = false): Promise<void> => {
   return renderInFlight;
 };
 
-void render(true);
-const events = new EventSource("http://127.0.0.1:7331/events/stream");
-events.addEventListener("plastic.event", () => {
-  void render();
-});
-
-events.onerror = () => {
-  window.setTimeout(() => {
+const connectEventStream = async () => {
+  const events = new EventSource(await runtimeEventStreamUrl());
+  events.addEventListener("plastic.event", () => {
     void render();
-  }, 1000);
+  });
+
+  events.onerror = () => {
+    window.setTimeout(() => {
+      void render();
+    }, 1000);
+  };
 };
+
+void render(true);
+void connectEventStream();
 
 window.addEventListener("message", (event) => {
   if (event.data?.type !== "plastic:listVisibleRefs") {
