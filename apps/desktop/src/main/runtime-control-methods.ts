@@ -11,7 +11,7 @@ import {
   withMethodAffordanceLinks
 } from "@plastic/core";
 import { eventMetaSchema, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
-import { eventsListOutputSchema, eventsTimelineOutputSchema, plasticEventSchema, plasticMethodSchema, plasticMethodsOutputSchema, rpcCallInputSchema, runtimeCapabilitiesOutputSchema } from "./runtime-control-schemas.js";
+import { eventsListOutputSchema, eventsTimelineOutputSchema, plasticEventSchema, plasticMethodSchema, plasticMethodsOutputSchema, rpcCallInputSchema, rpcCallOutputSchema, runtimeCapabilitiesOutputSchema } from "./runtime-control-schemas.js";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
 const runtimeControlAvailability = {
@@ -173,6 +173,7 @@ const registerRpcCall = async (input: {
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: runtimeControlAvailability,
       inputSchema: rpcCallInputSchema,
+      outputSchema: rpcCallOutputSchema,
       examples: [
         {
           title: "Call a read-only method through the shared registry",

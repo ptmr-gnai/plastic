@@ -6,7 +6,7 @@ import {
   type MethodRegistry
 } from "@plastic/core";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
-import { eventMetaSchema } from "./runtime-method-metadata.js";
+import { eventMetaSchema, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import { plasticEventSchema } from "./runtime-control-schemas.js";
 
 type PanelCreateInput = {
@@ -89,7 +89,11 @@ const registerPanelList = async (input: {
       description: "Returns the panel read model rebuilt from durable events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: panelControlAvailability,
+      inputSchema: noInputSchema,
       outputSchema: panelsListOutputSchema,
+      examples: [{ title: "List panels", input: {}, verifyWith: { method: "methods/describe", input: { id: "panels/list" } } }],
+      effects: readOnlyEffects,
+      reversibility: readOnlyReversibility,
       handler: () => Effect.map(eventStore.list(), projectPanels)
     })
   );

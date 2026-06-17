@@ -1,5 +1,8 @@
 export const assertPanelControlMethodDescriptions = ({ assert, descriptions }) => {
+  assert(descriptions.list.inputSchema?.type === "object", "panels/list input schema must be object");
   assertPanelSchema({ assert, schema: descriptions.list.outputSchema?.items, label: "panels/list item" });
+  assert(descriptions.list.effects?.durableEvents?.length === 0, "panels/list must describe no durable events");
+  assert(descriptions.list.reversibility?.reversible === true, "panels/list must be read-only reversible");
   assertPanelSchema({ assert, schema: descriptions.get.outputSchema, label: "panels/get output" });
   assertEventOutput({ assert, description: descriptions.create, eventType: "panel.created", projection: "panels" });
   assertEventOutput({ assert, description: descriptions.rename, eventType: "panel.renamed", projection: "panels" });

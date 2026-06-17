@@ -142,3 +142,7 @@ export const rpcCallInputSchema = {
     input: { description: "Input passed through to the delegated RPC method." }
   }
 };
+
+export const rpcCallOutputSchema = {
+  description: "Result returned by the delegated Plastic RPC method."
+};
