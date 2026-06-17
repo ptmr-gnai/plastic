@@ -370,6 +370,9 @@ const runHost = async ({ label, script, parity, requiresRenderer = false }) => {
     await run("pnpm", ["plastic:contract-mcp-bridge"], {
       env: { ...process.env, PLASTIC_RPC_URL: rpcUrl }
     });
+    await run("pnpm", ["plastic:architecture-method-surface"], {
+      env: { ...process.env, PLASTIC_RPC_URL: rpcUrl }
+    });
     if (parity === "capture") {
       await mkdir(dirname(parityBaseline), { recursive: true });
       await run("pnpm", ["plastic:method-parity"], {
