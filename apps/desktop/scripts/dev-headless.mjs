@@ -10,6 +10,7 @@ const headlessMain = new URL("../dist-electron/main/headless.js", import.meta.ur
 const tscBin = new URL("../node_modules/typescript/bin/tsc", import.meta.url).pathname;
 const distDir = new URL("../dist", import.meta.url).pathname;
 const staticPort = Number(process.env.PLASTIC_STATIC_PORT ?? 5173);
+const skipStaticServer = process.env.PLASTIC_HEADLESS_SKIP_STATIC_SERVER === "1";
 const skipCorePrebuild = process.env.PLASTIC_SKIP_CORE_PREBUILD === "1";
 const skipCoreWatch = process.env.PLASTIC_SKIP_CORE_WATCH === "1";
 let staticServer;
@@ -84,7 +85,9 @@ const mimeTypes = new Map([
   [".webp", "image/webp"]
 ]);
 
-if (existsSync(new URL("../dist/index.html", import.meta.url))) {
+if (skipStaticServer) {
+  console.log("[plastic:headless] Static renderer server skipped.");
+} else if (existsSync(new URL("../dist/index.html", import.meta.url))) {
   staticServer = createServer((request, response) => {
     const url = new URL(request.url ?? "/", `http://127.0.0.1:${staticPort}`);
     const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;

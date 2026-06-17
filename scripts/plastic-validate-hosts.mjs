@@ -181,7 +181,7 @@ const runElectronAppModeSmoke = async () => {
   }
 };
 
-const startHost = (script) => {
+const startHost = (script, hostEnv = {}) => {
   const child = spawn("node", [`scripts/${script}`], {
     cwd: desktopDir,
     stdio: ["ignore", "pipe", "pipe"],
@@ -191,7 +191,9 @@ const startHost = (script) => {
       ...process.env,
       PLASTIC_SKIP_CORE_PREBUILD: "1",
       PLASTIC_SKIP_CORE_WATCH: "1",
-      ...(script === "dev.mjs" ? { PLASTIC_DEV_EXIT_ON_ELECTRON_EXIT: "1" } : {})
+      ...(script === "dev-headless.mjs" ? { PLASTIC_HEADLESS_SKIP_STATIC_SERVER: "1" } : {}),
+      ...(script === "dev.mjs" ? { PLASTIC_DEV_EXIT_ON_ELECTRON_EXIT: "1" } : {}),
+      ...hostEnv
     }
   });
   activeHostOutput = [];
@@ -278,11 +280,11 @@ const assertPortAvailable = (url, label) =>
     });
   });
 
-const assertValidationPortsAvailable = async (label) => {
+const assertValidationPortsAvailable = async (label, { requiresRenderer = false } = {}) => {
   const urls = [
     { url: runtimeUrl, label: `${label} runtime` },
     { url: buildUrl, label: `${label} build` },
-    { url: viteUrl, label: `${label} renderer` }
+    ...(requiresRenderer ? [{ url: viteUrl, label: `${label} renderer` }] : [])
   ];
   const seen = new Set();
   for (const item of urls) {
@@ -307,14 +309,19 @@ const capturedText = (result) => {
   ].join("\n");
 };
 
+const portFromUrl = (url) => new URL(url).port;
+const hostFromUrl = (url) => new URL(url).hostname;
+
 const collectHostDiagnostics = async (label) => {
   if (process.platform === "win32") {
     return `No ${label} process diagnostics are configured for Windows yet.`;
   }
+  const runtimePort = portFromUrl(runtimeUrl);
+  const buildPort = portFromUrl(buildUrl);
   const [processes, runtimePortState, buildPortState] = await Promise.all([
     runCaptured("ps", ["-axo", "pid,ppid,state,command"]),
-    runCaptured("lsof", ["-nP", "-iTCP:7331", "-sTCP:LISTEN"]),
-    runCaptured("lsof", ["-nP", "-iTCP:7332", "-sTCP:LISTEN"])
+    runCaptured("lsof", ["-nP", `-iTCP:${runtimePort}`, "-sTCP:LISTEN"]),
+    runCaptured("lsof", ["-nP", `-iTCP:${buildPort}`, "-sTCP:LISTEN"])
   ]);
   const processLines = processes.stdout
     .split("\n")
@@ -337,10 +344,18 @@ const collectHostDiagnostics = async (label) => {
   ].join("\n");
 };
 
-const runHost = async ({ label, script, parity }) => {
+const runHost = async ({ label, script, parity, requiresRenderer = false }) => {
   console.log(`[plastic:validate-hosts] starting ${label}`);
-  await assertValidationPortsAvailable(label);
-  startHost(script);
+  await assertValidationPortsAvailable(label, { requiresRenderer });
+  const runtimePort = portFromUrl(runtimeUrl);
+  const buildPort = portFromUrl(buildUrl);
+  startHost(script, {
+    PLASTIC_RUNTIME_HOST: hostFromUrl(runtimeUrl),
+    PLASTIC_RUNTIME_PORT: runtimePort,
+    PLASTIC_BUILD_HOST: hostFromUrl(buildUrl),
+    PLASTIC_BUILD_PORT: buildPort,
+    PLASTIC_RPC_URL: rpcUrl
+  });
   try {
     try {
       await waitForHost(label);
@@ -375,7 +390,7 @@ const runHost = async ({ label, script, parity }) => {
 const runElectronValidation = async ({ parity }) => {
   await runElectronPreflight();
   await runElectronAppModeSmoke();
-  await runHost({ label: "electron", script: "dev.mjs", parity });
+  await runHost({ label: "electron", script: "dev.mjs", parity, requiresRenderer: true });
 };
 
 const buildSharedRuntimePackages = async () => {
