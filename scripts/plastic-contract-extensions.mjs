@@ -9,6 +9,10 @@ export const assertExtensionQueryMethodDescriptions = ({ assert, descriptions })
 };
 
 export const assertExtensionLifecycleMethodDescriptions = ({ assert, descriptions }) => {
+  assert(descriptions.scaffold.outputSchema?.required?.includes("extensionId"), "extensions/scaffold output schema must require extensionId");
+  assert(descriptions.scaffold.outputSchema?.required?.includes("manifestPath"), "extensions/scaffold output schema must require manifestPath");
+  assert(descriptions.scaffold.outputSchema?.required?.includes("eventId"), "extensions/scaffold output schema must require eventId");
+  assert(descriptions.scaffold.effects?.durableEvents?.includes("extension.scaffolded"), "extensions/scaffold must describe scaffolded events");
   assert(descriptions.activate.outputSchema?.required?.includes("activated"), "extensions/activate output schema must require activated");
   assert(descriptions.activate.outputSchema?.required?.includes("skipped"), "extensions/activate output schema must require skipped");
   assert(descriptions.activate.outputSchema?.required?.includes("failed"), "extensions/activate output schema must require failed");

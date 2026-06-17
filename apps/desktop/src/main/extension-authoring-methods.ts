@@ -20,6 +20,20 @@ const extensionAuthoringAvailability = {
   notes: "Extension authoring writes workspace files and durable events through the shared runtime."
 };
 
+const scaffoldExtensionOutputSchema = {
+  type: "object",
+  required: ["extensionId", "panelId", "extensionDir", "manifestPath", "entryPath", "manifest", "eventId"],
+  properties: {
+    extensionId: { type: "string" },
+    panelId: { type: "string" },
+    extensionDir: { type: "string" },
+    manifestPath: { type: "string" },
+    entryPath: { type: "string" },
+    manifest: { type: "object" },
+    eventId: { type: "string" }
+  }
+};
+
 export const createExtensionAuthoringModule = (input: {
   plasticDir: string;
 }): RuntimeModule => ({
@@ -44,6 +58,7 @@ export const createExtensionAuthoringModule = (input: {
             meta: eventMetaSchema
           }
         },
+        outputSchema: scaffoldExtensionOutputSchema,
         examples: [
           {
             title: "Create a simple workspace extension",
@@ -65,11 +80,7 @@ export const createExtensionAuthoringModule = (input: {
           Effect.promise(async () => {
             const extensionInput = methodInput as ScaffoldExtensionInput;
             const rawId = extensionInput.id ?? `agent-panel-${crypto.randomUUID().slice(0, 8)}`;
-            const safeId = rawId
-              .replace(/^workspace\./, "")
-              .replace(/[^a-zA-Z0-9._-]+/g, "-")
-              .replace(/^-+|-+$/g, "")
-              .toLowerCase();
+            const safeId = rawId.replace(/^workspace\./, "").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase();
             if (!safeId) {
               throw new Error("extensions/scaffold requires a usable id");
             }
@@ -83,15 +94,13 @@ export const createExtensionAuthoringModule = (input: {
             const manifest = {
               id: extensionId,
               title,
-              panels: [
-                {
-                  id: panelId,
-                  title: panelTitle,
-                  kind: extensionInput.kind ?? "extension",
-                  subtitle: "Workspace extension",
-                  body: extensionInput.body ?? `Generated extension panel ${panelTitle}.`
-                }
-              ],
+              panels: [{
+                id: panelId,
+                title: panelTitle,
+                kind: extensionInput.kind ?? "extension",
+                subtitle: "Workspace extension",
+                body: extensionInput.body ?? `Generated extension panel ${panelTitle}.`
+              }],
               methods: []
             };
             await mkdir(extensionDir, { recursive: true });

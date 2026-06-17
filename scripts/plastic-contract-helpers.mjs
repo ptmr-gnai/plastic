@@ -226,7 +226,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["app/diagnostics", "build/status", "runtime/auditStatus", "runtime/auditActionPlan"] });
   assertReadMethodLegibility({ methods, ids: ["extensions/list", "extensions/get"] });
   assertExtensionQueryMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all(["scan", "list", "get"].map(async (key) => [key, await rpc("methods/describe", { id: `extensions/${key}` })]))) });
-  assertExtensionLifecycleMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["activate", "extensions/activate"], ["registerPanel", "extensions/registerPanel"], ["forkBundled", "extensions/forkBundled"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
+  assertExtensionLifecycleMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["scaffold", "extensions/scaffold"], ["activate", "extensions/activate"], ["registerPanel", "extensions/registerPanel"], ["forkBundled", "extensions/forkBundled"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
   assertReadMethodLegibility({ methods, ids: ["extensions/verificationStatus"] });
   assertExtensionVerificationMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["verify", "extensions/verify"], ["verifyAll", "extensions/verifyAll"], ["status", "extensions/verificationStatus"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
   assertReadMethodLegibility({ methods, ids: ["panels/listMessages", "panels/mailboxes"] });
