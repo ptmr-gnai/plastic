@@ -44,7 +44,7 @@ const extensionContributionSchema = {
   }
 };
 
-const plasticExtensionSchema = {
+export const plasticExtensionSchema = {
   type: "object",
   required: ["id", "title", "source", "panels", "renderers", "methods", "errors"],
   properties: {

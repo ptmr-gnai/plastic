@@ -5,11 +5,23 @@ import {
   type MethodRegistry
 } from "@plastic/core";
 import { activateExtensions } from "./extension-host.js";
+import { plasticExtensionSchema } from "./extension-query-methods.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 const extensionActivationAvailability = {
   status: "available" as const,
   notes: "Extension activation is a shared runtime primitive available in headed and headless modes."
+};
+
+const extensionActivationResultSchema = {
+  type: "object",
+  required: ["activated", "skipped", "failed"],
+  properties: {
+    activated: { type: "array", items: { type: "object" } },
+    skipped: { type: "array", items: { type: "object" } },
+    failed: { type: "array", items: { type: "object" } },
+    extension: plasticExtensionSchema
+  }
 };
 
 export const registerExtensionActivationMethods = async (input: {
@@ -33,6 +45,7 @@ export const registerExtensionActivationMethods = async (input: {
           extensionId: { type: "string", description: "Optional extension id to activate. Omit to activate all discovered extensions." }
         }
       },
+      outputSchema: extensionActivationResultSchema,
       examples: [
         {
           title: "Activate one extension",

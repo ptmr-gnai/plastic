@@ -15,6 +15,8 @@ import {
   readJson
 } from "./extension-discovery.js";
 import { forkExtensionManifest, rewriteForkedRendererSource } from "./extension-forking.js";
+import { plasticExtensionSchema } from "./extension-query-methods.js";
+import { plasticEventSchema } from "./runtime-control-schemas.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 type ForkBundledInput = {
@@ -27,6 +29,17 @@ type ForkBundledInput = {
 type BundledForkSource = PlasticExtension & {
   path: string;
   manifestPath: string;
+};
+
+const forkBundledOutputSchema = {
+  type: "object",
+  required: ["source", "fork", "targetPath", "events"],
+  properties: {
+    source: plasticExtensionSchema,
+    fork: plasticExtensionSchema,
+    targetPath: { type: "string" },
+    events: { type: "array", items: plasticEventSchema }
+  }
 };
 
 const findBundledExtension = (events: Parameters<typeof projectExtensions>[0], payload: ForkBundledInput) => {
@@ -219,6 +232,7 @@ export const registerExtensionForkMethods = async (input: {
           overwrite: { type: "boolean", description: "Allow replacing an existing fork target." }
         }
       },
+      outputSchema: forkBundledOutputSchema,
       examples: [
         {
           title: "Fork bundled chat",

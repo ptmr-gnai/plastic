@@ -5,6 +5,7 @@ import {
   type EventStore,
   type MethodRegistry
 } from "@plastic/core";
+import { plasticEventSchema } from "./runtime-control-schemas.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 const extensionPanelAvailability = {
@@ -35,6 +36,7 @@ export const registerExtensionPanelMethods = async (input: {
           order: { type: "number", description: "Optional panel order override." }
         }
       },
+      outputSchema: plasticEventSchema,
       examples: [
         {
           title: "Register a bundled chat panel",
@@ -85,10 +87,7 @@ export const registerExtensionPanelMethods = async (input: {
                   body: contribution.body ?? `Panel contributed by ${extension.title}.`,
                   order: input.order ?? contribution.order
                 },
-                scope: {
-                  panelId: contribution.id,
-                  extensionId: extension.id
-                },
+                scope: { panelId: contribution.id, extensionId: extension.id },
                 meta: {
                   links: [
                     { rel: "extension", href: "extensions/get", method: "extensions/get", target: extension.id },
