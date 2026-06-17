@@ -53,6 +53,12 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   for (const action of requiredWorkbenchActions) {
     assert(hasActionAffordance(workbench.control.recommendedActions, action), `workbench missing ${action.id} recommended action`);
   }
+  assertFocusedPanelActions({
+    assert,
+    actions: workbench.control.recommendedActions,
+    panelId: workbench.focus?.panelId,
+    source: "workbench"
+  });
   assert(workbench.observability?.timeline, "workbench timeline missing");
   assert(workbench.workspace?.git, "workbench git status missing");
   return {
@@ -126,6 +132,12 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   for (const action of requiredOrientationActions) {
     assert(hasActionAffordance(orientation.capabilities.recommendedActions, action), `agent/orient missing ${action.id} action`);
   }
+  assertFocusedPanelActions({
+    assert,
+    actions: orientation.capabilities.recommendedActions,
+    panelId: orientation.embodiment?.panelId,
+    source: "agent/orient"
+  });
   for (const link of requiredOrientationLinks) {
     assert(hasLinkAffordance(orientation.capabilities.links, link), `agent/orient missing ${link.rel} link`);
   }
@@ -182,6 +194,19 @@ const assertActionMetadata = ({ assert, actions, source }) => {
     !validIntents.has(action.intent) || !validRisks.has(action.risk)
   );
   assert(invalidActions.length === 0, `${source} actions missing valid intent/risk: ${invalidActions.map((action) => action.id).join(", ")}`);
+};
+
+const assertFocusedPanelActions = ({ assert, actions, panelId, source }) => {
+  if (!panelId) {
+    return;
+  }
+  for (const action of [
+    { id: "read-panel", method: "panels/get", input: { id: panelId } },
+    { id: "rename-panel", method: "panels/rename", input: { id: panelId } },
+    { id: "remove-panel", method: "panels/remove", input: { id: panelId } }
+  ]) {
+    assert(hasActionAffordance(actions, action), `${source} missing focused ${action.id} action`);
+  }
 };
 
 const assertSameModuleIds = ({ assert, actual, expected, source }) => {

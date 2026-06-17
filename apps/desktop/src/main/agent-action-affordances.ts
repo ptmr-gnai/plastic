@@ -66,3 +66,25 @@ export const expectedOrientationActions = [
   agentAction({ id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }),
   agentAction({ id: "read-timeline", title: "Read recent timeline", method: "events/timeline" })
 ];
+
+export const focusedPanelActions = (input: {
+  panelId?: string | undefined;
+  panelKind?: string | undefined;
+}): AgentActionAffordance[] => {
+  if (!input.panelId) {
+    return [];
+  }
+
+  return [
+    agentAction({ id: "read-panel", title: "Read focused panel", method: "panels/get", input: { id: input.panelId } }),
+    agentAction({ id: "rename-panel", title: "Rename focused panel", method: "panels/rename", input: { id: input.panelId } }),
+    agentAction({ id: "move-panel", title: "Move focused panel", method: "panels/move", input: { id: input.panelId } }),
+    agentAction({ id: "remove-panel", title: "Remove focused panel", method: "panels/remove", input: { id: input.panelId } }),
+    ...(input.panelKind === "chat"
+      ? [
+          agentAction({ id: "read-chat-messages", title: "Read focused chat messages", method: "chats/messages", input: { chatId: input.panelId } }),
+          agentAction({ id: "send-chat-message", title: "Send focused chat message", method: "chats/sendToCodex", input: { chatId: input.panelId } })
+        ]
+      : [])
+  ];
+};

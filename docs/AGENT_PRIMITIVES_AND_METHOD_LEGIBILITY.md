@@ -55,6 +55,8 @@ The remaining legibility work has moved up a layer:
 
 `plastic/state` and `plastic/snapshot` now project each active panel as an individual `kind: "panel"` resource. A panel resource must expose concrete links/actions with prefilled method inputs for `panels/get`, `panels/rename`, `panels/move`, and `panels/remove`. Chat panels also expose `chats/messages` and `chats/sendToCodex` actions with the relevant `chatId`. This is the first contextual-resource contract: an agent can pick a panel from state or snapshot and act on it without separately inferring the payload key or panel id.
 
+`agent/workbench` and `agent/orient` now follow the same rule when called with a panel context. Their recommended actions include focused panel read/control actions with exact panel inputs, and chat panel contexts include exact chat message actions. This keeps agent packets aligned with the state/snapshot HATEOAS resources instead of forcing agents to translate between packet context and RPC payloads.
+
 ## Required Method Metadata
 
 Every method must be describable with:

@@ -15,7 +15,7 @@ import type {
   RunPromise
 } from "./runtime-method-context.js";
 import { capabilityStatusSummary } from "./agent-capability-summary.js";
-import { agentAction } from "./agent-action-affordances.js";
+import { agentAction, focusedPanelActions } from "./agent-action-affordances.js";
 import { readAgentAuditStatus } from "./agent-audit-status.js";
 import { agentOrientOutputSchema } from "./agent-packet-schemas.js";
 import { readRuntimeAgentTransports, readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
@@ -139,6 +139,7 @@ const buildOrientation = async (input: {
       methodList,
       runPromise: input.runPromise,
       panelId,
+      panelKind: currentPanel?.kind,
       latestEventId: events.at(-1)?.id
     }),
     obligations: {
@@ -256,6 +257,7 @@ const buildCapabilities = async (input: {
   methodList: PlasticMethod[];
   runPromise: RunPromise;
   panelId: string | undefined;
+  panelKind: string | undefined;
   latestEventId: string | undefined;
 }) => ({
   hostBase: runtimeHostBaseDescriptor,
@@ -280,7 +282,7 @@ const buildCapabilities = async (input: {
     agentAction({ id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction" }),
     agentAction({ id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }),
     agentAction({ id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: input.latestEventId } }),
-    ...(input.panelId ? [agentAction({ id: "send-chat", title: "Send a message through this chat", method: "chats/sendToCodex", input: { chatId: input.panelId } })] : []),
+    ...focusedPanelActions({ panelId: input.panelId, panelKind: input.panelKind }),
     agentAction({ id: "inspect-visible-refs", title: "Inspect visible refs", method: "deixis/listVisibleRefs" }),
     agentAction({ id: "capture-screenshot", title: "Capture screenshot", method: "windows/screenshot" })
   ],

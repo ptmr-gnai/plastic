@@ -246,7 +246,7 @@ await check("runtime/modules", async () => {
 
 await check("agent/workbench", async () => {
   assertAgentWorkbenchMethodDescription({ assert, description: await rpc("methods/describe", { id: "agent/workbench" }) });
-  const workbench = await rpc("agent/workbench", { limit: 5 });
+  const workbench = await rpc("agent/workbench", { panelId: "chat-main", limit: 5 });
   const shared = { assert, assertArray, mode: state.app.mode, methodCount: methods.length, capabilityCount: runtimeCapabilities.count, modules: runtimeModules, methodIds };
   return assertAgentWorkbenchPacket({ ...shared, workbench });
 });

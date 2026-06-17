@@ -16,7 +16,7 @@ import type {
   RunPromise
 } from "./runtime-method-context.js";
 import { capabilityStatusSummary } from "./agent-capability-summary.js";
-import { agentAction } from "./agent-action-affordances.js";
+import { agentAction, focusedPanelActions } from "./agent-action-affordances.js";
 import { readAgentAuditStatus } from "./agent-audit-status.js";
 import { agentWorkbenchOutputSchema } from "./agent-packet-schemas.js";
 import { readRuntimeAgentTransports, readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
@@ -147,6 +147,7 @@ const buildWorkbench = async (input: {
       runPromise,
       workbenchInput,
       panelId,
+      panelKind: panel?.kind,
       latestEventId: events.at(-1)?.id
     }),
     workspace: { git: await host.readGitStatus() },
@@ -215,9 +216,10 @@ const buildControl = async (input: {
   runPromise: RunPromise;
   workbenchInput: AgentWorkbenchInput | undefined;
   panelId: string | undefined;
+  panelKind: string | undefined;
   latestEventId: string | undefined;
 }) => {
-  const { capabilities, agentTransports, controlPlane, host, methods, methodList, runPromise, workbenchInput, panelId, latestEventId } = input;
+  const { capabilities, agentTransports, controlPlane, host, methods, methodList, runPromise, workbenchInput, panelId, panelKind, latestEventId } = input;
   const capabilityItems = capabilities.list();
   return {
     capabilities: {
@@ -243,6 +245,7 @@ const buildControl = async (input: {
       agentAction({ id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction" }),
       agentAction({ id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }),
       agentAction({ id: "read-timeline", title: "Read timeline", method: "events/timeline", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } }),
+      ...focusedPanelActions({ panelId, panelKind }),
       ...(host.visualActions?.({
         ...(workbenchInput?.ref ? { ref: workbenchInput.ref } : {}),
         ...(panelId ? { panelId } : {})
