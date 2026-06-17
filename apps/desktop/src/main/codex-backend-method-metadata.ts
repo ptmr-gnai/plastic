@@ -1,8 +1,39 @@
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 
+const codexStatusOutputSchema = {
+  type: "object",
+  required: ["connected", "initialized", "pid", "pendingRequests"],
+  properties: {
+    connected: { type: "boolean" },
+    initialized: { type: "boolean" },
+    pid: { type: ["number", "null"] },
+    connectedAt: { type: ["string", "null"] },
+    pendingRequests: { type: "number" },
+    availability: { type: "object" }
+  }
+};
+
+const codexDefaultsOutputSchema = {
+  type: "object",
+  required: ["model"],
+  properties: {
+    model: { type: "string" }
+  }
+};
+
+const codexSetDefaultsOutputSchema = {
+  type: "object",
+  required: ["defaults", "eventId"],
+  properties: {
+    defaults: codexDefaultsOutputSchema,
+    eventId: { type: "string" }
+  }
+};
+
 export const codexStatusMetadata = {
   description: "Returns Codex backend connection, initialization, and capability status for this Plastic host.",
   inputSchema: noInputSchema,
+  outputSchema: codexStatusOutputSchema,
   examples: [
     {
       title: "Check Codex backend status",
@@ -17,6 +48,7 @@ export const codexStatusMetadata = {
 export const codexDefaultsMetadata = {
   description: "Returns Plastic's durable Codex adapter defaults used for new chat threads and turns.",
   inputSchema: noInputSchema,
+  outputSchema: codexDefaultsOutputSchema,
   examples: [
     {
       title: "Read Codex defaults",
@@ -37,6 +69,7 @@ export const codexSetDefaultsMetadata = {
       model: { type: "string", description: "Default model id for new Codex-backed chats and turns." }
     }
   },
+  outputSchema: codexSetDefaultsOutputSchema,
   examples: [
     {
       title: "Set the default Codex model",
