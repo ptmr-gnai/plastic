@@ -9,6 +9,11 @@ export function assertMethodCatalogsMatch({ assert, actual, expected, actualLabe
 
 export function assertMethodCatalogSurface({ assert, label, methods }) {
   for (const method of methods) {
+    assert(method.description, `${label} ${method.id} missing description`);
+    assert(method.inputSchema, `${label} ${method.id} missing inputSchema`);
+    assert(method.outputSchema, `${label} ${method.id} missing outputSchema`);
+    assert(method.effects, `${label} ${method.id} missing effects`);
+    assert(method.reversibility, `${label} ${method.id} missing reversibility`);
     assert(
       method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id),
       `${label} ${method.id} missing describe link`
