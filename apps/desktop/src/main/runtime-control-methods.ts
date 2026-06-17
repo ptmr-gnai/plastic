@@ -11,6 +11,7 @@ import {
   withMethodAffordanceLinks
 } from "@plastic/core";
 import { eventMetaSchema, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { runtimeCapabilitiesOutputSchema } from "./runtime-control-schemas.js";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
 const runtimeControlAvailability = {
@@ -198,6 +199,7 @@ const registerCapabilityDiscovery = async (input: RuntimeMethodContext) => {
         requiredCapabilities: ["runtime.capabilities"]
       },
       inputSchema: noInputSchema,
+      outputSchema: runtimeCapabilitiesOutputSchema,
       examples: [
         {
           title: "List host capabilities",
