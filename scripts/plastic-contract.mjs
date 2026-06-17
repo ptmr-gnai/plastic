@@ -9,6 +9,7 @@ import {
 import { assertAgentOrientMethodDescription, assertAgentOrientationPacket, assertAgentWorkbenchMethodDescription, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
 import { expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
+import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagnostics.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertMethodCatalogsMatch, assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
@@ -329,14 +330,7 @@ await check("app/diagnostics", async () => {
   assert(diagnostics.mode === state.app.mode, "app/diagnostics mode mismatch");
   assert(diagnostics.hostBase?.id === "runtime-host-base", "app/diagnostics missing shared host base marker");
   assert(typeof diagnostics.windowCount === "number", "app/diagnostics missing windowCount");
-  assert(description.outputSchema?.required?.includes("mode"), "app/diagnostics output schema must require mode");
-  assert(description.outputSchema?.required?.includes("workspaceDir"), "app/diagnostics output schema must require workspaceDir");
-  assert(description.outputSchema?.required?.includes("eventPath"), "app/diagnostics output schema must require eventPath");
-  assert(description.outputSchema?.required?.includes("hostBase"), "app/diagnostics output schema must require hostBase");
-  assert(description.outputSchema?.required?.includes("windowCount"), "app/diagnostics output schema must require windowCount");
-  assert(description.outputSchema?.properties?.mode?.enum?.includes("electron"), "app/diagnostics output schema must expose electron mode");
-  assert(description.outputSchema?.properties?.mode?.enum?.includes("headless"), "app/diagnostics output schema must expose headless mode");
-  assert(description.outputSchema?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "app/diagnostics output schema must expose hostBase marker");
+  assertAppDiagnosticsMethodDescription({ assert, description });
   return {
     mode: diagnostics.mode,
     workspaceDir: diagnostics.workspaceDir,
