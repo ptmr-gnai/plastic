@@ -16,6 +16,7 @@ import type {
   RunPromise
 } from "./runtime-method-context.js";
 import { capabilityStatusSummary } from "./agent-capability-summary.js";
+import { agentAction } from "./agent-action-affordances.js";
 import { readAgentAuditStatus } from "./agent-audit-status.js";
 import { readRuntimeAgentTransports, readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
@@ -229,17 +230,17 @@ const buildControl = async (input: {
     methodCount: methodList.length,
     methodGroups: groupMethodsByOwner(methodList),
     recommendedActions: [
-      { id: "refresh-workbench", title: "Refresh workbench", method: "agent/workbench", input: { panelId, eventCursor: latestEventId } },
-      { id: "read-state", title: "Read state", method: "plastic/state" },
-      { id: "read-methods", title: "Read methods", method: "plastic/methods" },
-      { id: "read-host", title: "Read runtime host", method: "runtime/host" },
-      { id: "read-modules", title: "Read runtime modules", method: "runtime/modules" },
-      { id: "run-self-test", title: "Run Plastic self-test", method: "plastic/selfTest" },
-      { id: "read-audit-status", title: "Read latest runtime audit status", method: "runtime/auditStatus" },
-      { id: "plan-audit-action", title: "Inspect a current runtime audit action", method: "runtime/auditActionPlan" },
-      { id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction" },
-      { id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
-      { id: "read-timeline", title: "Read timeline", method: "events/timeline", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } },
+      agentAction({ id: "refresh-workbench", title: "Refresh workbench", method: "agent/workbench", input: { panelId, eventCursor: latestEventId } }),
+      agentAction({ id: "read-state", title: "Read state", method: "plastic/state" }),
+      agentAction({ id: "read-methods", title: "Read methods", method: "plastic/methods" }),
+      agentAction({ id: "read-host", title: "Read runtime host", method: "runtime/host" }),
+      agentAction({ id: "read-modules", title: "Read runtime modules", method: "runtime/modules" }),
+      agentAction({ id: "run-self-test", title: "Run Plastic self-test", method: "plastic/selfTest" }),
+      agentAction({ id: "read-audit-status", title: "Read latest runtime audit status", method: "runtime/auditStatus" }),
+      agentAction({ id: "plan-audit-action", title: "Inspect a current runtime audit action", method: "runtime/auditActionPlan" }),
+      agentAction({ id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction" }),
+      agentAction({ id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }),
+      agentAction({ id: "read-timeline", title: "Read timeline", method: "events/timeline", input: { limit: 25, ...(panelId ? { scope: { panelId } } : {}) } }),
       ...(host.visualActions?.({
         ...(workbenchInput?.ref ? { ref: workbenchInput.ref } : {}),
         ...(panelId ? { panelId } : {})

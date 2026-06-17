@@ -406,6 +406,10 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
   if (unknownWorkbenchActions.length > 0 || unknownOrientationActions.length > 0 || unknownOrientationLinks.length > 0) {
     throw new Error("agent orientation packet references unknown methods");
   }
+  const invalidActions = invalidAgentActions([...workbenchActions, ...orientationActions]);
+  if (invalidActions.length > 0) {
+    throw new Error(`agent orientation packet actions missing intent/risk: ${invalidActions.join(", ")}`);
+  }
   return {
     workbenchActions: workbenchActions.length,
     orientationActions: orientationActions.length,
@@ -425,6 +429,14 @@ const unknownMethodReferences = (references: Record<string, unknown>[], methodId
   references
     .map((reference) => reference.method)
     .filter((method): method is string => typeof method === "string" && !methodIds.has(method));
+
+const invalidAgentActions = (actions: Record<string, unknown>[]) => {
+  const validIntents = new Set(["read", "inspect", "execute"]);
+  const validRisks = new Set(["none", "low", "medium"]);
+  return actions
+    .filter((action) => !validIntents.has(String(action.intent)) || !validRisks.has(String(action.risk)))
+    .map((action) => String(action.id ?? action.method ?? "unknown"));
+};
 
 const invalidAgentTransportAffordances = (transports: Record<string, unknown>[]) => {
   const http = transports.find((transport) => transport.id === "http-rpc");

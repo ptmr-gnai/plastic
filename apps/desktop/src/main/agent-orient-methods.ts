@@ -15,6 +15,7 @@ import type {
   RunPromise
 } from "./runtime-method-context.js";
 import { capabilityStatusSummary } from "./agent-capability-summary.js";
+import { agentAction } from "./agent-action-affordances.js";
 import { readAgentAuditStatus } from "./agent-audit-status.js";
 import { readRuntimeAgentTransports, readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
@@ -268,18 +269,18 @@ const buildCapabilities = async (input: {
   methodCount: input.methodList.length,
   methods: recommendedMethods(input.methodList),
   recommendedActions: [
-    { id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId: input.panelId, eventCursor: input.latestEventId } },
-    { id: "read-state", title: "Read full Plastic state", method: "plastic/state" },
-    { id: "read-host", title: "Read runtime host", method: "runtime/host" },
-    { id: "run-self-test", title: "Run Plastic self-test", method: "plastic/selfTest" },
-    { id: "read-audit-status", title: "Read latest runtime audit status", method: "runtime/auditStatus" },
-    { id: "plan-audit-action", title: "Inspect a current runtime audit action", method: "runtime/auditActionPlan" },
-    { id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction" },
-    { id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
-    { id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: input.latestEventId } },
-    ...(input.panelId ? [{ id: "send-chat", title: "Send a message through this chat", method: "chats/sendToCodex", input: { chatId: input.panelId } }] : []),
-    { id: "inspect-visible-refs", title: "Inspect visible refs", method: "deixis/listVisibleRefs" },
-    { id: "capture-screenshot", title: "Capture screenshot", method: "windows/screenshot" }
+    agentAction({ id: "refresh-orientation", title: "Refresh orientation", method: "agent/orient", input: { panelId: input.panelId, eventCursor: input.latestEventId } }),
+    agentAction({ id: "read-state", title: "Read full Plastic state", method: "plastic/state" }),
+    agentAction({ id: "read-host", title: "Read runtime host", method: "runtime/host" }),
+    agentAction({ id: "run-self-test", title: "Run Plastic self-test", method: "plastic/selfTest" }),
+    agentAction({ id: "read-audit-status", title: "Read latest runtime audit status", method: "runtime/auditStatus" }),
+    agentAction({ id: "plan-audit-action", title: "Inspect a current runtime audit action", method: "runtime/auditActionPlan" }),
+    agentAction({ id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction" }),
+    agentAction({ id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }),
+    agentAction({ id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: input.latestEventId } }),
+    ...(input.panelId ? [agentAction({ id: "send-chat", title: "Send a message through this chat", method: "chats/sendToCodex", input: { chatId: input.panelId } })] : []),
+    agentAction({ id: "inspect-visible-refs", title: "Inspect visible refs", method: "deixis/listVisibleRefs" }),
+    agentAction({ id: "capture-screenshot", title: "Capture screenshot", method: "windows/screenshot" })
   ],
   links: [
     { rel: "self", href: "agent/orient", method: "agent/orient" },

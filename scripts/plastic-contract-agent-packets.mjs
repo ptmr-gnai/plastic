@@ -49,6 +49,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertAgentTransports({ assert, assertArray, transports: workbench.control.agentTransports, rpcUrl: workbench.control.controlPlane.runtime.rpcUrl, source: "workbench" });
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assertKnownMethodReferences({ assert, references: workbench.control.recommendedActions, methodIds, source: "workbench recommendedActions" });
+  assertActionMetadata({ assert, actions: workbench.control.recommendedActions, source: "workbench recommendedActions" });
   for (const action of requiredWorkbenchActions) {
     assert(hasActionAffordance(workbench.control.recommendedActions, action), `workbench missing ${action.id} recommended action`);
   }
@@ -82,6 +83,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   });
   assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
   assertKnownMethodReferences({ assert, references: orientation.capabilities.recommendedActions, methodIds, source: "agent/orient recommendedActions" });
+  assertActionMetadata({ assert, actions: orientation.capabilities.recommendedActions, source: "agent/orient recommendedActions" });
   assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
   assert(orientation.capabilities.modules.count === moduleIds.length, "agent/orient module count does not match runtime/modules");
   assertArray(orientation.capabilities.modules.items, "agent/orient runtime modules missing");
@@ -151,6 +153,15 @@ const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {
 
 const assertRecentAuditActionMetadata = ({ assert, recentActions, source }) => {
   assert(recentActions.every((action) => action.auditMetadata === null || action.auditMetadata?.schemaVersion === 1), `${source} recent audit action metadata must be null or schema-versioned`);
+};
+
+const assertActionMetadata = ({ assert, actions, source }) => {
+  const validIntents = new Set(["read", "inspect", "execute"]);
+  const validRisks = new Set(["none", "low", "medium"]);
+  const invalidActions = actions.filter((action) =>
+    !validIntents.has(action.intent) || !validRisks.has(action.risk)
+  );
+  assert(invalidActions.length === 0, `${source} actions missing valid intent/risk: ${invalidActions.map((action) => action.id).join(", ")}`);
 };
 
 const assertSameModuleIds = ({ assert, actual, expected, source }) => {

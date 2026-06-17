@@ -1,32 +1,13 @@
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
 
+export { expectedOrientationActions, expectedWorkbenchActions } from "./agent-action-affordances.js";
+
 export const expectedSnapshotLinks = [
   { rel: "host", href: "runtime/host", method: "runtime/host" },
   { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },
   { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
   { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" }
-];
-
-export const expectedWorkbenchActions = [
-  { id: "read-host", method: "runtime/host" },
-  { id: "read-modules", method: "runtime/modules" },
-  { id: "run-self-test", method: "plastic/selfTest" },
-  { id: "read-audit-status", method: "runtime/auditStatus" },
-  { id: "plan-audit-action", method: "runtime/auditActionPlan" },
-  { id: "run-audit-action", method: "runtime/runAuditAction" },
-  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
-  { id: "read-timeline", method: "events/timeline" }
-];
-
-export const expectedOrientationActions = [
-  { id: "read-host", method: "runtime/host" },
-  { id: "run-self-test", method: "plastic/selfTest" },
-  { id: "read-audit-status", method: "runtime/auditStatus" },
-  { id: "plan-audit-action", method: "runtime/auditActionPlan" },
-  { id: "run-audit-action", method: "runtime/runAuditAction" },
-  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
-  { id: "read-timeline", method: "events/timeline" }
 ];
 
 export const expectedOrientationLinks = [
@@ -63,10 +44,12 @@ export const hasLinkAffordance = (
 
 export const hasActionAffordance = (
   actions: Record<string, unknown>[],
-  expected: { id: string; method: string; input?: unknown }
+  expected: { id: string; method: string; intent?: string; risk?: string; input?: unknown }
 ) =>
   actions.some((action) =>
     action.id === expected.id
     && action.method === expected.method
+    && (expected.intent === undefined || action.intent === expected.intent)
+    && (expected.risk === undefined || action.risk === expected.risk)
     && (expected.input === undefined || JSON.stringify(action.input) === JSON.stringify(expected.input))
   );

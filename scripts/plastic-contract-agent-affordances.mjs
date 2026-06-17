@@ -1,22 +1,22 @@
 const fallbackWorkbenchActions = [
-  { id: "read-host", method: "runtime/host" },
-  { id: "read-modules", method: "runtime/modules" },
-  { id: "run-self-test", method: "plastic/selfTest" },
-  { id: "read-audit-status", method: "runtime/auditStatus" },
-  { id: "plan-audit-action", method: "runtime/auditActionPlan" },
-  { id: "run-audit-action", method: "runtime/runAuditAction" },
-  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
-  { id: "read-timeline", method: "events/timeline" }
+  { id: "read-host", method: "runtime/host", intent: "read", risk: "none" },
+  { id: "read-modules", method: "runtime/modules", intent: "read", risk: "none" },
+  { id: "run-self-test", method: "plastic/selfTest", intent: "execute", risk: "low" },
+  { id: "read-audit-status", method: "runtime/auditStatus", intent: "read", risk: "none" },
+  { id: "plan-audit-action", method: "runtime/auditActionPlan", intent: "inspect", risk: "none" },
+  { id: "run-audit-action", method: "runtime/runAuditAction", intent: "execute", risk: "medium" },
+  { id: "read-control-plane", method: "events/list", intent: "read", risk: "none", input: { types: ["runtime.started"], limit: 1 } },
+  { id: "read-timeline", method: "events/timeline", intent: "read", risk: "none" }
 ];
 
 const fallbackOrientationActions = [
-  { id: "read-host", method: "runtime/host" },
-  { id: "run-self-test", method: "plastic/selfTest" },
-  { id: "read-audit-status", method: "runtime/auditStatus" },
-  { id: "plan-audit-action", method: "runtime/auditActionPlan" },
-  { id: "run-audit-action", method: "runtime/runAuditAction" },
-  { id: "read-control-plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
-  { id: "read-timeline", method: "events/timeline" }
+  { id: "read-host", method: "runtime/host", intent: "read", risk: "none" },
+  { id: "run-self-test", method: "plastic/selfTest", intent: "execute", risk: "low" },
+  { id: "read-audit-status", method: "runtime/auditStatus", intent: "read", risk: "none" },
+  { id: "plan-audit-action", method: "runtime/auditActionPlan", intent: "inspect", risk: "none" },
+  { id: "run-audit-action", method: "runtime/runAuditAction", intent: "execute", risk: "medium" },
+  { id: "read-control-plane", method: "events/list", intent: "read", risk: "none", input: { types: ["runtime.started"], limit: 1 } },
+  { id: "read-timeline", method: "events/timeline", intent: "read", risk: "none" }
 ];
 
 const fallbackOrientationLinks = [
@@ -39,6 +39,8 @@ export const hasActionAffordance = (actions, expected) =>
   actions?.some((action) =>
     action.id === expected.id
     && action.method === expected.method
+    && (expected.intent === undefined || action.intent === expected.intent)
+    && (expected.risk === undefined || action.risk === expected.risk)
     && (expected.input === undefined || JSON.stringify(action.input) === JSON.stringify(expected.input))
   );
 
