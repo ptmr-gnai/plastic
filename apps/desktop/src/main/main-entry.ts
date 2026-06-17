@@ -120,6 +120,9 @@ async function createWindow(title = "Plastic") {
 const electronIpcTransport = startElectronIpcTransport({ ipcMain, methods, runPromise });
 
 const electronDeixisHost = createElectronDeixisHost(BrowserWindow);
+const viteRuntimeCorsOrigin = process.env.VITE_DEV_SERVER_URL
+  ? new URL(process.env.VITE_DEV_SERVER_URL).origin
+  : "http://127.0.0.1:5173";
 const codexAgentBackendModule: RuntimeModule = {
   id: "agent-backend",
   register: async () => {
@@ -170,7 +173,7 @@ const transports = await startRuntimeHostControlPlane({
   startedPayload: startedPayload({ version: app.getVersion() }),
   controlPlane,
   getBuildStatus: buildStatus,
-  runtimeCorsOrigin: "http://127.0.0.1:5173"
+  runtimeCorsOrigin: viteRuntimeCorsOrigin
 });
 logStartup(`runtime listening on ${controlPlane.runtime.port}, build listening on ${controlPlane.build.port}`);
 

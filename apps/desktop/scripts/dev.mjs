@@ -5,7 +5,10 @@ import { setTimeout as delay } from "node:timers/promises";
 
 const cwd = new URL("..", import.meta.url).pathname;
 const workspaceDir = new URL("../../..", import.meta.url).pathname;
-const viteUrl = "http://127.0.0.1:5173";
+const viteUrl = process.env.PLASTIC_VITE_URL ?? process.env.VITE_DEV_SERVER_URL ?? "http://127.0.0.1:5173";
+const viteEndpoint = new URL(viteUrl);
+const viteHost = viteEndpoint.hostname;
+const vitePort = viteEndpoint.port || "5173";
 const electronMain = new URL("../dist-electron/main/main.js", import.meta.url).pathname;
 const electronAppPath = cwd;
 const electronLaunchMode = process.env.PLASTIC_ELECTRON_LAUNCH_MODE ?? "compiled-main";
@@ -105,7 +108,7 @@ if (!skipCoreWatch) {
   run("pnpm", ["--filter", "@plastic/core", "dev"], { cwd: workspaceDir });
 }
 run("pnpm", ["exec", "tsc", "-p", "tsconfig.node.json", "--watch", "--preserveWatchOutput"]);
-run("pnpm", ["exec", "vite", "--host", "127.0.0.1"]);
+run("pnpm", ["exec", "vite", "--host", viteHost, "--port", vitePort, "--strictPort"]);
 
 console.log(`[plastic:dev] waiting electron-main path=${electronMain}`);
 while (!existsSync(electronMain)) {
