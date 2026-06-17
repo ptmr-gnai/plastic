@@ -16,6 +16,7 @@ import { assertSelfTestDurableEvent, assertSelfTestHttpResources, assertSelfTest
 import { assertRunAuditActionMethodDescription, assertRuntimeAuditActionPlanMethodDescription, assertRuntimeAuditStatusMethodDescription } from "./plastic-contract-audit-status.mjs";
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
 import { assertHeadlessFallbackChatFixture, assertNoActiveContractFixtures, cleanupLegacyContractFixtures } from "./plastic-contract-fixtures.mjs";
+import { assertSnapshotMethodDescription } from "./plastic-contract-snapshot.mjs";
 import { agentBackendMethodExpectationsForMode, capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { assertModuleAvailabilitySummaries, assertRuntimeModuleOrder, assertRuntimeModulesMethodDescription } from "./plastic-module-availability.mjs";
 
@@ -116,6 +117,7 @@ await check("legacy contract fixture cleanup", async () => {
 
 await check("plastic/snapshot", async () => {
   snapshot = await rpc("plastic/snapshot");
+  assertSnapshotMethodDescription({ assert, description: await rpc("methods/describe", { id: "plastic/snapshot" }) });
   assert(snapshot?.app?.name === "Plastic", "snapshot.app.name is not Plastic");
   assert(snapshot.app.mode === "electron" || snapshot.app.mode === "headless", "snapshot.app.mode must identify the host");
   assert(snapshot.app.hostBase?.id === "runtime-host-base" && snapshot.app.hostBase?.version === 1, "plastic/snapshot shared host base marker mismatch");

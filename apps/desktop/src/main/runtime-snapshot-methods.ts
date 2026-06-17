@@ -7,6 +7,7 @@ import {
 } from "@plastic/core";
 import { readRuntimeControlPlane } from "./agent-runtime-modules.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { plasticSnapshotOutputSchema } from "./runtime-snapshot-schemas.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
 const runtimeSnapshotAvailability = {
@@ -35,6 +36,7 @@ export const createRuntimeSnapshotModule = (input: {
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: runtimeSnapshotAvailability,
         inputSchema: noInputSchema,
+        outputSchema: plasticSnapshotOutputSchema,
         examples: [
           {
             title: "Read agent workbench snapshot",

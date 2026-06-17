@@ -1,0 +1,20 @@
+export const assertSnapshotMethodDescription = ({ assert, description }) => {
+  assert(description.outputSchema?.required?.includes("app"), "plastic/snapshot output schema must require app");
+  assert(description.outputSchema?.required?.includes("build"), "plastic/snapshot output schema must require build");
+  assert(description.outputSchema?.required?.includes("runtime"), "plastic/snapshot output schema must require runtime");
+  assert(description.outputSchema?.required?.includes("methods"), "plastic/snapshot output schema must require methods");
+  assert(description.outputSchema?.required?.includes("panels"), "plastic/snapshot output schema must require panels");
+  assert(description.outputSchema?.required?.includes("windows"), "plastic/snapshot output schema must require windows");
+  assert(description.outputSchema?.required?.includes("extensions"), "plastic/snapshot output schema must require extensions");
+  assert(description.outputSchema?.required?.includes("visibleRefs"), "plastic/snapshot output schema must require visibleRefs");
+  assert(description.outputSchema?.required?.includes("events"), "plastic/snapshot output schema must require events");
+  assert(description.outputSchema?.required?.includes("links"), "plastic/snapshot output schema must require links");
+  assert(description.outputSchema?.properties?.app?.properties?.mode?.enum?.includes("electron"), "plastic/snapshot output schema must expose electron mode");
+  assert(description.outputSchema?.properties?.app?.properties?.mode?.enum?.includes("headless"), "plastic/snapshot output schema must expose headless mode");
+  assert(description.outputSchema?.properties?.app?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "plastic/snapshot output schema must expose hostBase marker");
+  assert(description.outputSchema?.properties?.controlPlane?.required?.includes("runtime"), "plastic/snapshot output schema must expose runtime control plane");
+  assert(description.outputSchema?.properties?.controlPlane?.required?.includes("build"), "plastic/snapshot output schema must expose build control plane");
+  assert(description.outputSchema?.properties?.methods?.required?.includes("count"), "plastic/snapshot methods schema must require count");
+  assert(description.outputSchema?.properties?.methods?.required?.includes("items"), "plastic/snapshot methods schema must require items");
+  assert(description.outputSchema?.properties?.events?.required?.includes("recent"), "plastic/snapshot events schema must require recent");
+};
