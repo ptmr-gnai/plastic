@@ -29,6 +29,16 @@ export function assertDescribeMethodDescription({ assert, description }) {
   assertMethodSchema({ assert, schema: description.outputSchema, label: "methods/describe output" });
 }
 
+export function assertRpcCallMethodDescription({ assert, description }) {
+  assert(description.inputSchema?.required?.includes("method"), "rpc/call input schema must require method");
+  assert(description.inputSchema?.properties?.method?.type === "string", "rpc/call input schema must expose string method");
+  assert(description.inputSchema?.properties?.input, "rpc/call input schema must expose delegated input");
+  assert(description.effects?.durableEvents?.includes("delegated"), "rpc/call effects must describe delegated durable events");
+  assert(description.effects?.mutatesProjection?.includes("delegated"), "rpc/call effects must describe delegated projection mutation");
+  assert(description.reversibility?.reversible === false, "rpc/call must describe delegated reversibility");
+  assert(description.examples?.some((example) => example.input?.method === "panels/list"), "rpc/call examples must show delegated invocation");
+}
+
 function assertMethodSchema({ assert, schema, label }) {
   assert(schema?.required?.includes("id"), `${label} schema must require id`);
   assert(schema?.required?.includes("title"), `${label} schema must require title`);

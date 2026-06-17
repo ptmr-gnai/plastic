@@ -14,7 +14,7 @@ import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagno
 import { assertEventsListMethodDescription, assertEventsTimelineMethodDescription } from "./plastic-contract-events.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
-import { assertDescribeMethodDescription, assertMethodCatalogsMatch, assertMethodCatalogSurface, assertPlasticMethodsMethodDescription } from "./plastic-contract-method-surface.mjs";
+import { assertDescribeMethodDescription, assertMethodCatalogsMatch, assertMethodCatalogSurface, assertPlasticMethodsMethodDescription, assertRpcCallMethodDescription } from "./plastic-contract-method-surface.mjs";
 import { assertSelfTestDurableEvent, assertSelfTestHttpResources, assertSelfTestMethodDescription, assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
 import { assertRunAuditActionMethodDescription, assertRuntimeAuditActionPlanMethodDescription, assertRuntimeAuditStatusMethodDescription } from "./plastic-contract-audit-status.mjs";
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
@@ -27,8 +27,7 @@ import { assertRuntimeModulesSurface } from "./plastic-contract-runtime-modules.
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
-const validationTags = ["validation", "validation:contract"];
-const validationMeta = { tags: validationTags };
+const validationTags = ["validation", "validation:contract"], validationMeta = { tags: validationTags };
 let state, snapshot;
 let methods, methodIds, runtimeCapabilities, runtimeModules, extensions, events, runtimeStartedControlPlane;
 let scaffoldedExtensionDir, scaffoldedExtensionId, scaffoldedExtensionPanelId, createdPanelEvent;
@@ -211,6 +210,7 @@ await check("method discovery parity", async () => {
 });
 
 await check("rpc/call dispatch", async () => {
+  assertRpcCallMethodDescription({ assert, description: await rpc("methods/describe", { id: "rpc/call" }) });
   return assertRpcCallDispatch({ rpc });
 });
 

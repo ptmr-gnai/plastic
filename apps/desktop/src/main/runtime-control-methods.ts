@@ -11,7 +11,7 @@ import {
   withMethodAffordanceLinks
 } from "@plastic/core";
 import { eventMetaSchema, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
-import { eventsListOutputSchema, eventsTimelineOutputSchema, plasticMethodSchema, plasticMethodsOutputSchema, runtimeCapabilitiesOutputSchema } from "./runtime-control-schemas.js";
+import { eventsListOutputSchema, eventsTimelineOutputSchema, plasticMethodSchema, plasticMethodsOutputSchema, rpcCallInputSchema, runtimeCapabilitiesOutputSchema } from "./runtime-control-schemas.js";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
 const runtimeControlAvailability = {
@@ -172,6 +172,22 @@ const registerRpcCall = async (input: {
       description: "Calls any registered Plastic RPC method through the shared method registry.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: runtimeControlAvailability,
+      inputSchema: rpcCallInputSchema,
+      examples: [
+        {
+          title: "Call a read-only method through the shared registry",
+          input: { method: "panels/list", input: {} },
+          verifyWith: { method: "methods/describe", input: { id: "panels/list" } }
+        }
+      ],
+      effects: {
+        durableEvents: ["delegated"],
+        mutatesProjection: ["delegated"]
+      },
+      reversibility: {
+        reversible: false,
+        notes: "Delegates to another RPC method; effects and reversibility are inherited from the delegated method."
+      },
       handler: (methodInput) =>
         Effect.promise(async () => {
           const rpcInput = methodInput as { method?: string; input?: unknown };

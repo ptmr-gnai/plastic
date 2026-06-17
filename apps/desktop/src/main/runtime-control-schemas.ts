@@ -133,3 +133,12 @@ export const plasticMethodsOutputSchema = {
   type: "array",
   items: plasticMethodSchema
 };
+
+export const rpcCallInputSchema = {
+  type: "object",
+  required: ["method"],
+  properties: {
+    method: { type: "string", description: "Registered Plastic RPC method id to invoke." },
+    input: { description: "Input passed through to the delegated RPC method." }
+  }
+};
