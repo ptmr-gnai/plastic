@@ -11,6 +11,7 @@ import { expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "
 import { assertRuntimeCapabilitiesMethodDescription } from "./plastic-contract-capabilities.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagnostics.mjs";
+import { assertEventsListMethodDescription } from "./plastic-contract-events.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertMethodCatalogsMatch, assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
@@ -473,6 +474,7 @@ await check("bundled extension projections", async () => {
   };
 });
 await check("events list/timeline", async () => {
+  assertEventsListMethodDescription({ assert, description: await rpc("methods/describe", { id: "events/list" }) });
   events = await rpc("events/list", { types: ["panel.created"], scope: { panelId }, limit: 100 });
   const eventItems = assertArray(events, "events/list is not an array");
   assert(eventItems.length > 0, "events/list returned no events");

@@ -11,7 +11,7 @@ import {
   withMethodAffordanceLinks
 } from "@plastic/core";
 import { eventMetaSchema, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
-import { runtimeCapabilitiesOutputSchema } from "./runtime-control-schemas.js";
+import { eventsListOutputSchema, runtimeCapabilitiesOutputSchema } from "./runtime-control-schemas.js";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
 const runtimeControlAvailability = {
@@ -232,6 +232,7 @@ const registerEventReaders = async (input: {
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: runtimeControlAvailability,
       ...eventListMetadata,
+      outputSchema: eventsListOutputSchema,
       handler: (methodInput) =>
         Effect.map(eventStore.list(), (events) => selectEvents(events, methodInput as EventListInput | undefined))
     })
