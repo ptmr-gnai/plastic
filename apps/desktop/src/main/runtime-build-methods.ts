@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { buildStatusOutputSchema } from "./runtime-build-schemas.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
@@ -30,6 +31,7 @@ export const createRuntimeBuildModule = (input: {
         owner: { kind: "runtime", id: "plastic.build" },
         availability: runtimeBuildAvailability,
         inputSchema: noInputSchema,
+        outputSchema: buildStatusOutputSchema,
         examples: [
           {
             title: "Read build socket status",

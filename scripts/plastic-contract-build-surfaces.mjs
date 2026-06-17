@@ -23,6 +23,7 @@ export const assertBuildStatusSurface = async ({
   assert(build.controlPlane?.runtime?.transport === "http", "build/status missing runtime control plane");
   assert(stableJson(status.value.controlPlane) === stableJson(build.controlPlane), "build /status control plane mismatch");
   assert(stableJson(status.value.agentTransports) === stableJson(build.agentTransports), "build /status agent transports mismatch");
+  assertBuildStatusMethodDescription({ assert, description: await rpc("methods/describe", { id: "build/status" }) });
   assertAgentTransports({ assert, assertArray, transports: build.agentTransports, rpcUrl: build.controlPlane.runtime.rpcUrl, source: "build/status" });
   assertControlPlaneEndpointUrls({ assert, controlPlane: build.controlPlane, source: "build/status" });
   assertMatchingControlPlaneDescriptors({ assert, actual: build.controlPlane, expected: runtimeStartedControlPlane, source: "build/status" });
@@ -34,6 +35,17 @@ export const assertBuildStatusSurface = async ({
     agentTransports: build.agentTransports.length,
     controlPlane: build.controlPlane
   };
+};
+
+const assertBuildStatusMethodDescription = ({ assert, description }) => {
+  assert(description.outputSchema?.required?.includes("controlPlane"), "build/status output schema must require controlPlane");
+  assert(description.outputSchema?.required?.includes("agentTransports"), "build/status output schema must require agentTransports");
+  assert(description.outputSchema?.required?.includes("buildSocket"), "build/status output schema must require buildSocket");
+  assert(description.outputSchema?.properties?.mode?.enum?.includes("electron"), "build/status output schema must expose electron mode");
+  assert(description.outputSchema?.properties?.mode?.enum?.includes("headless"), "build/status output schema must expose headless mode");
+  assert(description.outputSchema?.properties?.status?.enum?.includes("running"), "build/status output schema must expose running status");
+  assert(description.outputSchema?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "build/status output schema must expose hostBase marker");
+  assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.methodRegistry?.enum?.includes("shared"), "build/status output schema must expose shared method registry transports");
 };
 
 export const assertBuildHttpTransportSurface = async ({
