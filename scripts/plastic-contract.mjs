@@ -13,16 +13,10 @@ import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./p
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertMethodCatalogsMatch, assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
 import { assertSelfTestDurableEvent, assertSelfTestHttpResources, assertSelfTestMethodDescription, assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
+import { assertRuntimeAuditStatusMethodDescription } from "./plastic-contract-audit-status.mjs";
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
-import {
-  assertHeadlessFallbackChatFixture,
-  assertNoActiveContractFixtures,
-  cleanupLegacyContractFixtures
-} from "./plastic-contract-fixtures.mjs";
-import {
-  agentBackendMethodExpectationsForMode,
-  capabilityBackedMethodExpectationsForMode
-} from "./plastic-capability-expectations.mjs";
+import { assertHeadlessFallbackChatFixture, assertNoActiveContractFixtures, cleanupLegacyContractFixtures } from "./plastic-contract-fixtures.mjs";
+import { agentBackendMethodExpectationsForMode, capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { assertModuleAvailabilitySummaries, assertRuntimeModuleOrder } from "./plastic-module-availability.mjs";
 
 const runId = `contract-${Date.now()}`;
@@ -158,6 +152,10 @@ await check("methods/describe", async () => {
 
 await check("plastic/selfTest description", async () => {
   return assertSelfTestMethodDescription({ assert, description: await rpc("methods/describe", { id: "plastic/selfTest" }) });
+});
+
+await check("runtime/auditStatus description", async () => {
+  return assertRuntimeAuditStatusMethodDescription({ assert, description: await rpc("methods/describe", { id: "runtime/auditStatus" }) });
 });
 
 await check("runtime/runAuditAction description", async () => {

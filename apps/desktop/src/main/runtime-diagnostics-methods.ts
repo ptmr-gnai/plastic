@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { MethodRegistry, PlasticEvent } from "@plastic/core";
 import { Effect } from "effect";
 import { compactAuditMetadata, recentAuditActions, type AuditSummary } from "./runtime-audit-projection.js";
+import { auditStatusOutputSchema } from "./runtime-diagnostics-schemas.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeCommandResult } from "./runtime-build-methods.js";
 import type { AppendEvent, RunPromise, RuntimeModule } from "./runtime-method-context.js";
@@ -337,6 +338,7 @@ const registerAuditStatus = async (input: {
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: runtimeDiagnosticsAvailability,
       inputSchema: noInputSchema,
+      outputSchema: auditStatusOutputSchema,
       examples: [
         {
           title: "Read latest runtime audit verdict",
