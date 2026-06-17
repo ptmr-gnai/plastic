@@ -7,6 +7,7 @@ import {
 } from "@plastic/core";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 import { eventMetaSchema } from "./runtime-method-metadata.js";
+import { plasticEventSchema } from "./runtime-control-schemas.js";
 
 type PanelCreateInput = {
   id?: string;
@@ -34,6 +35,27 @@ type PanelMutationInput = {
 const panelControlAvailability = {
   status: "available" as const,
   notes: "Panel control is a host-agnostic runtime primitive available in headed and headless modes."
+};
+
+const plasticPanelSchema = {
+  type: "object",
+  required: ["id", "title", "kind", "extensionId", "order"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    kind: { type: "string" },
+    extensionId: { type: "string" },
+    rendererId: { type: "string" },
+    subtitle: { type: "string" },
+    body: { type: "string" },
+    windowId: { type: "string" },
+    order: { type: "number" }
+  }
+};
+
+const panelsListOutputSchema = {
+  type: "array",
+  items: plasticPanelSchema
 };
 
 export const registerPanelControlMethods = async (input: RuntimeMethodContext) => {
@@ -67,6 +89,7 @@ const registerPanelList = async (input: {
       description: "Returns the panel read model rebuilt from durable events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: panelControlAvailability,
+      outputSchema: panelsListOutputSchema,
       handler: () => Effect.map(eventStore.list(), projectPanels)
     })
   );
@@ -93,6 +116,7 @@ const registerPanelGet = async (input: {
           id: { type: "string", description: "Panel id to read." }
         }
       },
+      outputSchema: plasticPanelSchema,
       examples: [
         {
           title: "Read a panel",
@@ -148,6 +172,7 @@ const registerPanelCreate = async (input: {
           meta: eventMetaSchema
         }
       },
+      outputSchema: plasticEventSchema,
       examples: [
         {
           title: "Create a scratch panel",
@@ -221,6 +246,7 @@ const registerPanelRename = async (input: {
           meta: eventMetaSchema
         }
       },
+      outputSchema: plasticEventSchema,
       examples: [
         {
           title: "Rename a chat panel",
@@ -284,6 +310,7 @@ const registerPanelMove = async (input: {
           meta: eventMetaSchema
         }
       },
+      outputSchema: plasticEventSchema,
       examples: [
         {
           title: "Move a chat after the first panel",
@@ -346,6 +373,7 @@ const registerPanelRemove = async (input: {
           meta: eventMetaSchema
         }
       },
+      outputSchema: plasticEventSchema,
       examples: [
         {
           title: "Remove a scratch panel",
@@ -406,6 +434,7 @@ const registerPanelClose = async (input: {
           meta: eventMetaSchema
         }
       },
+      outputSchema: plasticEventSchema,
       examples: [
         {
           title: "Close a panel",

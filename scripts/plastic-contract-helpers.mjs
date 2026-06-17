@@ -1,5 +1,6 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertSetThemeMethodDescription } from "./plastic-contract-events.mjs";
+import { assertPanelControlMethodDescriptions } from "./plastic-contract-panels.mjs";
 import { capabilityExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 export { assertRuntimeAuditStatus } from "./plastic-contract-audit-status.mjs";
@@ -241,6 +242,13 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
 };
 
 export const assertPanelLifecycleProjection = async ({ rpc, panelId, meta }) => {
+  const panelDescriptions = Object.fromEntries(await Promise.all(
+    ["list", "get", "create", "rename", "move", "close"].map(async (key) => [
+      key,
+      await rpc("methods/describe", { id: `panels/${key}` })
+    ])
+  ));
+  assertPanelControlMethodDescriptions({ assert, descriptions: panelDescriptions });
   const created = await rpc("panels/create", {
     id: panelId,
     title: "Contract Panel",
