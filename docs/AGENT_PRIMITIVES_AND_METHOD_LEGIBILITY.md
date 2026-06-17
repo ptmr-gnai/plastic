@@ -30,27 +30,32 @@ Plastic already exposes useful control primitives:
 
 This means the substrate already supports meaningful side-channel control. For example, an outside local agent can inspect panels, move panels, create chats, send chat messages, read transcripts, reload extensions, and verify app health without touching the GUI.
 
-## Main Gap
+## Current Invariant
 
-The biggest current gap is method legibility.
+Method legibility is now a runtime contract, not just a goal.
 
-`plastic/methods` shows method IDs, titles, owners, and some descriptions, but many methods do not yet expose:
+Every method currently exposed through `plastic/methods`, runtime `/methods`, and build `/methods` must expose:
 
 - input schemas;
 - output schemas;
 - examples;
-- preconditions;
 - side effects;
 - durable event types produced;
-- verification methods;
 - reversibility or undo notes;
-- relevant visible refs.
+- describe/invoke links.
 
-This causes agents to miss capabilities or infer payloads incorrectly. A live example: an agent said panel movement was not exposed even though `panels/move` exists, because the method surface did not teach the agent enough about how to use it.
+The contract harness enforces this globally with `assertMethodCatalogSurface`, and `pnpm plastic:validate-unified` validates it against both headless and Electron hosts. The latest captured headless catalog has 86 methods and zero missing metadata fields.
 
-## Desired Method Metadata
+The remaining legibility work has moved up a layer:
 
-Every method should eventually be describable with:
+- expose more HATEOAS actions from contextual resources, not only from method descriptions;
+- attach visible/deictic refs to more UI affordances;
+- make settings and layout explicit durable primitives;
+- replace broad JSON-schema objects with Effect Schema or another typed schema source when the runtime is ready.
+
+## Required Method Metadata
+
+Every method must be describable with:
 
 ```ts
 interface PlasticMethodDescription {
