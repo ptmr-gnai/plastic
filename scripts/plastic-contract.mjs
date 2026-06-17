@@ -21,6 +21,7 @@ import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./pla
 import { assertHeadlessFallbackChatFixture, assertNoActiveContractFixtures, cleanupLegacyContractFixtures } from "./plastic-contract-fixtures.mjs";
 import { assertSnapshotMethodDescription } from "./plastic-contract-snapshot.mjs";
 import { assertStateMethodDescription } from "./plastic-contract-state.mjs";
+import { assertWindowRendererMethodDescriptions } from "./plastic-contract-window-renderer.mjs";
 import { agentBackendMethodExpectationsForMode, capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { assertRuntimeModulesSurface } from "./plastic-contract-runtime-modules.mjs";
 
@@ -322,25 +323,13 @@ await check("app/diagnostics", async () => {
 await check("runtime/auditStatus", async () => {
   return assertRuntimeAuditStatus(await rpc("runtime/auditStatus"));
 });
-await check("renderer/reload metadata", async () => {
-  const expectations = await capabilityBackedMethodExpectationsForMode(state.app.mode);
-  const description = await rpc("methods/describe", { id: "renderer/reload" });
-  const expected = expectations["renderer/reload"];
-  assert(description.id === "renderer/reload", "described wrong renderer method");
-  assert(description.availability?.status, "renderer/reload missing availability");
-  assert(description.availability.status === expected.status, "renderer/reload availability does not match host mode");
-  return {
-    availability: description.availability.status,
-    requiredCapabilities: description.availability.requiredCapabilities ?? []
-  };
-});
-
 await check("capability-backed method metadata", async () => {
   const expectations = await capabilityBackedMethodExpectationsForMode(state.app.mode);
   const descriptions = await Promise.all(
     Object.keys(expectations).map((id) => rpc("methods/describe", { id }))
   );
   const byId = Object.fromEntries(descriptions.map((description) => [description.id, description]));
+  assertWindowRendererMethodDescriptions({ assert, descriptions: { rendererReload: byId["renderer/reload"], windowsList: byId["windows/list"], windowsCreate: byId["windows/create"], windowsFocusPanel: byId["windows/focusPanel"], windowsScrollToRef: byId["windows/scrollToRef"] } });
   for (const [id, expected] of Object.entries(expectations)) {
     const availability = byId[id].availability;
     assert(availability?.status === expected.status, `${id} availability mismatch`);

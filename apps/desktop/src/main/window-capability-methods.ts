@@ -1,6 +1,7 @@
 import type { BrowserWindow as ElectronBrowserWindow } from "electron";
 import { Effect } from "effect";
 import { projectPanels, projectWindows } from "@plastic/core";
+import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import { windowAvailability } from "./window-availability.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
@@ -12,6 +13,40 @@ type WindowCapabilityModuleInput = {
   browserWindow?: WindowHost;
   createWindow?: (title?: string) => Promise<unknown>;
   scrollRefIntoViewScript?: (ref: string) => string;
+};
+
+const plasticWindowSchema = {
+  type: "object",
+  required: ["id", "title", "panelIds", "open"],
+  properties: {
+    id: { type: "string" },
+    electronWindowId: { type: "number" },
+    title: { type: "string" },
+    panelIds: { type: "array", items: { type: "string" } },
+    open: { type: "boolean" }
+  }
+};
+
+const windowCreateOutputSchema = {
+  type: "object",
+  required: ["id", "electronWindowId", "title"],
+  properties: {
+    id: { type: "string" },
+    electronWindowId: { type: "number" },
+    title: { type: "string" }
+  }
+};
+
+const windowScrollResultSchema = {
+  type: "array",
+  items: {
+    type: "object",
+    required: ["windowId", "found"],
+    properties: {
+      windowId: { type: "number" },
+      found: { type: "boolean" }
+    }
+  }
 };
 
 export const createWindowCapabilityModule = (input: WindowCapabilityModuleInput = {}): RuntimeModule => ({
@@ -33,6 +68,11 @@ const registerWindowList = async (context: RuntimeMethodContext) => {
       description: "Returns known windows rebuilt from durable events.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: windowAvailability(context.capabilities, "windows/list"),
+      inputSchema: noInputSchema,
+      outputSchema: { type: "array", items: plasticWindowSchema },
+      examples: [{ title: "List projected windows", input: {}, verifyWith: { method: "runtime/capabilities", input: {} } }],
+      effects: readOnlyEffects,
+      reversibility: readOnlyReversibility,
       handler: () => Effect.map(eventStore.list(), (events) => projectWindows(events, projectPanels(events)))
     })
   );
@@ -50,6 +90,11 @@ const registerWindowCreate = async (
       description: "Opens a new Electron window and appends window.created.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: windowAvailability(context.capabilities, "windows/create"),
+      inputSchema: { type: "object", properties: { title: { type: "string" } } },
+      outputSchema: windowCreateOutputSchema,
+      examples: [{ title: "Create a workspace window", input: { title: "Plastic" }, expectedEvents: ["window.created"], verifyWith: { method: "windows/list", input: {} } }],
+      effects: { durableEvents: ["window.created"], mutatesProjection: ["windows"] },
+      reversibility: { reversible: false, notes: "Close/remove the created window as a compensating action." },
       handler: (methodInput) =>
         Effect.promise(async () => {
           if (!createWindow) {
@@ -75,6 +120,11 @@ const registerWindowFocusPanel = async (
       description: "Scrolls a visible panel into view and focuses its window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: windowAvailability(context.capabilities, "windows/focusPanel"),
+      inputSchema: { type: "object", required: ["panelId"], properties: { panelId: { type: "string" } } },
+      outputSchema: windowScrollResultSchema,
+      examples: [{ title: "Focus a panel", input: { panelId: "chat-main" }, verifyWith: { method: "deixis/listVisibleRefs", input: {} } }],
+      effects: { durableEvents: [], mutatesProjection: [] },
+      reversibility: { reversible: false, notes: "Focus and scroll position are transient host state." },
       handler: (methodInput) =>
         Effect.promise(async () => {
           if (!browserWindow || !scrollRefIntoViewScript) {
@@ -103,6 +153,11 @@ const registerWindowScrollToRef = async (
       description: "Scrolls any visible data-plastic-ref into view.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: windowAvailability(context.capabilities, "windows/scrollToRef"),
+      inputSchema: { type: "object", required: ["ref"], properties: { ref: { type: "string" } } },
+      outputSchema: windowScrollResultSchema,
+      examples: [{ title: "Scroll to a visible ref", input: { ref: "panel:chat-main" }, verifyWith: { method: "deixis/listVisibleRefs", input: {} } }],
+      effects: { durableEvents: [], mutatesProjection: [] },
+      reversibility: { reversible: false, notes: "Scroll position is transient host state." },
       handler: (methodInput) =>
         Effect.promise(async () => {
           if (!browserWindow || !scrollRefIntoViewScript) {
