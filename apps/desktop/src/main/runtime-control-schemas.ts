@@ -61,3 +61,34 @@ export const eventsListOutputSchema = {
   type: "array",
   items: plasticEventSchema
 };
+
+export const eventTimelineItemSchema = {
+  type: "object",
+  required: ["eventId", "timestamp", "actor", "scope", "type", "summary", "causes", "effects", "links"],
+  properties: {
+    eventId: { type: "string" },
+    timestamp: { type: "string" },
+    actor: plasticEventSchema.properties.actor,
+    scope: plasticEventSchema.properties.scope,
+    type: { type: "string" },
+    summary: { type: "string" },
+    causes: { type: "array", items: { type: "string" } },
+    effects: { type: "array", items: { type: "string" } },
+    links: { type: "array", items: { type: "object" } },
+    raw: plasticEventSchema
+  }
+};
+
+export const eventsTimelineOutputSchema = {
+  type: "object",
+  required: ["latestEventId", "eventCount", "cursor", "items"],
+  properties: {
+    latestEventId: { type: ["string", "null"] },
+    eventCount: { type: "number" },
+    cursor: { type: ["string", "null"] },
+    items: {
+      type: "array",
+      items: eventTimelineItemSchema
+    }
+  }
+};
