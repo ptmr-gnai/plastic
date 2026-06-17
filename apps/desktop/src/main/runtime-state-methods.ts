@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { buildPlasticState, type PlasticState } from "@plastic/core";
 import { readRuntimeControlPlane } from "./agent-runtime-modules.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { plasticStateOutputSchema } from "./runtime-state-schemas.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
 
 const runtimeStateAvailability = {
@@ -22,6 +23,7 @@ export const createRuntimeStateModule = (input: {
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: runtimeStateAvailability,
         inputSchema: noInputSchema,
+        outputSchema: plasticStateOutputSchema,
         examples: [
           {
             title: "Read current app state",
