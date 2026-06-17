@@ -13,9 +13,10 @@ const desktopPackage = JSON.parse(readFileSync(resolve(desktopDir, "package.json
 const electronExecutable = desktopRequire("electron");
 const compiledMain = resolve(desktopDir, "dist-electron/main/main.js");
 const packageMain = resolve(desktopDir, desktopPackage.main ?? "");
+const viteDevServerUrl = process.env.PLASTIC_VITE_URL ?? process.env.VITE_DEV_SERVER_URL ?? "http://127.0.0.1:5173";
 const relevantEnv = Object.fromEntries(
   Object.entries(process.env)
-    .filter(([key]) => key.startsWith("ELECTRON_") || key.startsWith("PLASTIC_ELECTRON_") || key === "VITE_DEV_SERVER_URL")
+    .filter(([key]) => key.startsWith("ELECTRON_") || key.startsWith("PLASTIC_ELECTRON_") || key === "PLASTIC_VITE_URL" || key === "VITE_DEV_SERVER_URL")
     .sort(([left], [right]) => left.localeCompare(right))
 );
 
@@ -47,7 +48,7 @@ const probeLaunch = (label, command, args) =>
       env: {
         ...process.env,
         ELECTRON_ENABLE_LOGGING: process.env.ELECTRON_ENABLE_LOGGING ?? "1",
-        VITE_DEV_SERVER_URL: process.env.VITE_DEV_SERVER_URL ?? "http://127.0.0.1:5173"
+        VITE_DEV_SERVER_URL: viteDevServerUrl
       }
     });
     setTimeout(async () => {
@@ -101,6 +102,7 @@ console.log(JSON.stringify({
   ok: true,
   electronExecutable,
   desktopDir,
+  viteDevServerUrl,
   launchModes: {
     compiledMain: {
       target: compiledMain,
