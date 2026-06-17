@@ -1,5 +1,6 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertSetThemeMethodDescription } from "./plastic-contract-events.mjs";
+import { assertPanelMailboxMethodDescriptions } from "./plastic-contract-panel-mailbox.mjs";
 import { assertPanelControlMethodDescriptions } from "./plastic-contract-panels.mjs";
 import { capabilityExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
@@ -270,7 +271,36 @@ export const assertPanelLifecycleProjection = async ({ rpc, panelId, meta }) => 
   await rpc("panels/close", { id: panelId, ...(meta ? { meta } : {}) });
   const panelsAfterClose = await rpc("panels/list");
   assert(!panelsAfterClose.some((candidate) => candidate.id === panelId), "closed panel still projected");
-  return { id: created.id, panelId, createEventId: created.id, remainingPanels: panelsAfterClose.length };
+  const mailbox = await assertPanelMailboxProjection({ rpc, panelIdPrefix: panelId, meta });
+  return { id: created.id, panelId, createEventId: created.id, remainingPanels: panelsAfterClose.length, mailbox };
+};
+
+const assertPanelMailboxProjection = async ({ rpc, panelIdPrefix, meta }) => {
+  const fromPanelId = `${panelIdPrefix}-mailbox-from`;
+  const toPanelId = `${panelIdPrefix}-mailbox-to`;
+  const descriptions = Object.fromEntries(await Promise.all([
+    ["send", "panels/sendMessage"],
+    ["list", "panels/listMessages"],
+    ["markRead", "panels/markMessageRead"],
+    ["mailboxes", "panels/mailboxes"]
+  ].map(async ([key, id]) => [key, await rpc("methods/describe", { id })])));
+  assertPanelMailboxMethodDescriptions({ assert, descriptions });
+  await rpc("panels/create", { id: fromPanelId, title: "Mailbox Sender", kind: "generic", ...(meta ? { meta } : {}) });
+  await rpc("panels/create", { id: toPanelId, title: "Mailbox Receiver", kind: "generic", ...(meta ? { meta } : {}) });
+  const sent = await rpc("panels/sendMessage", { fromPanelId, toPanelId, content: "contract mailbox message" });
+  assert(sent?.type === "panel.message.sent", "panels/sendMessage did not append panel.message.sent");
+  const messages = await rpc("panels/listMessages", { panelId: toPanelId });
+  const message = messages.find((candidate) => candidate.id === sent.payload?.id);
+  assert(message?.status === "sent", "sent panel message not projected");
+  const read = await rpc("panels/markMessageRead", { id: message.id });
+  assert(read?.type === "panel.message.read", "panels/markMessageRead did not append panel.message.read");
+  const readMessages = await rpc("panels/listMessages", { panelId: toPanelId });
+  assert(readMessages.find((candidate) => candidate.id === message.id)?.status === "read", "read receipt not projected");
+  const mailboxes = await rpc("panels/mailboxes");
+  assert(mailboxes.some((mailbox) => mailbox.panel?.id === toPanelId && mailbox.inboxCount >= 1), "mailbox inbox count not projected");
+  await rpc("panels/close", { id: fromPanelId, ...(meta ? { meta } : {}) });
+  await rpc("panels/close", { id: toPanelId, ...(meta ? { meta } : {}) });
+  return { sentEventId: sent.id, readEventId: read.id, messageId: message.id };
 };
 
 export const assertRpcCallDispatch = async ({ rpc }) => {

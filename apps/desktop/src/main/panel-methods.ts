@@ -5,12 +5,39 @@ import {
 } from "@plastic/core";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
+import { plasticEventSchema } from "./runtime-control-schemas.js";
 
 type PanelMailboxContext = Pick<RuntimeMethodContext, "eventStore" | "methods" | "runPromise" | "appendEvent">;
 
 const panelMailboxAvailability = {
   status: "available" as const,
   notes: "Panel mailbox is a durable runtime primitive available in headed and headless modes."
+};
+
+const panelMessageSchema = {
+  type: "object",
+  required: ["id", "fromPanelId", "toPanelId", "type", "timestamp", "status"],
+  properties: {
+    id: { type: "string" },
+    fromPanelId: { type: "string" },
+    toPanelId: { type: "string" },
+    type: { type: "string" },
+    content: { type: "string" },
+    payload: {},
+    timestamp: { type: "string" },
+    status: { type: "string", enum: ["sent", "read"] }
+  }
+};
+
+const panelMailboxSummarySchema = {
+  type: "object",
+  required: ["panel", "inboxCount", "outboxCount", "unreadCount"],
+  properties: {
+    panel: { type: "object" },
+    inboxCount: { type: "number" },
+    outboxCount: { type: "number" },
+    unreadCount: { type: "number" }
+  }
 };
 
 export const registerPanelMailboxMethods = async (input: PanelMailboxContext) => {
@@ -41,6 +68,7 @@ const registerSendPanelMessage = async (input: PanelMailboxContext) => {
           payload: { type: "object", description: "Optional structured message payload." }
         }
       },
+      outputSchema: plasticEventSchema,
       examples: [
         {
           title: "Send a message between panels",
@@ -112,6 +140,7 @@ const registerListPanelMessages = async (input: PanelMailboxContext) => {
           panelId: { type: "string", description: "Optional panel id to filter inbox and outbox messages." }
         }
       },
+      outputSchema: { type: "array", items: panelMessageSchema },
       examples: [
         {
           title: "List messages for one panel",
@@ -151,6 +180,7 @@ const registerMarkPanelMessageRead = async (input: PanelMailboxContext) => {
           id: { type: "string", description: "Mailbox message id to mark read." }
         }
       },
+      outputSchema: plasticEventSchema,
       examples: [
         {
           title: "Mark a mailbox message read",
@@ -194,6 +224,7 @@ const registerPanelMailboxes = async (input: PanelMailboxContext) => {
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: panelMailboxAvailability,
       inputSchema: noInputSchema,
+      outputSchema: { type: "array", items: panelMailboxSummarySchema },
       examples: [
         {
           title: "Read mailbox counts",
