@@ -44,20 +44,24 @@ const run = async () => {
     assert(payload.methodEffects?.reversibility?.reversible === true, "MCP result missing delegated read-only reversibility");
     assert(Array.isArray(payload.methodEffects?.effects?.durableEvents), "MCP result missing delegated effects");
     const actionId = payload.value?.verdict?.actions?.[0]?.id;
-    assert(typeof actionId === "string", "MCP auditStatus result missing current action id");
-
-    const planPayload = await callPlasticRpcTool(mcp, {
-      id: 4,
-      method: "runtime/auditActionPlan",
-      input: { id: actionId }
-    });
-    assert(planPayload.ok === true, "MCP auditActionPlan call failed");
-    assert(planPayload.value?.id === actionId, "MCP auditActionPlan id mismatch");
-    assert(planPayload.value?.invocation?.method === "runtime/runAuditAction", "MCP auditActionPlan invocation mismatch");
-    assert(planPayload.value?.audit?.metadata?.schemaVersion === payload.value?.summary?.schemaVersion, "MCP auditActionPlan metadata schema mismatch");
-    assert(planPayload.value?.audit?.metadata?.generatedAt === payload.value?.summary?.generatedAt, "MCP auditActionPlan metadata timestamp mismatch");
-    assert(planPayload.methodEffects?.reversibility?.reversible === true, "MCP auditActionPlan missing read-only reversibility");
-    assert(planPayload.methodEffects?.effects?.durableEvents?.length === 0, "MCP auditActionPlan should not append durable events");
+    const planPayload = typeof actionId === "string"
+      ? await callPlasticRpcTool(mcp, {
+        id: 4,
+        method: "runtime/auditActionPlan",
+        input: { id: actionId }
+      })
+      : null;
+    if (planPayload === null) {
+      assert(payload.value?.verdict?.status === "running", "MCP auditStatus may only omit current action while running");
+    } else {
+      assert(planPayload.ok === true, "MCP auditActionPlan call failed");
+      assert(planPayload.value?.id === actionId, "MCP auditActionPlan id mismatch");
+      assert(planPayload.value?.invocation?.method === "runtime/runAuditAction", "MCP auditActionPlan invocation mismatch");
+      assert(planPayload.value?.audit?.metadata?.schemaVersion === payload.value?.summary?.schemaVersion, "MCP auditActionPlan metadata schema mismatch");
+      assert(planPayload.value?.audit?.metadata?.generatedAt === payload.value?.summary?.generatedAt, "MCP auditActionPlan metadata timestamp mismatch");
+      assert(planPayload.methodEffects?.reversibility?.reversible === true, "MCP auditActionPlan missing read-only reversibility");
+      assert(planPayload.methodEffects?.effects?.durableEvents?.length === 0, "MCP auditActionPlan should not append durable events");
+    }
 
     const events = await rpc("events/list", {
       types: ["bridge.plastic_rpc.requested", "bridge.plastic_rpc.completed"],
@@ -72,8 +76,8 @@ const run = async () => {
       ok: true,
       rpcUrl,
       actorId,
-      methods: ["runtime/auditStatus", "runtime/auditActionPlan"],
-      plannedAction: planPayload.value.id,
+      methods: planPayload === null ? ["runtime/auditStatus"] : ["runtime/auditStatus", "runtime/auditActionPlan"],
+      plannedAction: planPayload?.value?.id ?? null,
       reversible: payload.methodEffects.reversibility.reversible,
       durableEvents: payload.methodEffects.effects.durableEvents,
       bridgeEvents: events.filter((event) => event.type?.startsWith("bridge.plastic_rpc.")).length

@@ -175,6 +175,10 @@ await check("runtime/runAuditAction description", async () => {
   assert(planDescription.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === planDescription.id), "runtime/auditActionPlan missing invoke link");
   const auditStatus = await rpc("runtime/auditStatus");
   assert(auditStatus.verdict?.actions?.every((action) => action.run?.command && Array.isArray(action.run?.args)), "runtime/runAuditAction actions missing structured run metadata");
+  if (auditStatus.verdict.actions.length === 0) {
+    assert(auditStatus.verdict.status === "running", "runtime/auditStatus may only omit actions while running");
+    return { id: description.id, planId: planDescription.id, plannedAction: null, durableEvents: description.effects.durableEvents };
+  }
   const action = auditStatus.verdict.actions[0];
   const plan = await rpc("runtime/auditActionPlan", { id: action.id });
   assert(plan.id === action.id, "runtime/auditActionPlan id mismatch");

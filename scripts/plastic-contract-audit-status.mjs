@@ -1,7 +1,7 @@
 export const assertRuntimeAuditStatus = (auditStatus) => {
   assert(typeof auditStatus?.available === "boolean", "runtime/auditStatus missing availability");
   assert(typeof auditStatus.path === "string" && auditStatus.path.includes("runtime-unification-audit.json"), "runtime/auditStatus missing audit path");
-  assert(["missing", "passed", "degraded", "failed"].includes(auditStatus.verdict?.status), "runtime/auditStatus missing compact verdict");
+  assert(["missing", "running", "passed", "degraded", "failed"].includes(auditStatus.verdict?.status), "runtime/auditStatus missing compact verdict");
   assert(typeof auditStatus.verdict?.diagnosis?.code === "string", "runtime/auditStatus missing diagnosis code");
   assert(typeof auditStatus.verdict?.diagnosis?.summary === "string", "runtime/auditStatus missing diagnosis summary");
   assert(typeof auditStatus.verdict?.failureSummary?.count === "number", "runtime/auditStatus missing verdict failure count");
@@ -28,6 +28,7 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
 const assertPersistedAuditSummary = (summary) => {
   assert(summary?.schemaVersion === 1, "runtime/auditStatus missing audit schema version");
   assert(typeof summary.generatedAt === "string" && !Number.isNaN(Date.parse(summary.generatedAt)), "runtime/auditStatus missing audit generated timestamp");
+  assert(typeof summary.inProgress === "boolean", "runtime/auditStatus missing audit progress flag");
   assert(Array.isArray(summary.expectedStepIds), "runtime/auditStatus missing expected audit step ids");
   assert(summary.expectedChecks === summary.expectedStepIds.length, "runtime/auditStatus audit expected check count mismatch");
   assert(summary.checks === summary.results?.length, "runtime/auditStatus audit result count mismatch");

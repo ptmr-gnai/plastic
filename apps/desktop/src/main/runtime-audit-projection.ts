@@ -4,6 +4,7 @@ export type AuditSummary = {
   schemaVersion?: unknown;
   generatedAt?: unknown;
   ok?: unknown;
+  inProgress?: unknown;
   checks?: unknown;
   expectedChecks?: unknown;
   expectedStepIds?: unknown;
@@ -20,6 +21,7 @@ export type AuditSummary = {
 export const compactAuditMetadata = (summary: AuditSummary | null) => ({
   schemaVersion: typeof summary?.schemaVersion === "number" ? summary.schemaVersion : null,
   generatedAt: typeof summary?.generatedAt === "string" ? summary.generatedAt : null,
+  inProgress: summary?.inProgress === true,
   checks: typeof summary?.checks === "number" ? summary.checks : null,
   expectedChecks: typeof summary?.expectedChecks === "number" ? summary.expectedChecks : null,
   expectedStepIds: Array.isArray(summary?.expectedStepIds) ? summary.expectedStepIds.filter((id): id is string => typeof id === "string") : [],

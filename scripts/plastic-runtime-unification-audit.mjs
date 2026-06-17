@@ -51,6 +51,7 @@ const assertSummaryShape = (summary) => {
   assertSummaryInvariant(summary.results.every((result) => summary.expectedStepIds.includes(result.id)), "results must only contain expected steps");
   assertSummaryInvariant(summary.checks === summary.results.length, "checks must match result count");
   assertSummaryInvariant(summary.expectedChecks === summary.expectedStepIds.length, "expectedChecks must match expected step count");
+  assertSummaryInvariant(typeof summary.inProgress === "boolean", "inProgress must be boolean");
   assertSummaryInvariant(summary.failures.count === summary.failures.ids.length, "failure count must match failure ids");
   assertSummaryInvariant(Array.isArray(summary.failures.blockingIds), "blocking failure ids must be an array");
   assertSummaryInvariant(typeof summary.runtimeUnification.usable === "boolean", "runtimeUnification.usable must be boolean");
@@ -58,7 +59,7 @@ const assertSummaryShape = (summary) => {
   assertSummaryInvariant(["passed", "failed", "degraded", "not-run"].includes(summary.runtimeUnification.unified), "unified must be a known status");
 };
 
-const writeSummary = async (results) => {
+const writeSummary = async (results, options = {}) => {
   const byId = Object.fromEntries(results.map((result) => [result.id, result]));
   const failed = results.filter((result) => !result.ok);
   const blockingFailures = failed.filter((result) => result.id !== "electron").map((result) => result.id);
@@ -68,7 +69,8 @@ const writeSummary = async (results) => {
   const summary = {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
-    ok: results.every((result) => result.ok) && results.length === steps.length,
+    inProgress: options.inProgress === true,
+    ok: options.inProgress !== true && results.every((result) => result.ok) && results.length === steps.length,
     checks: results.length,
     expectedChecks: steps.length,
     expectedStepIds: steps.map((step) => step.id),
@@ -152,13 +154,14 @@ const runStep = (step) =>
   });
 
 const results = [];
-await writeSummary(results);
+await writeSummary(results, { inProgress: true });
 for (const step of steps) {
   const result = await runStep(step);
   results.push(result);
   if (!result.ok && !step.continueOnFailure) {
     break;
   }
+  await writeSummary(results, { inProgress: true });
 }
 
 const summary = await writeSummary(results);

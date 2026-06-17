@@ -233,9 +233,24 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
   const results = Array.isArray(summary.results) ? summary.results as Array<AuditResult> : [];
   const firstFailed = results.find((result) => result.ok === false);
   const hints = asStringArray(firstFailed?.diagnostics?.hints);
+  const inProgress = summary.inProgress === true;
   const strictElectron = typeof summary.runtimeUnification?.strictElectron === "string" ? summary.runtimeUnification.strictElectron : "unknown";
   const unified = typeof summary.runtimeUnification?.unified === "string" ? summary.runtimeUnification.unified : "unknown";
   const usable = summary.runtimeUnification?.usable === true;
+  if (inProgress) {
+    return {
+      status: "running",
+      usable: false,
+      strictElectron,
+      unified,
+      failureSummary: compactFailureSummary(summary),
+      failurePhase: null,
+      diagnosis: diagnosis("audit-running", "runtime-unification-audit", "The runtime unification audit is currently running."),
+      hints: [],
+      nextAction: "Wait for pnpm plastic:audit-runtime-unification to finish, then read runtime/auditStatus again.",
+      actions: []
+    };
+  }
   const status = usable ? strictElectron === "passed" && unified === "passed" ? "passed" : "degraded" : "failed";
   const failurePhase = typeof firstFailed?.id === "string" ? firstFailed.id : null;
   const failureSummary = compactFailureSummary(summary);

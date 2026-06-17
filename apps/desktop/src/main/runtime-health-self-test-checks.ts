@@ -69,7 +69,7 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
       || !Array.isArray(asRecord(action.run).args)
     )
     .map((action) => String(action.id ?? "<missing-id>"));
-  if (!["missing", "passed", "degraded", "failed"].includes(String(status))) {
+  if (!["missing", "running", "passed", "degraded", "failed"].includes(String(status))) {
     throw new Error("runtime/auditStatus returned an invalid verdict status");
   }
   if (typeof diagnosis.code !== "string" || typeof diagnosis.summary !== "string") {
