@@ -6,11 +6,74 @@ import {
 } from "@plastic/core";
 import type { RunPromise } from "./runtime-method-context.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { plasticEventSchema } from "./runtime-control-schemas.js";
 import { appendVerificationEvent, latestVerificationStatus, verifyExtension } from "./extension-verifier.js";
 
 const extensionVerificationAvailability = {
   status: "available" as const,
   notes: "Extension verification is a shared runtime primitive available in headed and headless modes."
+};
+
+const verificationCheckSchema = {
+  type: "object",
+  required: ["name", "ok", "message"],
+  properties: {
+    name: { type: "string" },
+    ok: { type: "boolean" },
+    message: { type: "string" }
+  }
+};
+
+const verificationReportSchema = {
+  type: "object",
+  required: ["extensionId", "ok", "checks", "warnings", "errors"],
+  properties: {
+    extensionId: { type: "string" },
+    ok: { type: "boolean" },
+    checks: { type: "array", items: verificationCheckSchema },
+    warnings: { type: "array", items: { type: "string" } },
+    errors: { type: "array", items: { type: "string" } },
+    panel: { type: "object" },
+    event: plasticEventSchema
+  }
+};
+
+const verificationStatusItemSchema = {
+  type: "object",
+  required: ["extensionId", "ok", "eventId", "eventType", "timestamp", "warningCount", "errorCount", "checkCount", "warnings", "errors"],
+  properties: {
+    extensionId: { type: "string" },
+    ok: { type: "boolean" },
+    eventId: { type: "string" },
+    eventType: { type: "string", enum: ["extension.verified", "extension.verify_failed"] },
+    timestamp: { type: "string" },
+    panelId: { type: "string" },
+    warningCount: { type: "number" },
+    errorCount: { type: "number" },
+    checkCount: { type: "number" },
+    warnings: { type: "array" },
+    errors: { type: "array" }
+  }
+};
+
+const verificationStatusOutputSchema = {
+  type: "object",
+  required: ["items", "links"],
+  properties: {
+    items: { type: "array", items: verificationStatusItemSchema },
+    links: { type: "array", items: { type: "object" } }
+  }
+};
+
+const verifyAllOutputSchema = {
+  type: "object",
+  required: ["ok", "count", "failed", "reports"],
+  properties: {
+    ok: { type: "boolean" },
+    count: { type: "number" },
+    failed: { type: "array", items: { type: "string" } },
+    reports: { type: "array", items: verificationReportSchema }
+  }
 };
 
 export const registerExtensionVerificationMethods = async (input: {
@@ -47,6 +110,7 @@ const registerVerifyExtension = async (input: {
           panelId: { type: "string", description: "Optional panel id to verify against the extension." }
         }
       },
+      outputSchema: verificationReportSchema,
       examples: [
         {
           title: "Verify one extension",
@@ -111,6 +175,7 @@ const registerVerifyAllExtensions = async (input: {
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionVerificationAvailability,
       inputSchema: noInputSchema,
+      outputSchema: verifyAllOutputSchema,
       examples: [
         {
           title: "Verify all extensions",
@@ -164,6 +229,7 @@ const registerVerificationStatus = async (input: {
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionVerificationAvailability,
       inputSchema: noInputSchema,
+      outputSchema: verificationStatusOutputSchema,
       examples: [
         {
           title: "Read extension verification status",
