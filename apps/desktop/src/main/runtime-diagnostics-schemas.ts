@@ -1,3 +1,24 @@
+export const appDiagnosticsOutputSchema = {
+  type: "object",
+  required: ["mode", "cwd", "workspaceDir", "eventPath", "hostBase", "windowCount"],
+  properties: {
+    mode: { type: "string", enum: ["electron", "headless"] },
+    cwd: { type: "string" },
+    workspaceDir: { type: "string" },
+    eventPath: { type: "string" },
+    hostBase: {
+      type: "object",
+      required: ["id", "version"],
+      properties: {
+        id: { type: "string", enum: ["runtime-host-base"] },
+        version: { type: "number" }
+      }
+    },
+    windowCount: { type: "number" },
+    appReady: { type: "boolean" }
+  }
+};
+
 export const auditStatusOutputSchema = {
   type: "object",
   required: ["available", "path", "verdict", "summary", "recentActions"],
