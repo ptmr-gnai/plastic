@@ -8,6 +8,7 @@ export const plasticSnapshotOutputSchema = {
     "controlPlane",
     "methods",
     "panels",
+    "resources",
     "windows",
     "extensions",
     "visibleRefs",
@@ -51,6 +52,7 @@ export const plasticSnapshotOutputSchema = {
       }
     },
     panels: { type: "array", items: { type: "object" } },
+    resources: { type: "array", items: { type: "object" } },
     windows: { type: "array", items: { type: "object" } },
     extensions: { type: "array", items: { type: "object" } },
     visibleRefs: { type: "array", items: { type: "object" } },

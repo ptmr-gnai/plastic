@@ -31,3 +31,13 @@ export const hasActionAffordance = (actions, expected) =>
     && action.method === expected.method
     && (expected.input === undefined || JSON.stringify(action.input) === JSON.stringify(expected.input))
   );
+
+export const assertPanelResourceAffordances = ({ assert, resources, source }) => {
+  const panel = (Array.isArray(resources) ? resources : []).find((resource) => resource.kind === "panel");
+  assert(panel, `${source} does not expose individual panel resources`);
+  const panelId = panel.state?.id;
+  assert(typeof panelId === "string", `${source} panel resource missing state.id`);
+  assert(hasLinkAffordance(panel.links, { rel: "self", href: "panels/get", method: "panels/get", input: { id: panelId } }), `${source} panel resource missing self link with panel input`);
+  assert(hasActionAffordance(panel.actions, { id: "rename-panel", method: "panels/rename", input: { id: panelId } }), `${source} panel resource missing rename action with panel input`);
+  assert(hasActionAffordance(panel.actions, { id: "remove-panel", method: "panels/remove", input: { id: panelId } }), `${source} panel resource missing remove action with panel input`);
+};

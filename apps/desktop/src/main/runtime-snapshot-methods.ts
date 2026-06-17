@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import {
+  buildPlasticState,
   projectExtensions,
   projectPanels,
   projectWindows,
@@ -52,6 +53,7 @@ export const createRuntimeSnapshotModule = (input: {
             const registeredMethods = await runPromise(methods.call("plastic/methods", {})) as PlasticMethod[];
             const panels = projectPanels(events);
             const host = await input.getHostDetails();
+            const state = await runPromise(buildPlasticState(eventStore, methods));
 
             return {
               app: host.app,
@@ -64,6 +66,7 @@ export const createRuntimeSnapshotModule = (input: {
                 items: registeredMethods.map(toSerializableMethod)
               },
               panels,
+              resources: state.resources,
               windows: projectWindows(events, panels),
               extensions: projectExtensions(events),
               visibleRefs: host.visibleRefs,

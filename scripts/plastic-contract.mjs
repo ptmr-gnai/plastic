@@ -7,7 +7,7 @@ import {
   assertRuntimeAuditStatus, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 import { assertAgentOrientMethodDescription, assertAgentOrientationPacket, assertAgentWorkbenchMethodDescription, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
-import { expectedSnapshotLinks, hasActionAffordance, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
+import { assertPanelResourceAffordances, expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
 import { assertRuntimeCapabilitiesMethodDescription } from "./plastic-contract-capabilities.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagnostics.mjs";
@@ -73,13 +73,7 @@ await check("plastic/state", async () => {
   assert(serviceResources.some((resource) => hasServiceAffordance(resource, { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest", actionId: "run-self-test" })), "state service resource missing self-test affordances");
   assertStateMethodDescription({ assert, description });
   assert(panelResources.length > 0, "state does not expose panels");
-  const individualPanel = panelResources.find((resource) => resource.kind === "panel");
-  assert(individualPanel, "state does not expose individual panel resources");
-  const panelIdFromResource = individualPanel.state?.id;
-  assert(typeof panelIdFromResource === "string", "state panel resource missing state.id");
-  assert(hasLinkAffordance(individualPanel.links, { rel: "self", href: "panels/get", method: "panels/get", input: { id: panelIdFromResource } }), "state panel resource missing self link with panel input");
-  assert(hasActionAffordance(individualPanel.actions, { id: "rename-panel", method: "panels/rename", input: { id: panelIdFromResource } }), "state panel resource missing rename action with panel input");
-  assert(hasActionAffordance(individualPanel.actions, { id: "remove-panel", method: "panels/remove", input: { id: panelIdFromResource } }), "state panel resource missing remove action with panel input");
+  assertPanelResourceAffordances({ assert, resources: state.resources, source: "state" });
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
   assert(runtimeStartedControlPlane.mode === state.app.mode, "runtime.started mode mismatch");
   return { mode: state.app.mode, panels: panelResources.length, events: state.events?.count ?? null, controlPlane: state.controlPlane.runtime.transport };
@@ -120,6 +114,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.app.mode === "electron" || snapshot.app.mode === "headless", "snapshot.app.mode must identify the host");
   assert(snapshot.app.hostBase?.id === "runtime-host-base" && snapshot.app.hostBase?.version === 1, "plastic/snapshot shared host base marker mismatch");
   assertArray(snapshot.panels, "snapshot.panels is not an array");
+  assertArray(snapshot.resources, "snapshot.resources is not an array");
   assertArray(snapshot.windows, "snapshot.windows is not an array");
   assertArray(snapshot.extensions, "snapshot.extensions is not an array");
   assertArray(snapshot.visibleRefs, "snapshot.visibleRefs is not an array");
@@ -140,6 +135,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });
   assertMethodCatalogsMatch({ assert, actual: snapshot.methods.items, expected: methods, actualLabel: "snapshot methods", expectedLabel: "plastic/methods" });
+  assertPanelResourceAffordances({ assert, resources: snapshot.resources, source: "snapshot" });
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
   for (const link of expectedSnapshotLinks) {
     assert(hasLinkAffordance(snapshot.links, link), `snapshot missing ${link.method} link`);
