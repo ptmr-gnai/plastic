@@ -67,6 +67,16 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   };
 };
 
+export const assertAgentWorkbenchMethodDescription = ({ assert, description }) => {
+  assert(description.id === "agent/workbench", "described wrong workbench method");
+  assert(description.outputSchema?.required?.includes("control"), "agent/workbench output schema must require control");
+  const actions = description.outputSchema?.properties?.control?.properties?.recommendedActions;
+  assert(actions?.items?.properties?.intent?.enum?.includes("execute"), "agent/workbench output schema must expose action intent");
+  assert(actions?.items?.properties?.risk?.enum?.includes("medium"), "agent/workbench output schema must expose action risk");
+  assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.required?.includes("runtime"), "agent/workbench output schema must expose runtime control plane");
+  return { id: description.id, required: description.outputSchema.required };
+};
+
 export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount, capabilityCount, modules, methodIds }) => {
   const moduleIds = modules.ids;
   assert(orientation?.agent?.id, "agent/orient missing agent id");
@@ -132,6 +142,16 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
     visibleRefs: orientation.visibleContext?.visibleRefs?.length ?? 0,
     recommendedActions: orientation.capabilities.recommendedActions.length
   };
+};
+
+export const assertAgentOrientMethodDescription = ({ assert, description }) => {
+  assert(description.id === "agent/orient", "described wrong orientation method");
+  assert(description.outputSchema?.required?.includes("capabilities"), "agent/orient output schema must require capabilities");
+  const actions = description.outputSchema?.properties?.capabilities?.properties?.recommendedActions;
+  assert(actions?.items?.properties?.intent?.enum?.includes("inspect"), "agent/orient output schema must expose action intent");
+  assert(actions?.items?.properties?.risk?.enum?.includes("medium"), "agent/orient output schema must expose action risk");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.required?.includes("build"), "agent/orient output schema must expose build control plane");
+  return { id: description.id, required: description.outputSchema.required };
 };
 
 const assertCapabilityStatuses = ({ assert, items, statuses, source }) => {

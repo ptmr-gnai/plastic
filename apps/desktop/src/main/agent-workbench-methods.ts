@@ -18,6 +18,7 @@ import type {
 import { capabilityStatusSummary } from "./agent-capability-summary.js";
 import { agentAction } from "./agent-action-affordances.js";
 import { readAgentAuditStatus } from "./agent-audit-status.js";
+import { agentWorkbenchOutputSchema } from "./agent-packet-schemas.js";
 import { readRuntimeAgentTransports, readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import { runtimeHostBaseDescriptor } from "./runtime-host-status.js";
@@ -87,6 +88,7 @@ export const createAgentWorkbenchModule = (host: AgentWorkbenchHost): RuntimeMod
             limit: { type: "number", description: "Maximum timeline items to include." }
           }
         },
+        outputSchema: agentWorkbenchOutputSchema,
         examples: [
           {
             title: "Read a compact agent workbench",

@@ -6,7 +6,7 @@ import {
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
   assertMatchingModuleInventories, assertRuntimeAuditStatus, assertModuleMethodDiscoveryParity, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
-import { assertAgentOrientationPacket, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
+import { assertAgentOrientMethodDescription, assertAgentOrientationPacket, assertAgentWorkbenchMethodDescription, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
 import { expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
@@ -244,17 +244,17 @@ await check("runtime/modules", async () => {
 });
 
 await check("agent/workbench", async () => {
+  assertAgentWorkbenchMethodDescription({ assert, description: await rpc("methods/describe", { id: "agent/workbench" }) });
   const workbench = await rpc("agent/workbench", { limit: 5 });
   const shared = { assert, assertArray, mode: state.app.mode, methodCount: methods.length, capabilityCount: runtimeCapabilities.count, modules: runtimeModules, methodIds };
   return assertAgentWorkbenchPacket({ ...shared, workbench });
 });
-
 await check("agent/orient", async () => {
+  assertAgentOrientMethodDescription({ assert, description: await rpc("methods/describe", { id: "agent/orient" }) });
   const orientation = await rpc("agent/orient", { panelId: "chat-main" });
   const shared = { assert, assertArray, methodCount: methods.length, capabilityCount: runtimeCapabilities.count, modules: runtimeModules, methodIds };
   return assertAgentOrientationPacket({ ...shared, orientation });
 });
-
 await check("agent backend metadata", async () => {
   const expectations = await agentBackendMethodExpectationsForMode(state.app.mode);
   const descriptions = await Promise.all(

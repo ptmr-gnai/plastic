@@ -17,6 +17,7 @@ import type {
 import { capabilityStatusSummary } from "./agent-capability-summary.js";
 import { agentAction } from "./agent-action-affordances.js";
 import { readAgentAuditStatus } from "./agent-audit-status.js";
+import { agentOrientOutputSchema } from "./agent-packet-schemas.js";
 import { readRuntimeAgentTransports, readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import { runtimeHostBaseDescriptor } from "./runtime-host-status.js";
@@ -67,6 +68,7 @@ export const createAgentOrientModule = (host: AgentOrientHost): RuntimeModule =>
             eventCursor: { type: "string", description: "Optional event id cursor for timeline context." }
           }
         },
+        outputSchema: agentOrientOutputSchema,
         examples: [
           {
             title: "Orient around the main chat panel",
