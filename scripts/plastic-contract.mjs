@@ -11,7 +11,7 @@ import { expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "
 import { assertRuntimeCapabilitiesMethodDescription } from "./plastic-contract-capabilities.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagnostics.mjs";
-import { assertEventsListMethodDescription, assertEventsTimelineMethodDescription } from "./plastic-contract-events.mjs";
+import { assertEventsAppendMethodDescription, assertEventsListMethodDescription, assertEventsTimelineMethodDescription } from "./plastic-contract-events.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertDescribeMethodDescription, assertMethodCatalogsMatch, assertMethodCatalogSurface, assertPlasticMethodsMethodDescription, assertRpcCallMethodDescription } from "./plastic-contract-method-surface.mjs";
@@ -28,8 +28,7 @@ const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
 const extensionId = `${runId}-extension`;
 const validationTags = ["validation", "validation:contract"], validationMeta = { tags: validationTags };
-let state, snapshot;
-let methods, methodIds, runtimeCapabilities, runtimeModules, extensions, events, runtimeStartedControlPlane;
+let state, snapshot, methods, methodIds, runtimeCapabilities, runtimeModules, extensions, events, runtimeStartedControlPlane;
 let scaffoldedExtensionDir, scaffoldedExtensionId, scaffoldedExtensionPanelId, createdPanelEvent;
 
 await check("plastic/state", async () => {
@@ -476,6 +475,7 @@ await check("bundled extension projections", async () => {
   };
 });
 await check("events list/timeline", async () => {
+  assertEventsAppendMethodDescription({ assert, description: await rpc("methods/describe", { id: "events/append" }) });
   assertEventsListMethodDescription({ assert, description: await rpc("methods/describe", { id: "events/list" }) });
   assertEventsTimelineMethodDescription({ assert, description: await rpc("methods/describe", { id: "events/timeline" }) });
   events = await rpc("events/list", { types: ["panel.created"], scope: { panelId }, limit: 100 });
