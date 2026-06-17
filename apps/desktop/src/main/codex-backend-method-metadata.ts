@@ -30,6 +30,50 @@ const codexSetDefaultsOutputSchema = {
   }
 };
 
+const bridgeConfigurePlasticMcpOutputSchema = {
+  type: "object",
+  required: ["configured", "value", "writeResult", "reloadResult"],
+  properties: {
+    configured: { type: "boolean" },
+    value: { type: "object" },
+    writeResult: {},
+    reloadResult: {}
+  }
+};
+
+const bridgeStatusOutputSchema = {
+  type: "object",
+  required: ["plasticMcpConfigured", "plasticMcpLastError", "plasticMcpServerPath", "runtimeRpcUrl", "mcpStatus", "mcpError"],
+  properties: {
+    plasticMcpConfigured: { type: "boolean" },
+    plasticMcpLastError: { type: ["string", "null"] },
+    plasticMcpServerPath: { type: "string" },
+    runtimeRpcUrl: { type: "string" },
+    mcpStatus: {},
+    mcpError: { type: ["string", "null"] }
+  }
+};
+
+const bridgeTestOutputSchema = {
+  type: "object",
+  required: ["ok", "status", "eventId"],
+  properties: {
+    ok: { type: "boolean" },
+    status: {},
+    eventId: { type: "string" }
+  }
+};
+
+const bridgeCallPlasticRpcToolOutputSchema = {
+  type: "object",
+  required: ["threadId", "result", "eventId"],
+  properties: {
+    threadId: { type: "string" },
+    result: {},
+    eventId: { type: "string" }
+  }
+};
+
 export const codexStatusMetadata = {
   description: "Returns Codex backend connection, initialization, and capability status for this Plastic host.",
   inputSchema: noInputSchema,
@@ -118,6 +162,7 @@ export const codexRequestMetadata = {
 export const bridgeConfigurePlasticMcpMetadata = {
   description: "Registers the plastic_rpc MCP tool with Codex app-server and reloads MCP config.",
   inputSchema: noInputSchema,
+  outputSchema: bridgeConfigurePlasticMcpOutputSchema,
   examples: [
     {
       title: "Configure the Plastic MCP bridge",
@@ -139,6 +184,7 @@ export const bridgeConfigurePlasticMcpMetadata = {
 export const bridgeStatusMetadata = {
   description: "Returns Codex MCP bridge configuration and discovered MCP tool status.",
   inputSchema: noInputSchema,
+  outputSchema: bridgeStatusOutputSchema,
   examples: [
     {
       title: "Read Plastic bridge status",
@@ -153,6 +199,7 @@ export const bridgeStatusMetadata = {
 export const bridgeTestMetadata = {
   description: "Checks that Codex sees the plastic MCP server and plastic_rpc tool.",
   inputSchema: noInputSchema,
+  outputSchema: bridgeTestOutputSchema,
   examples: [
     {
       title: "Test whether Codex can see the Plastic MCP tool",
@@ -182,6 +229,7 @@ export const bridgeCallPlasticRpcToolMetadata = {
       input: { type: "object", description: "Plastic RPC input payload." }
     }
   },
+  outputSchema: bridgeCallPlasticRpcToolOutputSchema,
   examples: [
     {
       title: "Orient through the MCP bridge",

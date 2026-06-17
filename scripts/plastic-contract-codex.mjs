@@ -7,3 +7,15 @@ export const assertCodexCoreMethodDescriptions = ({ assert, descriptions }) => {
   assert(descriptions.setDefaults.outputSchema?.required?.includes("eventId"), "codex/setDefaults output schema must require eventId");
   assert(descriptions.setDefaults.effects?.durableEvents?.includes("codex.defaults.updated"), "codex/setDefaults must describe defaults update events");
 };
+
+export const assertCodexBridgeMethodDescriptions = ({ assert, descriptions }) => {
+  assert(descriptions.configure.outputSchema?.required?.includes("configured"), "bridge/configurePlasticMcp output schema must require configured");
+  assert(descriptions.configure.outputSchema?.required?.includes("value"), "bridge/configurePlasticMcp output schema must require value");
+  assert(descriptions.status.outputSchema?.required?.includes("plasticMcpConfigured"), "bridge/status output schema must require plasticMcpConfigured");
+  assert(descriptions.status.outputSchema?.required?.includes("runtimeRpcUrl"), "bridge/status output schema must require runtimeRpcUrl");
+  assert(descriptions.test.outputSchema?.required?.includes("ok"), "bridge/test output schema must require ok");
+  assert(descriptions.test.outputSchema?.required?.includes("eventId"), "bridge/test output schema must require eventId");
+  assert(descriptions.call.outputSchema?.required?.includes("threadId"), "bridge/callPlasticRpcTool output schema must require threadId");
+  assert(descriptions.call.outputSchema?.required?.includes("result"), "bridge/callPlasticRpcTool output schema must require result");
+  assert(descriptions.call.outputSchema?.required?.includes("eventId"), "bridge/callPlasticRpcTool output schema must require eventId");
+};

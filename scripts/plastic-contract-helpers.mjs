@@ -1,6 +1,6 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertChatMethodDescriptions } from "./plastic-contract-chat.mjs";
-import { assertCodexCoreMethodDescriptions } from "./plastic-contract-codex.mjs";
+import { assertCodexBridgeMethodDescriptions, assertCodexCoreMethodDescriptions } from "./plastic-contract-codex.mjs";
 import { assertExtensionLifecycleMethodDescriptions, assertExtensionQueryMethodDescriptions, assertExtensionVerificationMethodDescriptions } from "./plastic-contract-extensions.mjs";
 import { assertSetThemeMethodDescription } from "./plastic-contract-events.mjs";
 import { assertPanelMailboxMethodDescriptions } from "./plastic-contract-panel-mailbox.mjs";
@@ -237,6 +237,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["codex/status", "codex/defaults"] });
   assertCodexCoreMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["status", "codex/status"], ["defaults", "codex/defaults"], ["setDefaults", "codex/setDefaults"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
   assertReadMethodLegibility({ methods, ids: ["bridge/status"] });
+  assertCodexBridgeMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["configure", "bridge/configurePlasticMcp"], ["status", "bridge/status"], ["test", "bridge/test"], ["call", "bridge/callPlasticRpcTool"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
   assertPassthroughMethodLegibility({ methods, ids: ["codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList"] });
   assertSetThemeMethodDescription({ assert, description: await rpc("methods/describe", { id: "app/setTheme" }) });
   const darkEvent = await rpc("app/setTheme", { theme: "dark" });
