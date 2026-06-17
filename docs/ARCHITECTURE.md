@@ -270,96 +270,21 @@ export interface PlasticMethod {
 
 Extensions can register new methods at load time. Their manifests should declare expected methods, but runtime registration is allowed so generated or dynamic capabilities can still exist.
 
-### 4.4 Initial Runtime Methods
+### 4.4 Current Runtime Methods
 
-State and discovery:
+The current protected runtime surface is discovered from `plastic/methods` and grouped by `runtime/modules`. Agents should treat this list as a snapshot, not a hardcoded contract; the durable source of truth is runtime discovery.
 
-- `plastic/state`
-- `plastic/methods`
-- `plastic/resource`
-- `plastic/subscribe`
+Core state, discovery, and control: `plastic/state`, `plastic/snapshot`, `plastic/methods`, `methods/describe`, `rpc/call`, `runtime/capabilities`, `runtime/host`, `runtime/modules`, `plastic/selfTest`, `events/list`, `events/timeline`, `events/append`, `app/setTheme`.
 
-Events:
+Runtime and build diagnostics: `build/status`, `build/typecheck`, `app/diagnostics`, `runtime/auditStatus`, `runtime/auditActionPlan`, `runtime/runAuditAction`; build event streams are available through the discovered build control-plane `eventStreamUrl`.
 
-- `events/append`
-- `events/list`
-- `events/subscribe`
-- `events/replay`
-- `events/snapshot`
-- `events/rewind`
+Agent orientation and Codex backend: `agent/workbench`, `agent/orient`, `codex/status`, `codex/defaults`, `codex/setDefaults`, `codex/connect`, `codex/initialize`, `codex/request`, `codex/threadStart`, `codex/threadResume`, `codex/threadFork`, `codex/threadList`, `codex/threadRead`, `codex/threadArchive`, `codex/threadNameSet`, `codex/turnStart`, `codex/turnSteer`, `codex/turnInterrupt`, `codex/modelList`, `codex/configRead`, `bridge/configurePlasticMcp`, `bridge/status`, `bridge/test`, `bridge/callPlasticRpcTool`.
 
-Windows and panels:
+Windows, panels, mailbox, and renderer control: `windows/list`, `windows/create`, `windows/focusPanel`, `windows/scrollToRef`, `panels/list`, `panels/get`, `panels/create`, `panels/rename`, `panels/move`, `panels/remove`, `panels/close`, `panels/sendMessage`, `panels/listMessages`, `panels/markMessageRead`, `panels/mailboxes`, `renderer/reload`.
 
-- `windows/list`
-- `windows/create`
-- `windows/updateLayout`
-- `panels/list`
-- `panels/create`
-- `panels/focus`
-- `panels/move`
-- `panels/resize`
-- `panels/close`
+Chat and extension runtime: `chats/getBinding`, `chats/bindCodexThread`, `chats/startCodexThread`, `chats/createCodexChat`, `chats/interrupt`, `chats/close`, `chats/sendToCodex`, `chats/messages`, `chats/addButton`, `chats/injectUserMessage`, `extensions/scaffold`, `extensions/scan`, `extensions/list`, `extensions/get`, `extensions/verify`, `extensions/verifyAll`, `extensions/verificationStatus`, `extensions/activate`, `extensions/forkBundled`, `extensions/registerPanel`.
 
-Chat:
-
-- `chats/list`
-- `chats/create`
-- `chats/appendMessage`
-- `chats/injectUserMessage`
-- `chats/addButton`
-
-Documents:
-
-- `documents/list`
-- `documents/create`
-- `documents/read`
-- `documents/update`
-
-Tasks:
-
-- `tasks/list`
-- `tasks/create`
-- `tasks/update`
-- `tasks/createRecurring`
-- `tasks/pauseRecurring`
-- `tasks/runRecurringNow`
-
-Extensions:
-
-- `extensions/list`
-- `extensions/load`
-- `extensions/reload`
-- `extensions/fork`
-- `extensions/registerMethod`
-
-Agents:
-
-- `agents/list`
-- `agents/register`
-- `agents/sendMessage`
-- `agents/runCommand`
-
-App settings:
-
-- `app/setTheme`
-- `app/getTheme`
-
-Deixis:
-
-- `deixis/evalDom`
-- `deixis/listVisibleRefs`
-- `deixis/resolveRef`
-- `deixis/createAnnotation`
-- `deixis/listAnnotations`
-- `deixis/sourceForRef`
-- `deixis/fibersForRef`
-
-Build:
-
-- `build/status`
-- `build/typecheck`
-- `app/diagnostics`
-- build event streams through the discovered build control-plane `eventStreamUrl`
+Deixis: `deixis/listVisibleRefs`, `windows/screenshot`, `deixis/resolveRef`, `deixis/evalDom`, `deixis/verifyRefAction`, `deixis/clickRef`, `deixis/fillRef`.
 
 ### 4.5 Example: Five-Second Chat Button
 
