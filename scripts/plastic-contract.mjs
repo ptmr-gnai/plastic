@@ -2,9 +2,9 @@ import { access, rm } from "node:fs/promises";
 import {
   assert, assertArray, buildEventStream, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
   assertEventsTagged, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
-  assertCapabilityStatuses, assertRpcCallDispatch, assertRuntimeCapabilityInventory, assertRuntimeModuleInventory,
-  assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertRuntimeStartedModuleInventory, assertMatchingCapabilityInventories,
-  assertMatchingModuleInventories, assertRuntimeAuditStatus, assertModuleMethodDiscoveryParity, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
+  assertCapabilityStatuses, assertRpcCallDispatch, assertRuntimeCapabilityInventory,
+  assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertMatchingCapabilityInventories,
+  assertRuntimeAuditStatus, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 import { assertAgentOrientMethodDescription, assertAgentOrientationPacket, assertAgentWorkbenchMethodDescription, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
 import { expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
@@ -21,7 +21,7 @@ import { assertHeadlessFallbackChatFixture, assertNoActiveContractFixtures, clea
 import { assertSnapshotMethodDescription } from "./plastic-contract-snapshot.mjs";
 import { assertStateMethodDescription } from "./plastic-contract-state.mjs";
 import { agentBackendMethodExpectationsForMode, capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
-import { assertModuleAvailabilitySummaries, assertRuntimeModuleOrder, assertRuntimeModulesMethodDescription } from "./plastic-module-availability.mjs";
+import { assertRuntimeModulesSurface } from "./plastic-contract-runtime-modules.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
@@ -29,13 +29,7 @@ const extensionId = `${runId}-extension`;
 const validationTags = ["validation", "validation:contract"];
 const validationMeta = { tags: validationTags };
 let state, snapshot;
-let methods;
-let methodIds;
-let runtimeCapabilities;
-let runtimeModules;
-let extensions;
-let events;
-let runtimeStartedControlPlane;
+let methods, methodIds, runtimeCapabilities, runtimeModules, extensions, events, runtimeStartedControlPlane;
 let scaffoldedExtensionDir, scaffoldedExtensionId, scaffoldedExtensionPanelId, createdPanelEvent;
 
 await check("plastic/state", async () => {
@@ -238,17 +232,9 @@ await check("runtime/host", async () => {
 });
 
 await check("runtime/modules", async () => {
-  const live = await assertRuntimeModuleInventory({ rpc });
-  const durable = await assertRuntimeStartedModuleInventory({ rpc });
-  runtimeModules = live;
-  assertMatchingModuleInventories({ live, durable });
-  assertRuntimeModulesMethodDescription({ assert, description: await rpc("methods/describe", { id: "runtime/modules" }) });
-  await assertRuntimeModuleOrder({ assert, modules: live, source: "runtime/modules" });
-  await assertRuntimeModuleOrder({ assert, modules: durable, source: "runtime.started modules" });
-  assertModuleAvailabilitySummaries({ assert, modules: live, methods, source: "runtime/modules" });
-  assertModuleAvailabilitySummaries({ assert, modules: durable, methods, source: "runtime.started modules" });
-  await assertModuleMethodDiscoveryParity({ methods, modules: live, rpc });
-  return { live, durable };
+  const result = await assertRuntimeModulesSurface({ assert, methods, rpc });
+  runtimeModules = result.live;
+  return result;
 });
 
 await check("agent/workbench", async () => {
