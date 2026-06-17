@@ -30,6 +30,17 @@ const codexSetDefaultsOutputSchema = {
   }
 };
 
+const codexConnectOutputSchema = {
+  type: "object",
+  required: ["connected", "initialized", "pid", "connectedAt"],
+  properties: {
+    connected: { type: "boolean" },
+    initialized: { type: "boolean" },
+    pid: { type: ["number", "null"] },
+    connectedAt: { type: ["string", "null"] }
+  }
+};
+
 const bridgeConfigurePlasticMcpOutputSchema = {
   type: "object",
   required: ["configured", "value", "writeResult", "reloadResult"],
@@ -133,6 +144,55 @@ export const codexSetDefaultsMetadata = {
   reversibility: {
     reversible: false,
     notes: "Defaults are durable; compensate by setting the previous model again."
+  }
+};
+
+export const codexConnectMetadata = {
+  description: "Connects to the Codex app-server process for this Plastic host.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      codexPath: { type: "string", description: "Optional Codex executable path or command." }
+    }
+  },
+  outputSchema: codexConnectOutputSchema,
+  examples: [
+    {
+      title: "Connect Codex app-server",
+      input: {},
+      expectedEvents: ["codex.connection.started"],
+      verifyWith: { method: "codex/status", input: {} }
+    }
+  ],
+  effects: {
+    durableEvents: ["codex.connection.started"],
+    mutatesProjection: ["codexBackend"]
+  },
+  reversibility: {
+    reversible: false,
+    notes: "Connection process lifetime is host state; restart Plastic or let the process exit to reset it."
+  }
+};
+
+export const codexInitializeMetadata = {
+  description: "Initializes the Codex app-server session and configures Plastic MCP integration.",
+  inputSchema: noInputSchema,
+  outputSchema: codexPassthroughOutputSchema,
+  examples: [
+    {
+      title: "Initialize Codex app-server",
+      input: {},
+      expectedEvents: ["codex.connection.initialized", "bridge.plastic_mcp.configured"],
+      verifyWith: { method: "codex/status", input: {} }
+    }
+  ],
+  effects: {
+    durableEvents: ["codex.connection.initialized", "bridge.plastic_mcp.configured"],
+    mutatesProjection: ["codexBackend", "codexBridge"]
+  },
+  reversibility: {
+    reversible: false,
+    notes: "Initialization changes host process state and Codex MCP config."
   }
 };
 

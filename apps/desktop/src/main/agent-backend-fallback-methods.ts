@@ -20,7 +20,9 @@ import {
   bridgeStatusMetadata,
   bridgeTestMetadata,
   codexAliasMetadata,
+  codexConnectMetadata,
   codexDefaultsMetadata,
+  codexInitializeMetadata,
   codexRequestMetadata,
   codexSetDefaultsMetadata,
   codexStatusMetadata
@@ -60,8 +62,8 @@ const unavailableCodexMethods: UnavailableMethodDefinition[] = [
     description: "Durably updates Plastic's Codex adapter defaults.",
     metadata: codexSetDefaultsMetadata
   },
-  { id: "codex/connect", title: "Connect Codex app-server", description: "Connects to the Codex app-server process." },
-  { id: "codex/initialize", title: "Initialize Codex app-server", description: "Initializes the Codex app-server session." },
+  { id: "codex/connect", title: "Connect Codex app-server", description: "Connects to the Codex app-server process.", metadata: codexConnectMetadata },
+  { id: "codex/initialize", title: "Initialize Codex app-server", description: "Initializes the Codex app-server session.", metadata: codexInitializeMetadata },
   {
     id: "codex/request",
     title: "Raw Codex request",

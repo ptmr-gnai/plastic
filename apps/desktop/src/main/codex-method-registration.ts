@@ -7,7 +7,9 @@ import {
   bridgeStatusMetadata,
   bridgeTestMetadata,
   codexAliasMetadata,
+  codexConnectMetadata,
   codexDefaultsMetadata,
+  codexInitializeMetadata,
   codexRequestMetadata,
   codexSetDefaultsMetadata,
   codexStatusMetadata
@@ -138,9 +140,9 @@ const registerCodexConnect = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/connect",
       title: "Connect Codex app-server",
-      description: "Connects to the Codex app-server process.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
+      ...codexConnectMetadata,
       handler: (methodInput) =>
         Effect.promise(async () => {
           const codexPath = (methodInput as { codexPath?: string } | undefined)?.codexPath;
@@ -155,9 +157,9 @@ const registerCodexInitialize = async (input: CodexCoreRegistrationInput) => {
     input.methods.register({
       id: "codex/initialize",
       title: "Initialize Codex app-server",
-      description: "Initializes the Codex app-server session.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
+      ...codexInitializeMetadata,
       handler: () => Effect.promise(input.initialize)
     })
   );
