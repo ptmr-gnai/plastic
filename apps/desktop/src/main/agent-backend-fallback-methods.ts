@@ -6,9 +6,13 @@ import {
   type RuntimeModule
 } from "./runtime-method-context.js";
 import {
+  bindCodexThreadMetadata,
   chatBindingMetadata,
+  closeChatMetadata,
   createCodexChatMetadata,
-  sendToCodexMetadata
+  interruptChatMetadata,
+  sendToCodexMetadata,
+  startCodexThreadMetadata
 } from "./chat-method-metadata.js";
 import {
   bridgeCallPlasticRpcToolMetadata,
@@ -103,22 +107,26 @@ const unavailableCodexMethods: UnavailableMethodDefinition[] = [
   {
     id: "chats/bindCodexThread",
     title: "Bind chat to Codex thread",
-    description: "Durably binds a chat panel to an existing Codex thread id."
+    description: "Durably binds a chat panel to an existing Codex thread id.",
+    metadata: bindCodexThreadMetadata
   },
   {
     id: "chats/startCodexThread",
     title: "Start chat Codex thread",
-    description: "Starts a Codex thread through native thread/start and binds it to a chat panel."
+    description: "Starts a Codex thread through native thread/start and binds it to a chat panel.",
+    metadata: startCodexThreadMetadata
   },
   {
     id: "chats/interrupt",
     title: "Interrupt chat turn",
-    description: "Interrupts the active Codex turn bound to a chat panel."
+    description: "Interrupts the active Codex turn bound to a chat panel.",
+    metadata: interruptChatMetadata
   },
   {
     id: "chats/close",
     title: "Close chat",
-    description: "Closes a chat panel and interrupts any in-progress Codex turn before removing it."
+    description: "Closes a chat panel and interrupts any in-progress Codex turn before removing it.",
+    metadata: closeChatMetadata
   }
 ];
 

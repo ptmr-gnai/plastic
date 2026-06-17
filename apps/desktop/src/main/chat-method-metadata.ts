@@ -90,6 +90,29 @@ const sendToCodexOutputSchema = {
   }
 };
 
+const startCodexThreadOutputSchema = {
+  type: "object",
+  required: ["chatId", "threadId", "thread"],
+  properties: {
+    chatId: { type: "string" },
+    threadId: { type: "string" },
+    thread: {}
+  }
+};
+
+const closeChatOutputSchema = {
+  type: "object",
+  required: ["chatId", "binding", "interrupted", "interruptResult", "closedEvent", "panelEvent"],
+  properties: {
+    chatId: { type: "string" },
+    binding: chatBindingOutputSchema,
+    interrupted: { type: "boolean" },
+    interruptResult: {},
+    closedEvent: plasticEventSchema,
+    panelEvent: plasticEventSchema
+  }
+};
+
 export const chatBindingMetadata = {
   inputSchema: chatIdInputSchema,
   outputSchema: chatBindingOutputSchema,
@@ -102,6 +125,37 @@ export const chatBindingMetadata = {
   ],
   effects: readOnlyEffects,
   reversibility: readOnlyReversibility
+};
+
+export const bindCodexThreadMetadata = {
+  inputSchema: {
+    type: "object",
+    required: ["threadId"],
+    properties: {
+      chatId: { type: "string", description: "Chat panel id. Defaults to chat-main." },
+      threadId: { type: "string", description: "Existing Codex thread id to bind." },
+      reason: { type: "string", description: "Optional reason stored with the binding event." }
+    }
+  },
+  outputSchema: chatBindingOutputSchema,
+  examples: [{ title: "Bind a chat", input: { chatId: "chat-main", threadId: "thread-id" }, verifyWith: { method: "chats/getBinding", input: { chatId: "chat-main" } } }],
+  effects: { durableEvents: ["chat.codex_thread.bound"], mutatesProjection: ["chatBindings"] },
+  reversibility: { reversible: false, notes: "Bind another thread or close the chat to compensate." }
+};
+
+export const startCodexThreadMetadata = {
+  inputSchema: {
+    type: "object",
+    properties: {
+      chatId: { type: "string", description: "Chat panel id. Defaults to chat-main." },
+      cwd: { type: "string", description: "Optional Codex thread working directory." },
+      params: { type: "object", description: "Optional native Codex thread/start params." }
+    }
+  },
+  outputSchema: startCodexThreadOutputSchema,
+  examples: [{ title: "Start and bind a chat thread", input: { chatId: "chat-main" }, verifyWith: { method: "chats/getBinding", input: { chatId: "chat-main" } } }],
+  effects: { durableEvents: ["chat.codex_thread.bound"], mutatesProjection: ["chatBindings"] },
+  reversibility: { reversible: false, notes: "Close the chat or bind another thread to compensate." }
 };
 
 export const createCodexChatMetadata = {
@@ -144,6 +198,34 @@ export const fallbackCreateCodexChatMetadata = {
     reversible: false,
     notes: "Chat actions are durable; compensate with follow-up events or explicit close/interrupt methods."
   }
+};
+
+export const interruptChatMetadata = {
+  inputSchema: {
+    type: "object",
+    properties: {
+      chatId: { type: "string", description: "Chat panel id. Defaults to chat-main." },
+      turnId: { type: "string", description: "Optional turn id. Defaults to the active bound turn." }
+    }
+  },
+  outputSchema: { description: "Codex turn/interrupt passthrough result." },
+  examples: [{ title: "Interrupt active chat turn", input: { chatId: "chat-main" }, verifyWith: { method: "events/timeline", input: { scope: { panelId: "chat-main" } } } }],
+  effects: { durableEvents: ["chat.turn.interrupted"], mutatesProjection: ["chats", "chatBindings"] },
+  reversibility: { reversible: false, notes: "Interrupted turns cannot be resumed through Plastic." }
+};
+
+export const closeChatMetadata = {
+  inputSchema: {
+    type: "object",
+    properties: {
+      chatId: { type: "string", description: "Chat panel id. Defaults to chat-main." },
+      reason: { type: "string", description: "Optional close reason." }
+    }
+  },
+  outputSchema: closeChatOutputSchema,
+  examples: [{ title: "Close a chat", input: { chatId: "chat-main" }, verifyWith: { method: "panels/list", input: {} } }],
+  effects: { durableEvents: ["chat.session.closed", "panel.removed"], mutatesProjection: ["panels", "chats", "chatBindings"] },
+  reversibility: { reversible: false, notes: "Recreate the chat or replay the event log to recover it." }
 };
 
 export const sendToCodexMetadata = {

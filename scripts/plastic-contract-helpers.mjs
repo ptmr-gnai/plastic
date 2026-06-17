@@ -233,7 +233,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertExtensionVerificationMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["verify", "extensions/verify"], ["verifyAll", "extensions/verifyAll"], ["status", "extensions/verificationStatus"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
   assertReadMethodLegibility({ methods, ids: ["panels/listMessages", "panels/mailboxes"] });
   assertReadMethodLegibility({ methods, ids: ["chats/getBinding"] });
-  assertChatMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["binding", "chats/getBinding"], ["create", "chats/createCodexChat"], ["send", "chats/sendToCodex"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
+  assertChatMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["binding", "chats/getBinding"], ["bind", "chats/bindCodexThread"], ["start", "chats/startCodexThread"], ["create", "chats/createCodexChat"], ["interrupt", "chats/interrupt"], ["close", "chats/close"], ["send", "chats/sendToCodex"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
   assertReadMethodLegibility({ methods, ids: ["codex/status", "codex/defaults"] });
   assertCodexCoreMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["status", "codex/status"], ["defaults", "codex/defaults"], ["setDefaults", "codex/setDefaults"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
   assertReadMethodLegibility({ methods, ids: ["bridge/status"] });

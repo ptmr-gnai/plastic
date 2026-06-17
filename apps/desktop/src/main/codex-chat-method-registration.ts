@@ -3,9 +3,13 @@ import { createEvent, projectPanels, type EventStore, type MethodRegistry } from
 import type { RunPromise } from "./runtime-method-context.js";
 import { codexBackendAvailability, codexBackendOwner } from "./codex-method-registration.js";
 import {
+  bindCodexThreadMetadata,
   chatBindingMetadata,
+  closeChatMetadata,
   createCodexChatMetadata,
-  sendToCodexMetadata
+  interruptChatMetadata,
+  sendToCodexMetadata,
+  startCodexThreadMetadata
 } from "./chat-method-metadata.js";
 
 type ChatBinding = {
@@ -76,6 +80,7 @@ const registerBindCodexThread = async (input: CodexChatRegistrationInput) => {
       description: "Durably binds a chat panel to an existing Codex thread id.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
+      ...bindCodexThreadMetadata,
       handler: (methodInput) =>
         Effect.promise(async () => {
           const payload = methodInput as { chatId?: string; threadId?: string; reason?: string };
@@ -98,6 +103,7 @@ const registerStartCodexThread = async (input: CodexChatRegistrationInput) => {
       description: "Starts a Codex thread through native thread/start and binds it to a chat panel.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
+      ...startCodexThreadMetadata,
       handler: (methodInput) =>
         Effect.promise(async () => {
           await input.ensureInitialized();
@@ -215,6 +221,7 @@ const registerInterruptChat = async (input: CodexChatRegistrationInput) => {
       description: "Interrupts the active Codex turn bound to a chat panel.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
+      ...interruptChatMetadata,
       handler: (methodInput) =>
         Effect.promise(async () => {
           await input.ensureInitialized();
@@ -259,6 +266,7 @@ const registerCloseChat = async (input: CodexChatRegistrationInput) => {
       description: "Closes a chat panel and interrupts any in-progress Codex turn before removing it.",
       owner: codexBackendOwner,
       availability: codexBackendAvailability,
+      ...closeChatMetadata,
       handler: (methodInput) => Effect.promise(() => closeChat(input, methodInput))
     })
   );
