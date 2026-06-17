@@ -1,4 +1,10 @@
 export const assertChatMethodDescriptions = ({ assert, descriptions }) => {
+  assert(descriptions.messages.outputSchema?.type === "array", "chats/messages output schema must be an array");
+  assert(descriptions.messages.outputSchema?.items?.required?.includes("role"), "chats/messages item schema must expose role");
+  assert(descriptions.addButton.outputSchema?.required?.includes("id"), "chats/addButton output schema must expose event id");
+  assert(descriptions.addButton.effects?.durableEvents?.includes("panel.button.added"), "chats/addButton must describe button event");
+  assert(descriptions.injectUserMessage.outputSchema?.required?.includes("id"), "chats/injectUserMessage output schema must expose event id");
+  assert(descriptions.injectUserMessage.effects?.durableEvents?.includes("chat.user_message.injected"), "chats/injectUserMessage must describe injected event");
   assert(descriptions.binding.outputSchema?.required?.includes("chatId"), "chats/getBinding output schema must require chatId");
   assert(descriptions.binding.outputSchema?.required?.includes("threadId"), "chats/getBinding output schema must require threadId");
   assert(descriptions.binding.outputSchema?.required?.includes("activeTurnId"), "chats/getBinding output schema must require activeTurnId");

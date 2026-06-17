@@ -12,6 +12,62 @@ const chatExtensionAvailability = {
   notes: "Bundled chat projection/control methods are extension runtime primitives available in headed and headless modes."
 };
 
+const readOnlyEffects = { durableEvents: [], mutatesProjection: [] };
+const readOnlyReversibility = { reversible: true, notes: "Read-only method." };
+
+const plasticEventSchema = {
+  type: "object",
+  required: ["id", "type", "version", "timestamp", "actor", "scope", "payload", "meta"],
+  properties: {
+    id: { type: "string" },
+    type: { type: "string" },
+    version: { type: "number" },
+    timestamp: { type: "string" },
+    actor: { type: "object" },
+    scope: { type: "object" },
+    payload: {},
+    meta: { type: "object" }
+  }
+};
+
+const chatMessagesInputSchema = {
+  type: "object",
+  properties: {
+    chatId: { type: "string" },
+    limit: { type: "number" }
+  }
+};
+
+const chatMessageSchema = {
+  type: "object",
+  required: ["id", "eventId", "timestamp", "content", "role", "streaming"],
+  properties: {
+    id: { type: "string" },
+    eventId: { type: "string" },
+    timestamp: { type: "string" },
+    content: { type: "string" },
+    role: { type: "string", enum: ["user", "agent", "system", "peer"] },
+    streaming: { type: "boolean" }
+  }
+};
+
+const chatButtonSchema = {
+  type: "object",
+  required: ["id", "label", "action"],
+  properties: {
+    id: { type: "string" },
+    label: { type: "string" },
+    action: {
+      type: "object",
+      required: ["method"],
+      properties: {
+        method: { type: "string" },
+        input: {}
+      }
+    }
+  }
+};
+
 const registerMessages = (context: ExtensionActivationContext) =>
   context.registerMethod({
     id: "chats/messages",
@@ -19,6 +75,11 @@ const registerMessages = (context: ExtensionActivationContext) =>
     description: "Returns the bounded chat transcript projection for one chat panel without exposing raw stream deltas to the renderer.",
     owner: { kind: "extension", id: context.extension.id },
     availability: chatExtensionAvailability,
+    inputSchema: chatMessagesInputSchema,
+    outputSchema: { type: "array", items: chatMessageSchema },
+    examples: [{ title: "Read chat transcript", input: { chatId: "chat-main", limit: 80 }, verifyWith: { method: "panels/list", input: {} } }],
+    effects: readOnlyEffects,
+    reversibility: readOnlyReversibility,
     links: [extensionLink(context)],
     handler: (input) =>
       context.mapEvents((events) => context.core.buildChatMessagesForPanel(events, input))
@@ -31,6 +92,18 @@ const registerAddButton = (context: ExtensionActivationContext) =>
     description: "Add a durable action button to chat panels.",
     owner: { kind: "extension", id: context.extension.id },
     availability: chatExtensionAvailability,
+    inputSchema: {
+      type: "object",
+      required: ["button"],
+      properties: {
+        chatId: { type: "string" },
+        button: chatButtonSchema
+      }
+    },
+    outputSchema: plasticEventSchema,
+    examples: [{ title: "Add a chat button", input: { chatId: "chat-main", button: { id: "new-chat", label: "New chat", action: { method: "chats/createCodexChat" } } }, expectedEvents: ["panel.button.added"], verifyWith: { method: "events/timeline", input: { scope: { panelId: "chat-main" } } } }],
+    effects: { durableEvents: ["panel.button.added"], mutatesProjection: ["chatButtons", "events"] },
+    reversibility: { reversible: false, notes: "Append a compensating button-removal event when that method exists, or replay without the button event." },
     links: [extensionLink(context)],
     handler: (input) => {
       const chatId = input?.chatId ?? "chat-main";
@@ -56,6 +129,18 @@ const registerInjectUserMessage = (context: ExtensionActivationContext) =>
     description: "Append a user-message event to a chat transcript.",
     owner: { kind: "extension", id: context.extension.id },
     availability: chatExtensionAvailability,
+    inputSchema: {
+      type: "object",
+      required: ["content"],
+      properties: {
+        chatId: { type: "string" },
+        content: { type: "string" }
+      }
+    },
+    outputSchema: plasticEventSchema,
+    examples: [{ title: "Inject a user message", input: { chatId: "chat-main", content: "Hello" }, expectedEvents: ["chat.user_message.injected"], verifyWith: { method: "chats/messages", input: { chatId: "chat-main" } } }],
+    effects: { durableEvents: ["chat.user_message.injected"], mutatesProjection: ["chats", "events"] },
+    reversibility: { reversible: false, notes: "Injected user messages are durable; compensate with a later message or event replay." },
     links: [extensionLink(context)],
     handler: (input) => {
       const chatId = input?.chatId ?? "chat-main";
