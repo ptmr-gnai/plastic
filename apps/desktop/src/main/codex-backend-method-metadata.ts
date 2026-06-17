@@ -74,6 +74,10 @@ const bridgeCallPlasticRpcToolOutputSchema = {
   }
 };
 
+const codexPassthroughOutputSchema = {
+  description: "Raw result returned by the delegated Codex app-server method."
+};
+
 export const codexStatusMetadata = {
   description: "Returns Codex backend connection, initialization, and capability status for this Plastic host.",
   inputSchema: noInputSchema,
@@ -142,6 +146,7 @@ export const codexRequestMetadata = {
       params: { type: "object", description: "Optional Codex app-server method params." }
     }
   },
+  outputSchema: codexPassthroughOutputSchema,
   examples: [
     {
       title: "List Codex models through passthrough",
@@ -261,6 +266,7 @@ export const codexAliasMetadata = (codexMethod: string) => ({
     },
     additionalProperties: true
   },
+  outputSchema: codexPassthroughOutputSchema,
   examples: [
     {
       title: `Call Codex ${codexMethod}`,
