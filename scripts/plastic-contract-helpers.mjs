@@ -1,4 +1,5 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
+import { assertExtensionQueryMethodDescriptions } from "./plastic-contract-extensions.mjs";
 import { assertSetThemeMethodDescription } from "./plastic-contract-events.mjs";
 import { assertPanelMailboxMethodDescriptions } from "./plastic-contract-panel-mailbox.mjs";
 import { assertPanelControlMethodDescriptions } from "./plastic-contract-panels.mjs";
@@ -224,6 +225,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["agent/orient", "agent/workbench"] });
   assertReadMethodLegibility({ methods, ids: ["app/diagnostics", "build/status", "runtime/auditStatus", "runtime/auditActionPlan"] });
   assertReadMethodLegibility({ methods, ids: ["extensions/list", "extensions/get"] });
+  assertExtensionQueryMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all(["scan", "list", "get"].map(async (key) => [key, await rpc("methods/describe", { id: `extensions/${key}` })]))) });
   assertReadMethodLegibility({ methods, ids: ["extensions/verificationStatus"] });
   assertReadMethodLegibility({ methods, ids: ["panels/listMessages", "panels/mailboxes"] });
   assertReadMethodLegibility({ methods, ids: ["chats/getBinding"] });

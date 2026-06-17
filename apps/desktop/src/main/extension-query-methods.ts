@@ -8,6 +8,7 @@ import {
 } from "@plastic/core";
 import { scanWorkspaceExtensions } from "./extension-discovery.js";
 import { eventMetaSchema, mergeEventMetaLinks, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { plasticEventSchema } from "./runtime-control-schemas.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 const extensionRuntimeAvailability = {
@@ -23,6 +24,49 @@ const scanInputSchema = {
   type: "object",
   properties: {
     meta: eventMetaSchema
+  }
+};
+
+const extensionContributionSchema = {
+  type: "object",
+  required: ["id"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    kind: { type: "string" },
+    rendererId: { type: "string" },
+    subtitle: { type: "string" },
+    body: { type: "string" },
+    order: { type: "number" },
+    panelKinds: { type: "array", items: { type: "string" } },
+    module: { type: "string" },
+    description: { type: "string" }
+  }
+};
+
+const plasticExtensionSchema = {
+  type: "object",
+  required: ["id", "title", "source", "panels", "renderers", "methods", "errors"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    source: { type: "string", enum: ["bundled", "workspace"] },
+    path: { type: "string" },
+    entry: { type: "string" },
+    manifestPath: { type: "string" },
+    panels: { type: "array", items: extensionContributionSchema },
+    renderers: { type: "array", items: extensionContributionSchema },
+    methods: { type: "array", items: extensionContributionSchema },
+    errors: { type: "array", items: { type: "string" } }
+  }
+};
+
+const extensionScanOutputSchema = {
+  type: "object",
+  required: ["discovered", "events"],
+  properties: {
+    discovered: { type: "array", items: plasticExtensionSchema },
+    events: { type: "array", items: plasticEventSchema }
   }
 };
 
@@ -53,6 +97,7 @@ const registerExtensionScan = async (input: {
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionRuntimeAvailability,
       inputSchema: scanInputSchema,
+      outputSchema: extensionScanOutputSchema,
       examples: [
         {
           title: "Scan workspace extensions",
@@ -79,10 +124,9 @@ const registerExtensionScan = async (input: {
           const events = [];
 
           for (const extension of discovered) {
-            events.push(
-              await runPromise(
-                eventStore.append(
-                  createEvent({
+            events.push(await runPromise(
+              eventStore.append(
+                createEvent({
                     type: "extension.discovered",
                     payload: {
                       id: extension.id,
@@ -105,34 +149,28 @@ const registerExtensionScan = async (input: {
                       { rel: "self", href: "extensions/get", method: "extensions/get", target: extension.id },
                       { rel: "extensions", href: "extensions/list", method: "extensions/list" }
                     ])
-                  })
-                )
+                })
               )
-            );
+            ));
           }
 
           for (const extensionId of currentIds) {
             if (!extensionId.startsWith("workspace.") || discoveredIds.has(extensionId)) {
               continue;
             }
-            events.push(
-              await runPromise(
-                eventStore.append(
-                  createEvent({
+            events.push(await runPromise(
+              eventStore.append(
+                createEvent({
                     type: "extension.removed",
                     payload: { id: extensionId, reason: "not found during scan" },
                     scope: { extensionId },
                     ...(scanInput.meta ? { meta: scanInput.meta } : {})
-                  })
-                )
+                })
               )
-            );
+            ));
           }
 
-          return {
-            discovered,
-            events
-          };
+          return { discovered, events };
         })
     })
   );
@@ -153,6 +191,7 @@ const registerExtensionList = async (input: {
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: extensionRuntimeAvailability,
       inputSchema: noInputSchema,
+      outputSchema: { type: "array", items: plasticExtensionSchema },
       examples: [
         {
           title: "List known extensions",
@@ -188,6 +227,7 @@ const registerExtensionGet = async (input: {
           id: { type: "string", description: "Extension id to read." }
         }
       },
+      outputSchema: plasticExtensionSchema,
       examples: [
         {
           title: "Read a bundled extension",
