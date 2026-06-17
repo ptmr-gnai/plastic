@@ -43,6 +43,12 @@ const renderPanelArticle = (input: {
   `;
 };
 
+const runtimePortLabel = (state: PlasticState) =>
+  String(state.controlPlane?.runtime?.port ?? "unknown");
+
+const buildPortLabel = (state: PlasticState) =>
+  String(state.controlPlane?.build?.port ?? "unknown");
+
 export const renderWorkspaceHtml = (input: {
   topbarCollapsed: boolean;
   state: PlasticState;
@@ -55,7 +61,7 @@ export const renderWorkspaceHtml = (input: {
       <div>
         <p class="eyebrow">Plastic</p>
         <h1>Agent-native workspace</h1>
-        <p class="status">Runtime socket <code>7331</code> · Build socket <code>7332</code> · Events ${input.state.events.count} · Methods ${input.methods.length}</p>
+        <p class="status">Runtime socket <code>${escapeHtml(runtimePortLabel(input.state))}</code> · Build socket <code>${escapeHtml(buildPortLabel(input.state))}</code> · Events ${input.state.events.count} · Methods ${input.methods.length}</p>
       </div>
       <div class="topbar-actions">
         <button data-action="theme" data-theme="light" data-plastic-command="app/setTheme">Light</button>

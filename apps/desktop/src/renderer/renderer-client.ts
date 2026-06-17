@@ -8,6 +8,14 @@ export type PlasticState = {
     name: "Plastic";
     theme: "light" | "dark";
   };
+  controlPlane?: {
+    runtime?: {
+      port?: number;
+    };
+    build?: {
+      port?: number;
+    };
+  };
   events: {
     count: number;
     latest: string | null;
