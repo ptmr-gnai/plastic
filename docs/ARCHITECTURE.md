@@ -357,9 +357,9 @@ Deixis:
 Build:
 
 - `build/status`
-- `build/trigger`
+- `build/typecheck`
 - `app/diagnostics`
-- `build/subscribe`
+- build event streams through the discovered build control-plane `eventStreamUrl`
 
 ### 4.5 Example: Five-Second Chat Button
 
