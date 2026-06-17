@@ -14,7 +14,7 @@ import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagno
 import { assertEventsListMethodDescription, assertEventsTimelineMethodDescription } from "./plastic-contract-events.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
-import { assertMethodCatalogsMatch, assertMethodCatalogSurface } from "./plastic-contract-method-surface.mjs";
+import { assertDescribeMethodDescription, assertMethodCatalogsMatch, assertMethodCatalogSurface, assertPlasticMethodsMethodDescription } from "./plastic-contract-method-surface.mjs";
 import { assertSelfTestDurableEvent, assertSelfTestHttpResources, assertSelfTestMethodDescription, assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
 import { assertRunAuditActionMethodDescription, assertRuntimeAuditActionPlanMethodDescription, assertRuntimeAuditStatusMethodDescription } from "./plastic-contract-audit-status.mjs";
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
@@ -80,6 +80,7 @@ await check("plastic/state", async () => {
 
 await check("plastic/methods", async () => {
   methods = await rpc("plastic/methods");
+  assertPlasticMethodsMethodDescription({ assert, description: await rpc("methods/describe", { id: "plastic/methods" }) });
   const runtimeMethods = await runtimeGet("/methods");
   const buildMethods = await buildGet("/methods");
   const items = assertArray(methods, "plastic/methods is not an array");
@@ -145,6 +146,7 @@ await check("plastic/snapshot", async () => {
 
 await check("methods/describe", async () => {
   const description = await rpc("methods/describe", { id: "panels/create" });
+  assertDescribeMethodDescription({ assert, description: await rpc("methods/describe", { id: "methods/describe" }) });
   assert(description.id === "panels/create", "described wrong method");
   assert(description.owner?.id, "method owner missing");
   assert(description.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === description.id), "described method missing describe link");

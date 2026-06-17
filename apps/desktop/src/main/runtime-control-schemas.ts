@@ -92,3 +92,44 @@ export const eventsTimelineOutputSchema = {
     }
   }
 };
+
+export const plasticMethodSchema = {
+  type: "object",
+  required: ["id", "title", "owner", "availability", "links"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    description: { type: "string" },
+    owner: {
+      type: "object",
+      required: ["kind", "id"],
+      properties: {
+        kind: { type: "string", enum: ["runtime", "extension", "agent", "panel"] },
+        id: { type: "string" }
+      }
+    },
+    inputSchema: {},
+    outputSchema: {},
+    examples: { type: "array", items: { type: "object" } },
+    effects: { type: "object" },
+    preconditions: { type: "array", items: { type: "string" } },
+    reversibility: { type: "object" },
+    permissions: { type: "array", items: { type: "string" } },
+    availability: {
+      type: "object",
+      required: ["status"],
+      properties: {
+        status: { type: "string", enum: ["available", "degraded", "unavailable"] },
+        requiredCapabilities: { type: "array", items: { type: "string" } },
+        missingCapabilities: { type: "array", items: { type: "string" } },
+        notes: { type: "string" }
+      }
+    },
+    links: { type: "array", items: { type: "object" } }
+  }
+};
+
+export const plasticMethodsOutputSchema = {
+  type: "array",
+  items: plasticMethodSchema
+};

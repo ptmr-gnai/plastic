@@ -11,7 +11,7 @@ import {
   withMethodAffordanceLinks
 } from "@plastic/core";
 import { eventMetaSchema, noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
-import { eventsListOutputSchema, eventsTimelineOutputSchema, runtimeCapabilitiesOutputSchema } from "./runtime-control-schemas.js";
+import { eventsListOutputSchema, eventsTimelineOutputSchema, plasticMethodSchema, plasticMethodsOutputSchema, runtimeCapabilitiesOutputSchema } from "./runtime-control-schemas.js";
 import type { AppendEvent, RuntimeMethodContext, RuntimeModule, RunPromise } from "./runtime-method-context.js";
 
 const runtimeControlAvailability = {
@@ -113,6 +113,7 @@ const registerMethodDiscovery = async (input: {
       ],
       effects: readOnlyEffects,
       reversibility: readOnlyReversibility,
+      outputSchema: plasticMethodsOutputSchema,
       handler: () => Effect.map(methods.list(), (items) => items.map(enrichDiscoveredMethod))
     })
   );
@@ -139,6 +140,7 @@ const registerMethodDiscovery = async (input: {
       ],
       effects: readOnlyEffects,
       reversibility: readOnlyReversibility,
+      outputSchema: plasticMethodSchema,
       handler: (methodInput) =>
         Effect.promise(async () => {
           const id = (methodInput as { id?: string }).id;
