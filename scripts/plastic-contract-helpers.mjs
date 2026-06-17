@@ -1,4 +1,5 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
+import { assertSetThemeMethodDescription } from "./plastic-contract-events.mjs";
 import { capabilityExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 export { assertRuntimeAuditStatus } from "./plastic-contract-audit-status.mjs";
@@ -227,6 +228,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertReadMethodLegibility({ methods, ids: ["codex/status", "codex/defaults"] });
   assertReadMethodLegibility({ methods, ids: ["bridge/status"] });
   assertPassthroughMethodLegibility({ methods, ids: ["codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList"] });
+  assertSetThemeMethodDescription({ assert, description: await rpc("methods/describe", { id: "app/setTheme" }) });
   const darkEvent = await rpc("app/setTheme", { theme: "dark" });
   assert(darkEvent?.type === "theme.changed", "app/setTheme did not append theme.changed");
   const darkState = await rpc("plastic/state");

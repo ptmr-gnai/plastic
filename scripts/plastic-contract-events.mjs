@@ -25,6 +25,15 @@ export const assertEventsAppendMethodDescription = ({ assert, description }) => 
   assert(description.reversibility?.reversible === false, "events/append must describe append-only reversibility");
 };
 
+export const assertSetThemeMethodDescription = ({ assert, description }) => {
+  assertPlasticEventSchema({ assert, schema: description.outputSchema, label: "app/setTheme output" });
+  assert(description.inputSchema?.properties?.theme?.enum?.includes("light"), "app/setTheme must accept light theme");
+  assert(description.inputSchema?.properties?.theme?.enum?.includes("dark"), "app/setTheme must accept dark theme");
+  assert(description.effects?.durableEvents?.includes("theme.changed"), "app/setTheme must describe theme.changed events");
+  assert(description.effects?.mutatesProjection?.includes("app.theme"), "app/setTheme must describe app.theme projection mutation");
+  assert(description.reversibility?.method === "app/setTheme", "app/setTheme must describe its reversal method");
+};
+
 const assertPlasticEventSchema = ({ assert, schema, label }) => {
   assert(schema?.required?.includes("id"), `${label} schema must require id`);
   assert(schema?.required?.includes("type"), `${label} schema must require type`);

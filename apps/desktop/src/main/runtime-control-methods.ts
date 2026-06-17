@@ -365,6 +365,7 @@ const registerThemeControl = async (input: {
           theme: { enum: ["light", "dark"], description: "Theme to project in the app UI." }
         }
       },
+      outputSchema: plasticEventSchema,
       examples: [
         {
           title: "Switch to dark mode",
