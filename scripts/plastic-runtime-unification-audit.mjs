@@ -3,7 +3,15 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const outPath = process.env.PLASTIC_RUNTIME_UNIFICATION_AUDIT_OUT ?? ".plastic/tmp/runtime-unification-audit.json";
+const validationEnv = {
+  PLASTIC_RUNTIME_URL: process.env.PLASTIC_RUNTIME_URL ?? "http://127.0.0.1:7431",
+  PLASTIC_BUILD_URL: process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7432",
+  PLASTIC_RUNTIME_PORT: process.env.PLASTIC_RUNTIME_PORT ?? "7431",
+  PLASTIC_BUILD_PORT: process.env.PLASTIC_BUILD_PORT ?? "7432",
+  PLASTIC_VITE_URL: process.env.PLASTIC_VITE_URL ?? "http://127.0.0.1:5273"
+};
 const electronDiagnosticEnv = {
+  ...validationEnv,
   PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS: process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? "3000",
   PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS: process.env.PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS ?? "3000",
   ...(process.env.PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE === "1" ? { PLASTIC_ELECTRON_SKIP_APP_MODE_SMOKE: "1" } : {}),
@@ -13,7 +21,7 @@ const electronDiagnosticEnv = {
 const steps = [
   { id: "typecheck", command: "pnpm", args: ["typecheck"] },
   { id: "guardrails", command: "pnpm", args: ["guardrails"] },
-  { id: "headless", command: "pnpm", args: ["plastic:validate-headless"] },
+  { id: "headless", command: "pnpm", args: ["plastic:validate-headless"], env: validationEnv },
   {
     id: "electron",
     command: "pnpm",
@@ -81,6 +89,7 @@ const writeSummary = async (results) => {
         : null
     },
     diagnosticEnvironment: {
+      validation: validationEnv,
       electron: electronDiagnosticEnv
     },
     runtimeUnification: {
