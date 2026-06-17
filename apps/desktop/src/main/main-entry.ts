@@ -80,7 +80,7 @@ async function createWindow(title = "Plastic") {
     height: 900,
     title,
     webPreferences: {
-      preload: new URL("../preload/preload.js", import.meta.url).pathname,
+      preload: new URL("../preload/preload.cjs", import.meta.url).pathname,
       contextIsolation: true,
       nodeIntegration: false
     }

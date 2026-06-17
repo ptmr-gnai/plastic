@@ -13,14 +13,15 @@ export const startElectronIpcTransport = (input: {
   methods: MethodRegistry;
   runPromise: RunPromise;
 }): ElectronIpcTransport => {
-  input.ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise<RpcResponse> =>
-    callRuntimeRpcMethod({
+  input.ipcMain.handle(ipcChannels.rpcCall, async (_event, request: RpcRequest): Promise<RpcResponse> => {
+    const response = await callRuntimeRpcMethod({
       methods: input.methods,
       runPromise: input.runPromise,
       method: request.method,
       value: request.input
-    })
-  );
+    });
+    return toJsonBoundary(response);
+  });
 
   return {
     close: () => {
@@ -28,3 +29,6 @@ export const startElectronIpcTransport = (input: {
     }
   };
 };
+
+const toJsonBoundary = <T>(value: T): T =>
+  JSON.parse(JSON.stringify(value)) as T;
