@@ -12,6 +12,21 @@ export type RuntimeCommandResult = {
   stderr: string;
 };
 
+const runtimeCommandResultSchema = {
+  type: "object",
+  required: ["ok", "command", "args", "exitCode", "signal", "stdout", "stderr", "eventId"],
+  properties: {
+    ok: { type: "boolean" },
+    command: { type: "string" },
+    args: { type: "array", items: { type: "string" } },
+    exitCode: { type: ["number", "null"] },
+    signal: { type: ["string", "null"] },
+    stdout: { type: "string" },
+    stderr: { type: "string" },
+    eventId: { type: "string" }
+  }
+};
+
 const runtimeBuildAvailability = {
   status: "available" as const,
   notes: "Build methods are shared runtime primitives backed by the current host command runner."
@@ -53,6 +68,7 @@ export const createRuntimeBuildModule = (input: {
         owner: { kind: "runtime", id: "plastic.build" },
         availability: runtimeBuildAvailability,
         inputSchema: noInputSchema,
+        outputSchema: runtimeCommandResultSchema,
         examples: [
           {
             title: "Run TypeScript validation",
