@@ -1,12 +1,14 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 const runtimeUrl = process.env.PLASTIC_RUNTIME_URL ?? "http://127.0.0.1:7331";
 const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
+const viteUrl = process.env.PLASTIC_VITE_URL ?? "http://127.0.0.1:5173";
 const rpcUrl = `${runtimeUrl}/rpc`;
 const parityBaseline = process.env.PLASTIC_METHOD_PARITY_OUT ?? ".plastic/tmp/headless-methods.json";
 const readinessTimeoutMs = Number(process.env.PLASTIC_VALIDATE_READY_TIMEOUT_MS ?? 90_000);
@@ -255,6 +257,45 @@ const waitForHost = async (label) => {
   ]);
 };
 
+const assertPortAvailable = (url, label) =>
+  new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const port = Number(parsed.port);
+    if (!port) {
+      reject(new Error(`[plastic:validate-hosts] ${label} URL must include an explicit port: ${url}`));
+      return;
+    }
+    const server = createServer();
+    server.once("error", (error) => {
+      if (error?.code === "EADDRINUSE") {
+        reject(new Error(`[plastic:validate-hosts] ${label} port ${port} is already in use. Stop the running Plastic host or choose alternate validation ports before running host validation.`));
+        return;
+      }
+      reject(error);
+    });
+    server.listen(port, parsed.hostname, () => {
+      server.close(() => resolve());
+    });
+  });
+
+const assertValidationPortsAvailable = async (label) => {
+  const urls = [
+    { url: runtimeUrl, label: `${label} runtime` },
+    { url: buildUrl, label: `${label} build` },
+    { url: viteUrl, label: `${label} renderer` }
+  ];
+  const seen = new Set();
+  for (const item of urls) {
+    const parsed = new URL(item.url);
+    const key = `${parsed.hostname}:${parsed.port}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    await assertPortAvailable(item.url, item.label);
+  }
+};
+
 const capturedText = (result) => {
   const stdout = result.stdout.trim();
   const stderr = result.stderr.trim();
@@ -298,6 +339,7 @@ const collectHostDiagnostics = async (label) => {
 
 const runHost = async ({ label, script, parity }) => {
   console.log(`[plastic:validate-hosts] starting ${label}`);
+  await assertValidationPortsAvailable(label);
   startHost(script);
   try {
     try {
