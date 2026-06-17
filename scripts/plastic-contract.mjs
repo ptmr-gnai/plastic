@@ -17,6 +17,7 @@ import { assertRunAuditActionMethodDescription, assertRuntimeAuditActionPlanMeth
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
 import { assertHeadlessFallbackChatFixture, assertNoActiveContractFixtures, cleanupLegacyContractFixtures } from "./plastic-contract-fixtures.mjs";
 import { assertSnapshotMethodDescription } from "./plastic-contract-snapshot.mjs";
+import { assertStateMethodDescription } from "./plastic-contract-state.mjs";
 import { agentBackendMethodExpectationsForMode, capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { assertModuleAvailabilitySummaries, assertRuntimeModuleOrder, assertRuntimeModulesMethodDescription } from "./plastic-module-availability.mjs";
 
@@ -73,15 +74,7 @@ await check("plastic/state", async () => {
   assert(serviceResources.some((resource) => hasServiceAffordance(resource, { rel: "host", href: "runtime/host", method: "runtime/host", actionId: "read-host" })), "state service resource missing host affordances");
   assert(serviceResources.some((resource) => hasServiceAffordance(resource, { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities", actionId: "read-capabilities" })), "state service resource missing capabilities affordances");
   assert(serviceResources.some((resource) => hasServiceAffordance(resource, { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest", actionId: "run-self-test" })), "state service resource missing self-test affordances");
-  assert(description.outputSchema?.required?.includes("app"), "plastic/state output schema must require app");
-  assert(description.outputSchema?.required?.includes("resources"), "plastic/state output schema must require resources");
-  assert(description.outputSchema?.required?.includes("controlPlane"), "plastic/state output schema must require controlPlane");
-  assert(description.outputSchema?.properties?.app?.required?.includes("mode"), "plastic/state app schema must require mode");
-  assert(description.outputSchema?.properties?.app?.properties?.mode?.enum?.includes("electron"), "plastic/state output schema must expose electron mode");
-  assert(description.outputSchema?.properties?.app?.properties?.mode?.enum?.includes("headless"), "plastic/state output schema must expose headless mode");
-  assert(description.outputSchema?.properties?.app?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "plastic/state output schema must expose hostBase marker");
-  assert(description.outputSchema?.properties?.controlPlane?.required?.includes("runtime"), "plastic/state output schema must expose runtime control plane");
-  assert(description.outputSchema?.properties?.controlPlane?.required?.includes("build"), "plastic/state output schema must expose build control plane");
+  assertStateMethodDescription({ assert, description });
   assert(panelResources.length > 0, "state does not expose panels");
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
   assert(runtimeStartedControlPlane.mode === state.app.mode, "runtime.started mode mismatch");
