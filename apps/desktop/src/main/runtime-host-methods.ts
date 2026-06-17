@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { runtimeHostOutputSchema } from "./runtime-host-schemas.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
 const runtimeHostAvailability = {
@@ -21,6 +22,7 @@ export const createRuntimeHostModule = (input: {
         owner: { kind: "runtime", id: "plastic.runtime" },
         availability: runtimeHostAvailability,
         inputSchema: noInputSchema,
+        outputSchema: runtimeHostOutputSchema,
         examples: [
           {
             title: "Read host identity",

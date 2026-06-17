@@ -19,6 +19,7 @@ export const assertRuntimeHostSurface = async ({ assert, assertArray, rpc, mode,
   assertArray(host.capabilities.items, "runtime/host capabilities items is not an array");
   assert(host.diagnostics?.mode === mode, "runtime/host diagnostics mode mismatch");
   assert(description.availability?.status === "available", "runtime/host availability mismatch");
+  assertRuntimeHostMethodDescription({ assert, description });
   assertMatchingHostIdentity({ assert, live: host, durable: started.payload.host });
   return {
     mode: host.mode,
@@ -28,6 +29,16 @@ export const assertRuntimeHostSurface = async ({ assert, assertArray, rpc, mode,
     runtimePort: host.controlPlane.runtime.port,
     durableEventId: started.id
   };
+};
+
+const assertRuntimeHostMethodDescription = ({ assert, description }) => {
+  assert(description.outputSchema?.required?.includes("controlPlane"), "runtime/host output schema must require controlPlane");
+  assert(description.outputSchema?.required?.includes("agentTransports"), "runtime/host output schema must require agentTransports");
+  assert(description.outputSchema?.required?.includes("capabilities"), "runtime/host output schema must require capabilities");
+  assert(description.outputSchema?.properties?.mode?.enum?.includes("electron"), "runtime/host output schema must expose electron mode");
+  assert(description.outputSchema?.properties?.mode?.enum?.includes("headless"), "runtime/host output schema must expose headless mode");
+  assert(description.outputSchema?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "runtime/host output schema must expose hostBase marker");
+  assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.methodRegistry?.enum?.includes("shared"), "runtime/host output schema must expose shared method registry transports");
 };
 
 const assertMatchingHostIdentity = ({ assert, live, durable }) => {
