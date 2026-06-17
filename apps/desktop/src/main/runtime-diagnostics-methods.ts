@@ -201,7 +201,7 @@ const diagnoseFailure = (failurePhase: string | null, hints: Array<string>) => {
   if (failurePhase === "electron" && hints.some((hint) => hint.includes("no Plastic main-process startup logs"))) {
     return diagnosis("electron-main-startup-missing", "electron-main-process-startup", "Electron launched, but Plastic main-process startup was not observed before runtime ports became ready.");
   }
-  if (failurePhase === "electron" && hints.some((hint) => hint.includes("7331") || hint.includes("7332"))) {
+  if (failurePhase === "electron" && hints.some((hint) => /7331|7332|runtime.*port|build.*port|lsof -nP -iTCP:\d+|did not become ready/.test(hint))) {
     return diagnosis("electron-runtime-ports-missing", "electron-runtime-port-binding", "Electron validation did not observe the runtime/build HTTP ports.");
   }
   if (failurePhase) {

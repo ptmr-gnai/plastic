@@ -133,7 +133,7 @@ const runStep = (step) =>
         result.diagnostics = {
           tail: output,
           hints: output
-            .filter((line) => /plastic:entry|entry-cjs|entry-preflight|electron app-mode smoke|electronAppModeSmokeHint|plastic:electron-smoke|electronStartupHint|electron-main-ready|electron-launch|electron-child-status|electron-child-lsof|vite-ready|did not become ready|lsof -nP -iTCP:7331|lsof -nP -iTCP:7332|activeHostPid|activeHostExit/.test(line))
+            .filter((line) => /plastic:entry|entry-cjs|entry-preflight|electron app-mode smoke|electronAppModeSmokeHint|plastic:electron-smoke|electronStartupHint|electron-main-ready|electron-launch|electron-child-status|electron-child-lsof|vite-ready|did not become ready|lsof -nP -iTCP:\d+|runtime.*port|build.*port|activeHostPid|activeHostExit/.test(line))
             .slice(-20)
         };
       }
