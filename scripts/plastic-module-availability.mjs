@@ -49,6 +49,22 @@ export const assertModuleAvailabilitySummaries = ({ assert, modules, methods, so
   }
 };
 
+export const assertRuntimeModulesMethodDescription = ({ assert, description }) => {
+  assert(description.outputSchema?.required?.includes("count"), "runtime/modules output schema must require count");
+  assert(description.outputSchema?.required?.includes("items"), "runtime/modules output schema must require items");
+  const itemSchema = description.outputSchema?.properties?.items?.items;
+  assert(itemSchema?.required?.includes("id"), "runtime/modules item schema must require id");
+  assert(itemSchema?.required?.includes("order"), "runtime/modules item schema must require order");
+  assert(itemSchema?.required?.includes("methodIds"), "runtime/modules item schema must require methodIds");
+  assert(itemSchema?.required?.includes("availability"), "runtime/modules item schema must require availability");
+  const availabilitySchema = itemSchema?.properties?.availability;
+  assert(availabilitySchema?.required?.includes("available"), "runtime/modules availability schema must require available");
+  assert(availabilitySchema?.required?.includes("degraded"), "runtime/modules availability schema must require degraded");
+  assert(availabilitySchema?.required?.includes("unavailable"), "runtime/modules availability schema must require unavailable");
+  assert(availabilitySchema?.required?.includes("requiredCapabilities"), "runtime/modules availability schema must require requiredCapabilities");
+  assert(availabilitySchema?.required?.includes("missingCapabilities"), "runtime/modules availability schema must require missingCapabilities");
+};
+
 export const summarizeModuleAvailability = (methodIds, byMethodId) => {
   const requiredCapabilities = new Set();
   const missingCapabilities = new Set();

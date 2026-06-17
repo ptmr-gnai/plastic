@@ -17,7 +17,7 @@ import { assertRunAuditActionMethodDescription, assertRuntimeAuditActionPlanMeth
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
 import { assertHeadlessFallbackChatFixture, assertNoActiveContractFixtures, cleanupLegacyContractFixtures } from "./plastic-contract-fixtures.mjs";
 import { agentBackendMethodExpectationsForMode, capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
-import { assertModuleAvailabilitySummaries, assertRuntimeModuleOrder } from "./plastic-module-availability.mjs";
+import { assertModuleAvailabilitySummaries, assertRuntimeModuleOrder, assertRuntimeModulesMethodDescription } from "./plastic-module-availability.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
@@ -243,6 +243,7 @@ await check("runtime/modules", async () => {
   const durable = await assertRuntimeStartedModuleInventory({ rpc });
   runtimeModules = live;
   assertMatchingModuleInventories({ live, durable });
+  assertRuntimeModulesMethodDescription({ assert, description: await rpc("methods/describe", { id: "runtime/modules" }) });
   await assertRuntimeModuleOrder({ assert, modules: live, source: "runtime/modules" });
   await assertRuntimeModuleOrder({ assert, modules: durable, source: "runtime.started modules" });
   assertModuleAvailabilitySummaries({ assert, modules: live, methods, source: "runtime/modules" });

@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import type { PlasticMethod } from "@plastic/core";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { runtimeModulesOutputSchema } from "./runtime-module-schemas.js";
 import type { RuntimeModule } from "./runtime-method-context.js";
 
 type RuntimeModuleSummary = {
@@ -31,6 +32,7 @@ export const createRuntimeModulesModule = (getModules: () => RuntimeModuleSummar
           notes: "Runtime module inventory is produced by the shared module plan in headed and headless modes."
         },
         inputSchema: noInputSchema,
+        outputSchema: runtimeModulesOutputSchema,
         examples: [
           {
             title: "List runtime modules",
