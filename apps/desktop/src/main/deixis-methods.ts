@@ -9,6 +9,15 @@ import {
   type TimelineInput
 } from "@plastic/core";
 import { deixisAvailability } from "./deixis-availability.js";
+import {
+  clickRefMetadata,
+  evalDomMetadata,
+  fillRefMetadata,
+  listVisibleRefsMetadata,
+  resolveRefMetadata,
+  screenshotMetadata,
+  verifyRefActionMetadata
+} from "./deixis-method-metadata.js";
 import { resolveDeixisRef } from "./deixis-resolve-ref.js";
 import type { RefInput, ScreenshotInput, VerifyRefActionInput } from "./deixis-types.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
@@ -60,6 +69,7 @@ const registerListVisibleRefs = async (
       title: "List visible UI references",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: deixisAvailability(context.capabilities, "deixis/listVisibleRefs"),
+      ...listVisibleRefsMetadata,
       handler: () => Effect.promise(async () => {
         if (!host.listVisibleRefs) {
           throw new Error("deixis/listVisibleRefs is unavailable: missing dom.refs capability");
@@ -82,6 +92,7 @@ const registerScreenshot = async (
       description: "Captures the focused window, a specific window id, or a visible data-plastic-ref region as a data URL.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: deixisAvailability(context.capabilities, "windows/screenshot"),
+      ...screenshotMetadata,
       handler: (input) => Effect.promise(async () => {
         if (!host.captureWindow) {
           throw new Error("windows/screenshot is unavailable: missing electron.window or screenshot capability");
@@ -104,6 +115,7 @@ const registerResolveRef = async (
       description: "Explains a data-plastic-ref with DOM, panel, extension, command, source hints, and recent event lineage.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: deixisAvailability(context.capabilities, "deixis/resolveRef"),
+      ...resolveRefMetadata,
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.resolveVisibleRef || !host.panelIdFromRef || !host.sourceHintsFor) {
@@ -138,6 +150,7 @@ const registerEvalDom = async (
       description: "Permissive v0 DOM evaluation in the focused window.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: deixisAvailability(context.capabilities, "deixis/evalDom"),
+      ...evalDomMetadata,
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.findWindow) {
@@ -169,6 +182,7 @@ const registerVerifyRefAction = async (
       description: "Verifies that a recent ref-driven action produced the expected durable event.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: deixisAvailability(context.capabilities, "deixis/verifyRefAction"),
+      ...verifyRefActionMetadata,
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.panelIdFromRef) {
@@ -264,6 +278,7 @@ const registerClickRef = async (
       description: "Clicks a visible data-plastic-ref in the focused or selected window and records the action.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: deixisAvailability(context.capabilities, "deixis/clickRef"),
+      ...clickRefMetadata,
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.findWindow || !host.resolveVisibleRef || !host.panelIdFromRef || !host.scrollRefIntoViewScript) {
@@ -353,6 +368,7 @@ const registerFillRef = async (
       description: "Fills an input or textarea inside a visible data-plastic-ref and records the action.",
       owner: { kind: "runtime", id: "plastic.runtime" },
       availability: deixisAvailability(context.capabilities, "deixis/fillRef"),
+      ...fillRefMetadata,
       handler: (input) =>
         Effect.promise(async () => {
           if (!host.findWindow || !host.resolveVisibleRef || !host.panelIdFromRef || !host.scrollRefIntoViewScript) {
