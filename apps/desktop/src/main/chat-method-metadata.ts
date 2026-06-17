@@ -1,4 +1,5 @@
 import { readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
+import { plasticEventSchema } from "./runtime-control-schemas.js";
 
 export const chatIdInputSchema = {
   type: "object",
@@ -48,8 +49,50 @@ export const fallbackSendToCodexInputSchema = {
   }
 };
 
+const chatBindingOutputSchema = {
+  type: "object",
+  required: ["chatId", "threadId", "activeTurnId", "activeTurnStatus"],
+  properties: {
+    chatId: { type: "string" },
+    runtimeId: { type: "string" },
+    threadId: { type: ["string", "null"] },
+    activeTurnId: { type: ["string", "null"] },
+    activeTurnStatus: { type: ["string", "null"] },
+    availability: { type: "object" }
+  },
+  additionalProperties: true
+};
+
+const createCodexChatOutputSchema = {
+  type: "object",
+  required: ["panelId", "chatId", "threadId", "panelEvent"],
+  properties: {
+    panelId: { type: "string" },
+    chatId: { type: "string" },
+    threadId: { type: ["string", "null"] },
+    panelEvent: plasticEventSchema,
+    noticeEvent: plasticEventSchema,
+    thread: {},
+    availability: { type: "object" }
+  }
+};
+
+const sendToCodexOutputSchema = {
+  type: "object",
+  properties: {
+    chatId: { type: "string" },
+    threadId: { type: ["string", "null"] },
+    userMessage: plasticEventSchema,
+    userEvent: plasticEventSchema,
+    agentEvent: plasticEventSchema,
+    turn: {},
+    availability: { type: "object" }
+  }
+};
+
 export const chatBindingMetadata = {
   inputSchema: chatIdInputSchema,
+  outputSchema: chatBindingOutputSchema,
   examples: [
     {
       title: "Inspect a chat binding",
@@ -63,6 +106,7 @@ export const chatBindingMetadata = {
 
 export const createCodexChatMetadata = {
   inputSchema: createCodexChatInputSchema,
+  outputSchema: createCodexChatOutputSchema,
   examples: [
     {
       title: "Create a named chat panel",
@@ -83,6 +127,7 @@ export const createCodexChatMetadata = {
 
 export const fallbackCreateCodexChatMetadata = {
   inputSchema: fallbackCreateCodexChatInputSchema,
+  outputSchema: createCodexChatOutputSchema,
   examples: [
     {
       title: "Create a fallback chat panel",
@@ -103,6 +148,7 @@ export const fallbackCreateCodexChatMetadata = {
 
 export const sendToCodexMetadata = {
   inputSchema: sendToCodexInputSchema,
+  outputSchema: sendToCodexOutputSchema,
   examples: [
     {
       title: "Send a user message",
@@ -123,6 +169,7 @@ export const sendToCodexMetadata = {
 
 export const fallbackSendToCodexMetadata = {
   inputSchema: fallbackSendToCodexInputSchema,
+  outputSchema: sendToCodexOutputSchema,
   examples: [
     {
       title: "Record a fallback chat message",
