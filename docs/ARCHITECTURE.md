@@ -358,7 +358,7 @@ Build:
 
 - `build/status`
 - `build/trigger`
-- `build/diagnostics`
+- `app/diagnostics`
 - `build/subscribe`
 
 ### 4.5 Example: Five-Second Chat Button
