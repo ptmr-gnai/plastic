@@ -5,6 +5,7 @@ export interface PlasticAction {
   id: string;
   title: string;
   method: string;
+  input?: unknown;
   inputSchema?: unknown;
   description?: string;
 }

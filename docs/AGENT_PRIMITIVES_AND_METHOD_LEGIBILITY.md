@@ -53,6 +53,8 @@ The remaining legibility work has moved up a layer:
 - make settings and layout explicit durable primitives;
 - replace broad JSON-schema objects with Effect Schema or another typed schema source when the runtime is ready.
 
+`plastic/state` now projects each active panel as an individual `kind: "panel"` resource. A panel resource must expose concrete links/actions with prefilled method inputs for `panels/get`, `panels/rename`, `panels/move`, and `panels/remove`. Chat panels also expose `chats/messages` and `chats/sendToCodex` actions with the relevant `chatId`. This is the first contextual-resource contract: an agent can pick a panel from state and act on it without separately inferring the payload key or panel id.
+
 ## Required Method Metadata
 
 Every method must be describable with:
@@ -95,6 +97,14 @@ interface PlasticMethodDescription {
     href: string;
     method?: string;
     target?: string;
+    input?: unknown;
+  }>;
+  actions?: Array<{
+    id: string;
+    title: string;
+    method: string;
+    input?: unknown;
+    inputSchema?: unknown;
   }>;
 }
 ```

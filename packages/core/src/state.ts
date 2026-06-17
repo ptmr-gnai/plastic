@@ -60,6 +60,7 @@ const buildStateResources = (input: {
   extensionCollectionResource(input.extensionItems),
   panelCollectionResource(input.panelItems),
   panelActionsResource(),
+  ...input.panelItems.map(panelResource),
   windowCollectionResource(input.windowItems)
 ];
 
@@ -138,6 +139,33 @@ const panelActionsResource = (): PlasticResource => ({
     { id: "rename", title: "Rename panel", method: "panels/rename" },
     { id: "move", title: "Move panel", method: "panels/move" },
     { id: "remove", title: "Remove panel", method: "panels/remove" }
+  ]
+});
+
+const panelResource = (panel: PlasticPanel): PlasticResource<PlasticPanel> => ({
+  id: `panel:${panel.id}`,
+  kind: "panel",
+  title: panel.title,
+  state: panel,
+  links: [
+    { rel: "self", href: "panels/get", method: "panels/get", target: panel.id, input: { id: panel.id } },
+    { rel: "collection", href: "panels/list", method: "panels/list" },
+    { rel: "extension", href: "extensions/get", method: "extensions/get", target: panel.extensionId, input: { id: panel.extensionId } },
+    ...(panel.windowId
+      ? [{ rel: "window-collection", href: "windows/list", method: "windows/list", target: panel.windowId }]
+      : [])
+  ],
+  actions: [
+    { id: "get-panel", title: "Get panel", method: "panels/get", input: { id: panel.id } },
+    { id: "rename-panel", title: "Rename panel", method: "panels/rename", input: { id: panel.id } },
+    { id: "move-panel", title: "Move panel", method: "panels/move", input: { id: panel.id } },
+    { id: "remove-panel", title: "Remove panel", method: "panels/remove", input: { id: panel.id } },
+    ...(panel.kind === "chat"
+      ? [
+          { id: "read-chat-messages", title: "Read chat messages", method: "chats/messages", input: { chatId: panel.id } },
+          { id: "send-chat-message", title: "Send chat message", method: "chats/sendToCodex", input: { chatId: panel.id } }
+        ]
+      : [])
   ]
 });
 

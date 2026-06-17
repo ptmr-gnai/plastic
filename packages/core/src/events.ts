@@ -20,6 +20,7 @@ export interface PlasticLink {
   href: string;
   method?: string;
   target?: string;
+  input?: unknown;
 }
 
 export interface PlasticRedaction {

@@ -24,3 +24,10 @@ export const hasLinkAffordance = (links, expected) =>
     && link.method === expected.method
     && (expected.input === undefined || JSON.stringify(link.input) === JSON.stringify(expected.input))
   );
+
+export const hasActionAffordance = (actions, expected) =>
+  actions?.some((action) =>
+    action.id === expected.id
+    && action.method === expected.method
+    && (expected.input === undefined || JSON.stringify(action.input) === JSON.stringify(expected.input))
+  );

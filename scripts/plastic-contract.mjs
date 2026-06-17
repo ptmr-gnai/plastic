@@ -7,7 +7,7 @@ import {
   assertRuntimeAuditStatus, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 import { assertAgentOrientMethodDescription, assertAgentOrientationPacket, assertAgentWorkbenchMethodDescription, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
-import { expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
+import { expectedSnapshotLinks, hasActionAffordance, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
 import { assertRuntimeCapabilitiesMethodDescription } from "./plastic-contract-capabilities.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagnostics.mjs";
@@ -73,6 +73,13 @@ await check("plastic/state", async () => {
   assert(serviceResources.some((resource) => hasServiceAffordance(resource, { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest", actionId: "run-self-test" })), "state service resource missing self-test affordances");
   assertStateMethodDescription({ assert, description });
   assert(panelResources.length > 0, "state does not expose panels");
+  const individualPanel = panelResources.find((resource) => resource.kind === "panel");
+  assert(individualPanel, "state does not expose individual panel resources");
+  const panelIdFromResource = individualPanel.state?.id;
+  assert(typeof panelIdFromResource === "string", "state panel resource missing state.id");
+  assert(hasLinkAffordance(individualPanel.links, { rel: "self", href: "panels/get", method: "panels/get", input: { id: panelIdFromResource } }), "state panel resource missing self link with panel input");
+  assert(hasActionAffordance(individualPanel.actions, { id: "rename-panel", method: "panels/rename", input: { id: panelIdFromResource } }), "state panel resource missing rename action with panel input");
+  assert(hasActionAffordance(individualPanel.actions, { id: "remove-panel", method: "panels/remove", input: { id: panelIdFromResource } }), "state panel resource missing remove action with panel input");
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
   assert(runtimeStartedControlPlane.mode === state.app.mode, "runtime.started mode mismatch");
   return { mode: state.app.mode, panels: panelResources.length, events: state.events?.count ?? null, controlPlane: state.controlPlane.runtime.transport };
