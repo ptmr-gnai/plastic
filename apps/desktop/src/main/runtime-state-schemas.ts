@@ -1,3 +1,5 @@
+import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
+
 export const plasticStateOutputSchema = {
   type: "object",
   required: ["app", "resources", "controlPlane"],
@@ -22,14 +24,7 @@ export const plasticStateOutputSchema = {
     panels: { type: "array", items: { type: "object" } },
     windows: { type: "array", items: { type: "object" } },
     events: { type: "object" },
-    controlPlane: {
-      type: "object",
-      required: ["runtime", "build"],
-      properties: {
-        runtime: { type: "object" },
-        build: { type: "object" }
-      }
-    },
+    controlPlane: runtimeHostControlPlaneSchema,
     bus: { type: "object" }
   }
 };

@@ -1,3 +1,5 @@
+import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
+
 export const plasticSnapshotOutputSchema = {
   type: "object",
   required: [
@@ -35,14 +37,7 @@ export const plasticSnapshotOutputSchema = {
     build: { type: "object" },
     runtime: { type: "object" },
     codex: { type: "object" },
-    controlPlane: {
-      type: "object",
-      required: ["runtime", "build"],
-      properties: {
-        runtime: { type: "object" },
-        build: { type: "object" }
-      }
-    },
+    controlPlane: runtimeHostControlPlaneSchema,
     methods: {
       type: "object",
       required: ["count", "items"],

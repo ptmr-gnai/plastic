@@ -14,6 +14,10 @@ export const assertSnapshotMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.app?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "plastic/snapshot output schema must expose hostBase marker");
   assert(description.outputSchema?.properties?.controlPlane?.required?.includes("runtime"), "plastic/snapshot output schema must expose runtime control plane");
   assert(description.outputSchema?.properties?.controlPlane?.required?.includes("build"), "plastic/snapshot output schema must expose build control plane");
+  assert(description.outputSchema?.properties?.controlPlane?.properties?.runtime?.required?.includes("rpcUrl"), "plastic/snapshot output schema must expose runtime RPC URL");
+  assert(description.outputSchema?.properties?.controlPlane?.properties?.runtime?.properties?.eventStreamPath?.enum?.includes("/events/stream"), "plastic/snapshot output schema must expose runtime event stream path");
+  assert(description.outputSchema?.properties?.controlPlane?.properties?.build?.required?.includes("statusUrl"), "plastic/snapshot output schema must expose build status URL");
+  assert(description.outputSchema?.properties?.controlPlane?.properties?.build?.properties?.statusPath?.enum?.includes("/status"), "plastic/snapshot output schema must expose build status path");
   assert(description.outputSchema?.properties?.methods?.required?.includes("count"), "plastic/snapshot methods schema must require count");
   assert(description.outputSchema?.properties?.methods?.required?.includes("items"), "plastic/snapshot methods schema must require items");
   assert(description.outputSchema?.properties?.events?.required?.includes("recent"), "plastic/snapshot events schema must require recent");
