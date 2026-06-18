@@ -4,35 +4,7 @@ import { visibleRefWindowSchema } from "./deixis-method-metadata.js";
 import { plasticExtensionSchema } from "./extension-query-methods.js";
 import { plasticEventSchema, plasticMethodSchema } from "./runtime-control-schemas.js";
 import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
-import { plasticStateResourceLinkSchema, plasticStateResourceSchema } from "./runtime-state-schemas.js";
-
-const plasticSnapshotPanelSchema = {
-  type: "object",
-  required: ["id", "title", "kind", "extensionId", "order"],
-  properties: {
-    id: { type: "string" },
-    title: { type: "string" },
-    kind: { type: "string" },
-    extensionId: { type: "string" },
-    rendererId: { type: "string" },
-    subtitle: { type: "string" },
-    body: { type: "string" },
-    windowId: { type: "string" },
-    order: { type: "number" }
-  }
-};
-
-const plasticSnapshotWindowSchema = {
-  type: "object",
-  required: ["id", "title", "panelIds", "open"],
-  properties: {
-    id: { type: "string" },
-    electronWindowId: { type: "number" },
-    title: { type: "string" },
-    panelIds: { type: "array", items: { type: "string" } },
-    open: { type: "boolean" }
-  }
-};
+import { plasticProjectionPanelSchema, plasticProjectionWindowSchema, plasticStateResourceLinkSchema, plasticStateResourceSchema } from "./runtime-state-schemas.js";
 
 const plasticSnapshotRuntimeSchema = {
   type: "object",
@@ -94,9 +66,9 @@ export const plasticSnapshotOutputSchema = {
         items: { type: "array", items: plasticMethodSchema }
       }
     },
-    panels: { type: "array", items: plasticSnapshotPanelSchema },
+    panels: { type: "array", items: plasticProjectionPanelSchema },
     resources: { type: "array", items: plasticStateResourceSchema },
-    windows: { type: "array", items: plasticSnapshotWindowSchema },
+    windows: { type: "array", items: plasticProjectionWindowSchema },
     extensions: { type: "array", items: plasticExtensionSchema },
     visibleRefs: { type: "array", items: visibleRefWindowSchema },
     events: {

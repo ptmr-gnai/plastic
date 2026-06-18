@@ -9,6 +9,34 @@ const plasticStateEventsSchema = {
   }
 };
 
+export const plasticProjectionPanelSchema = {
+  type: "object",
+  required: ["id", "title", "kind", "extensionId", "order"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    kind: { type: "string" },
+    extensionId: { type: "string" },
+    rendererId: { type: "string" },
+    subtitle: { type: "string" },
+    body: { type: "string" },
+    windowId: { type: "string" },
+    order: { type: "number" }
+  }
+};
+
+export const plasticProjectionWindowSchema = {
+  type: "object",
+  required: ["id", "title", "panelIds", "open"],
+  properties: {
+    id: { type: "string" },
+    electronWindowId: { type: "number" },
+    title: { type: "string" },
+    panelIds: { type: "array", items: { type: "string" } },
+    open: { type: "boolean" }
+  }
+};
+
 export const plasticStateResourceLinkSchema = {
   type: "object",
   required: ["rel", "href"],
@@ -69,8 +97,8 @@ export const plasticStateOutputSchema = {
       }
     },
     resources: { type: "array", items: plasticStateResourceSchema },
-    panels: { type: "array", items: { type: "object" } },
-    windows: { type: "array", items: { type: "object" } },
+    panels: { type: "array", items: plasticProjectionPanelSchema },
+    windows: { type: "array", items: plasticProjectionWindowSchema },
     events: plasticStateEventsSchema,
     controlPlane: runtimeHostControlPlaneSchema,
     bus: { type: "object" }

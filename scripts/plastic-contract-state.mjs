@@ -15,6 +15,12 @@ export const assertStateMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.resources?.items?.properties?.links?.items?.required?.includes("href"), "plastic/state resource link schema must require href");
   assert(description.outputSchema?.properties?.resources?.items?.properties?.actions?.items?.required?.includes("method"), "plastic/state resource action schema must require method");
   assert(description.outputSchema?.properties?.resources?.items?.properties?.actions?.items?.properties?.inputSchema, "plastic/state resource action schema must expose inputSchema");
+  assert(description.outputSchema?.properties?.panels?.items?.required?.includes("id"), "plastic/state panel schema must require id");
+  assert(description.outputSchema?.properties?.panels?.items?.required?.includes("kind"), "plastic/state panel schema must require kind");
+  assert(description.outputSchema?.properties?.panels?.items?.properties?.order?.type === "number", "plastic/state panel schema must expose order");
+  assert(description.outputSchema?.properties?.windows?.items?.required?.includes("panelIds"), "plastic/state window schema must require panelIds");
+  assert(description.outputSchema?.properties?.windows?.items?.properties?.panelIds?.items?.type === "string", "plastic/state window schema must expose panel ids");
+  assert(description.outputSchema?.properties?.windows?.items?.properties?.open?.type === "boolean", "plastic/state window schema must expose open state");
   assert(description.outputSchema?.properties?.controlPlane?.required?.includes("runtime"), "plastic/state output schema must expose runtime control plane");
   assert(description.outputSchema?.properties?.controlPlane?.required?.includes("build"), "plastic/state output schema must expose build control plane");
   assert(description.outputSchema?.properties?.controlPlane?.properties?.runtime?.required?.includes("rpcUrl"), "plastic/state output schema must expose runtime RPC URL");
