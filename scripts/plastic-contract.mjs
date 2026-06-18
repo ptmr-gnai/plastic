@@ -26,6 +26,7 @@ import { assertWindowRendererMethodDescriptions } from "./plastic-contract-windo
 import { agentBackendMethodExpectationsForMode, capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { assertRuntimeModulesSurface } from "./plastic-contract-runtime-modules.mjs";
 import { assertPanelLifecycleEventContracts } from "./plastic-contract-panels.mjs";
+import { assertExtensionRemovedEventContract, assertExtensionScaffoldEventContracts } from "./plastic-contract-extensions.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
@@ -423,8 +424,10 @@ await check("extensions/scaffold", async () => {
   const scan = await rpc("extensions/scan", { meta: validationMeta });
   const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
   assert(discovered.some((extension) => extension.id === scaffold.extensionId), "scaffolded extension not discovered");
-  assertEventsTagged(assertArray(await rpc("events/list", { types: ["extension.discovered"], scope: { extensionId: scaffold.extensionId }, limit: 10 }), "extension discovered events/list is not an array"), validationTags, "extension discovered validation tags not readable");
-  assertEventsTagged(assertArray(await rpc("events/list", { types: ["extension.scaffolded"], scope: { extensionId: scaffold.extensionId }, limit: 10 }), "extension scaffold events/list is not an array"), validationTags, "extension scaffold validation tags not readable");
+  const discoveredEvents = assertArray(await rpc("events/list", { types: ["extension.discovered"], scope: { extensionId: scaffold.extensionId }, limit: 10 }), "extension discovered events/list is not an array");
+  const scaffoldEvents = assertArray(await rpc("events/list", { types: ["extension.scaffolded"], scope: { extensionId: scaffold.extensionId }, limit: 10 }), "extension scaffold events/list is not an array");
+  assertEventsTagged(discoveredEvents, validationTags, "extension discovered validation tags not readable"); assertEventsTagged(scaffoldEvents, validationTags, "extension scaffold validation tags not readable");
+  assertExtensionScaffoldEventContracts({ assert, discoveredEvents, scaffold, scaffoldEvents });
   scaffoldedExtensionDir = scaffold.extensionDir;
   scaffoldedExtensionId = scaffold.extensionId;
   scaffoldedExtensionPanelId = scaffold.panelId;
@@ -450,7 +453,8 @@ await check("contract scaffold cleanup", async () => {
   const scan = await rpc("extensions/scan", { meta: validationMeta });
   const discovered = assertArray(scan.discovered, "extensions/scan discovered is not an array");
   assert(!discovered.some((extension) => extension.id === scaffoldedExtensionId), "scaffolded extension still discovered after cleanup");
-  assertEventsTagged(assertArray(await rpc("events/list", { types: ["extension.removed"], scope: { extensionId: scaffoldedExtensionId }, limit: 10 }), "extension removed events/list is not an array"), validationTags, "extension removed validation tags not readable");
+  const removedEvents = assertArray(await rpc("events/list", { types: ["extension.removed"], scope: { extensionId: scaffoldedExtensionId }, limit: 10 }), "extension removed events/list is not an array");
+  assertEventsTagged(removedEvents, validationTags, "extension removed validation tags not readable"); assertExtensionRemovedEventContract({ assert, events: removedEvents, extensionId: scaffoldedExtensionId });
   await rpc("panels/close", { id: scaffoldedExtensionPanelId });
   const panels = await rpc("panels/list");
   assert(!panels.some((panel) => panel.id === scaffoldedExtensionPanelId), "scaffolded extension panel still projected after cleanup");

@@ -25,6 +25,28 @@ export const assertExtensionLifecycleMethodDescriptions = ({ assert, description
   assert(descriptions.forkBundled.outputSchema?.properties?.events?.items?.required?.includes("id"), "extensions/forkBundled event schema must expose event id");
 };
 
+export const assertExtensionScaffoldEventContracts = ({ assert, discoveredEvents, scaffold, scaffoldEvents }) => {
+  const scaffolded = scaffoldEvents.find((event) => event.id === scaffold.eventId) ?? scaffoldEvents[0];
+  const discovered = discoveredEvents.find((event) => event.payload?.id === scaffold.extensionId);
+  assert(scaffolded?.payload?.id === scaffold.extensionId, "extension.scaffolded payload id mismatch");
+  assert(scaffolded.payload.title === "Contract Extension", "extension.scaffolded payload title mismatch");
+  assert(scaffolded.payload.panelId === scaffold.panelId, "extension.scaffolded payload panelId mismatch");
+  assert(scaffolded.payload.extensionDir === scaffold.extensionDir, "extension.scaffolded payload extensionDir mismatch");
+  assert(scaffolded.payload.manifestPath === scaffold.manifestPath, "extension.scaffolded payload manifestPath mismatch");
+  assert(scaffolded.scope?.extensionId === scaffold.extensionId, "extension.scaffolded scope mismatch");
+  assert(discovered?.payload?.id === scaffold.extensionId, "extension.discovered payload id mismatch");
+  assert(discovered.payload.title === "Contract Extension", "extension.discovered payload title mismatch");
+  assert(discovered.payload.source === "workspace", "extension.discovered payload source mismatch");
+  assert(discovered.payload.manifest?.panels?.some((panel) => panel.id === scaffold.panelId), "extension.discovered manifest missing scaffold panel");
+  assert(discovered.scope?.extensionId === scaffold.extensionId, "extension.discovered scope mismatch");
+};
+
+export const assertExtensionRemovedEventContract = ({ assert, events, extensionId }) => {
+  const removed = events.find((event) => event.payload?.id === extensionId);
+  assert(removed?.payload?.reason === "not found during scan", "extension.removed payload reason mismatch");
+  assert(removed.scope?.extensionId === extensionId, "extension.removed scope mismatch");
+};
+
 export const assertExtensionVerificationMethodDescriptions = ({ assert, descriptions }) => {
   assertVerificationReport({ assert, schema: descriptions.verify.outputSchema, label: "extensions/verify output" });
   assert(descriptions.verify.outputSchema?.properties?.event?.required?.includes("id"), "extensions/verify output must expose event id");
