@@ -207,7 +207,7 @@ type MethodAvailability = {
 };
 ```
 
-Every method exposed through `plastic/methods` and `methods/describe` should eventually include availability. Runtime clients should also learn stable method, projection, transport, audit, extension, Deixis, and agent packet result shapes from RPC metadata; open schemas should be reserved for delegated inputs, resource affordance payloads/schemas, DOM eval results, and Codex/provider passthroughs where Plastic is not the schema owner.
+Every method exposed through `plastic/methods` and `methods/describe` should eventually include availability. Runtime clients should also learn stable method, projection, transport, audit, extension, Deixis, and agent packet result shapes from RPC metadata. Open schemas should now be treated as explicit boundaries: empty input objects for no-input calls, resource affordance payload/schema descriptors, `deixis/evalDom` DOM-script results, `chats/interrupt`/`codex/*` Codex app-server passthrough results, and Codex alias inputs where Plastic is not the schema owner.
 
 ## Invariants
 
