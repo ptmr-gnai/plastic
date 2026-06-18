@@ -58,8 +58,10 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(transportCheck.details.invalidTransportAffordances?.length === 0, "plastic/selfTest agent transport affordances are invalid");
   const orientationCheck = selfTest.checks?.find((candidate) => candidate.id === "agent-orientation:packets");
   assert(orientationCheck?.details?.unknownWorkbenchActions?.length === 0, "plastic/selfTest workbench action references unknown methods");
+  assert(orientationCheck.details.unknownWorkbenchLinks?.length === 0, "plastic/selfTest workbench link references unknown methods");
   assert(orientationCheck.details.unknownOrientationActions?.length === 0, "plastic/selfTest orientation action references unknown methods");
   assert(orientationCheck.details.unknownOrientationLinks?.length === 0, "plastic/selfTest orientation link references unknown methods");
+  assert(orientationCheck.details.vagueInputs?.length === 0, "plastic/selfTest agent packet affordances have vague inputs");
   return { checks: selfTest.checks?.length ?? null };
 };
 
