@@ -119,6 +119,7 @@ const compactFailureSummary = (summary: AuditSummary | null) => {
 };
 
 const diagnosis = (code: string, phase: string | null, summary: string) => ({ code, phase, summary });
+const compactMethodParity = (summary: AuditSummary | null) => compactAuditMetadata(summary).methodParity;
 
 const diagnosticActionsFor = (diagnosisResult: ReturnType<typeof diagnosis>): Array<DiagnosticAction> => {
   if (diagnosisResult.code === "audit-missing") {
@@ -218,6 +219,7 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
       usable: false,
       strictElectron: "not-run",
       unified: "not-run",
+      methodParity: compactMethodParity(null),
       failureSummary: compactFailureSummary(null),
       failurePhase: null,
       diagnosis: {
@@ -244,6 +246,7 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
       usable: false,
       strictElectron,
       unified,
+      methodParity: compactMethodParity(summary),
       failureSummary: compactFailureSummary(summary),
       failurePhase: null,
       diagnosis: diagnosis("audit-running", "runtime-unification-audit", "The runtime unification audit is currently running."),
@@ -266,7 +269,7 @@ const buildAuditVerdict = (summary: AuditSummary | null) => {
         ? "Continue closing headed/headless runtime gaps; strict Electron is the remaining proof when degraded."
         : "Rerun pnpm plastic:audit-runtime-unification and inspect failed check diagnostics.";
 
-  return { status, usable, strictElectron, unified, failureSummary, failurePhase, diagnosis: diagnosisResult, hints, nextAction, actions: diagnosticActionsFor(diagnosisResult) };
+  return { status, usable, strictElectron, unified, methodParity: compactMethodParity(summary), failureSummary, failurePhase, diagnosis: diagnosisResult, hints, nextAction, actions: diagnosticActionsFor(diagnosisResult) };
 };
 
 const auditActionInputSchema = {

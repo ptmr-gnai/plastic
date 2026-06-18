@@ -5,6 +5,8 @@ export const assertRuntimeAuditStatus = (auditStatus) => {
   assert(typeof auditStatus.verdict?.diagnosis?.code === "string", "runtime/auditStatus missing diagnosis code");
   assert(typeof auditStatus.verdict?.diagnosis?.summary === "string", "runtime/auditStatus missing diagnosis summary");
   assert(typeof auditStatus.verdict?.failureSummary?.count === "number", "runtime/auditStatus missing verdict failure count");
+  assert(typeof auditStatus.verdict?.methodParity?.mode === "string", "runtime/auditStatus missing verdict method parity mode");
+  assert(auditStatus.verdict.methodParity.failureTotal === null || typeof auditStatus.verdict.methodParity.failureTotal === "number", "runtime/auditStatus invalid verdict method parity total");
   assert(Array.isArray(auditStatus.verdict.failureSummary.ids), "runtime/auditStatus missing verdict failure ids");
   assert(Array.isArray(auditStatus.verdict.failureSummary.blockingIds), "runtime/auditStatus missing verdict blocking failure ids");
   assert(auditStatus.verdict.failureSummary.first === null || typeof auditStatus.verdict.failureSummary.first?.id === "string", "runtime/auditStatus invalid verdict first failure");
@@ -60,6 +62,7 @@ const assertPersistedAuditSummary = (summary) => {
   assert(summary.expectedChecks === summary.expectedStepIds.length, "runtime/auditStatus audit expected check count mismatch");
   assert(summary.checks === summary.results?.length, "runtime/auditStatus audit result count mismatch");
   assert(typeof summary?.runtimeUnification?.usable === "boolean", "runtime/auditStatus missing structured verdict");
+  assert(summary.runtimeUnification.methodParity === null || typeof summary.runtimeUnification.methodParity?.failureSummary?.total === "number", "runtime/auditStatus missing method parity failure summary");
   assert(typeof summary?.failures?.count === "number", "runtime/auditStatus missing audit failure count");
   assert(Array.isArray(summary.failures.ids), "runtime/auditStatus missing audit failure ids");
   assert(Array.isArray(summary.failures.blockingIds), "runtime/auditStatus missing audit blocking failure ids");

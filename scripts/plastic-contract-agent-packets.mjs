@@ -195,6 +195,8 @@ const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {
   assert(typeof auditStatus.audit.usable === "boolean", `${source} audit status missing usable flag`);
   assert(typeof auditStatus.audit.strictElectron === "string", `${source} audit status missing strict Electron status`);
   assert(typeof auditStatus.audit.unified === "string", `${source} audit status missing unified status`);
+  assert(typeof auditStatus.audit.methodParity?.mode === "string", `${source} audit status missing method parity mode`);
+  assert(auditStatus.audit.methodParity.failureTotal === null || typeof auditStatus.audit.methodParity.failureTotal === "number", `${source} audit status invalid method parity total`);
 };
 
 const assertRecentAuditActionMetadata = ({ assert, recentActions, source }) => {

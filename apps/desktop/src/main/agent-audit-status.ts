@@ -21,6 +21,8 @@ export const readAgentAuditStatus = async (input: {
   const verdict = asRecord(status.verdict);
   const summary = asRecord(status.summary);
   const runtimeUnification = asRecord(summary.runtimeUnification);
+  const methodParity = asRecord(runtimeUnification.methodParity);
+  const parityFailureSummary = asRecord(methodParity.failureSummary);
   const diagnosis = asRecord(verdict.diagnosis);
   const failureSummary = asRecord(verdict.failureSummary);
   const firstFailure = asRecord(failureSummary.first);
@@ -36,7 +38,11 @@ export const readAgentAuditStatus = async (input: {
       expectedStepIds: Array.isArray(summary.expectedStepIds) ? summary.expectedStepIds.filter((id): id is string => typeof id === "string") : [],
       usable: runtimeUnification.usable === true,
       strictElectron: typeof runtimeUnification.strictElectron === "string" ? runtimeUnification.strictElectron : "unknown",
-      unified: typeof runtimeUnification.unified === "string" ? runtimeUnification.unified : "unknown"
+      unified: typeof runtimeUnification.unified === "string" ? runtimeUnification.unified : "unknown",
+      methodParity: {
+        mode: typeof methodParity.mode === "string" ? methodParity.mode : "unknown",
+        failureTotal: typeof parityFailureSummary.total === "number" ? parityFailureSummary.total : null
+      }
     },
     verdict: typeof verdict.status === "string" ? verdict.status : "unknown",
     diagnosis: {

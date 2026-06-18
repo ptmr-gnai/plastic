@@ -33,6 +33,7 @@ export const auditStatusOutputSchema = {
         usable: { type: "boolean" },
         strictElectron: { type: "string" },
         unified: { type: "string" },
+        methodParity: { type: "object" },
         failurePhase: { type: ["string", "null"] },
         failureSummary: { type: "object" },
         diagnosis: { type: "object" },

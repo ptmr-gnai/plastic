@@ -14,8 +14,23 @@ export type AuditSummary = {
     strictElectron?: unknown;
     unified?: unknown;
     blockingFailures?: unknown;
+    methodParity?: unknown;
   };
   results?: unknown;
+};
+
+const methodParityMetadata = (summary: AuditSummary | null) => {
+  const value = summary?.runtimeUnification?.methodParity;
+  const record = value && typeof value === "object" && !Array.isArray(value) ? value as {
+    reportPath?: unknown;
+    mode?: unknown;
+    failureSummary?: { total?: unknown };
+  } : null;
+  return {
+    reportPath: typeof record?.reportPath === "string" ? record.reportPath : null,
+    mode: typeof record?.mode === "string" ? record.mode : "unknown",
+    failureTotal: typeof record?.failureSummary?.total === "number" ? record.failureSummary.total : null
+  };
 };
 
 export const compactAuditMetadata = (summary: AuditSummary | null) => ({
@@ -27,7 +42,8 @@ export const compactAuditMetadata = (summary: AuditSummary | null) => ({
   expectedStepIds: Array.isArray(summary?.expectedStepIds) ? summary.expectedStepIds.filter((id): id is string => typeof id === "string") : [],
   usable: summary?.runtimeUnification?.usable === true,
   strictElectron: typeof summary?.runtimeUnification?.strictElectron === "string" ? summary.runtimeUnification.strictElectron : "unknown",
-  unified: typeof summary?.runtimeUnification?.unified === "string" ? summary.runtimeUnification.unified : "unknown"
+  unified: typeof summary?.runtimeUnification?.unified === "string" ? summary.runtimeUnification.unified : "unknown",
+  methodParity: methodParityMetadata(summary)
 });
 
 const normalizeAuditMetadata = (value: unknown) => {
