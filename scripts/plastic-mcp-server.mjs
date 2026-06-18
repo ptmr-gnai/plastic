@@ -120,6 +120,7 @@ const handleToolCall = async (id, params) => {
       method: methodId,
       methodEffects,
       ok: true,
+      value,
       completedAt: new Date().toISOString()
     });
     sendResult(id, { content: [{ type: "text", text: JSON.stringify(result) }] });
