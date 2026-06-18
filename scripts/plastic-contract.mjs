@@ -25,6 +25,7 @@ import { assertStateMethodDescription } from "./plastic-contract-state.mjs";
 import { assertWindowRendererMethodDescriptions } from "./plastic-contract-window-renderer.mjs";
 import { agentBackendMethodExpectationsForMode, capabilityBackedMethodExpectationsForMode } from "./plastic-capability-expectations.mjs";
 import { assertRuntimeModulesSurface } from "./plastic-contract-runtime-modules.mjs";
+import { assertPanelLifecycleEventContracts } from "./plastic-contract-panels.mjs";
 
 const runId = `contract-${Date.now()}`;
 const panelId = `${runId}-panel`;
@@ -405,6 +406,7 @@ await check("panel lifecycle", async () => {
   createdPanelEvent = await assertPanelLifecycleProjection({ rpc, panelId, meta: validationMeta });
   const panelEvents = await rpc("events/list", { types: ["panel.created", "panel.renamed", "panel.moved", "panel.removed"], scope: { panelId }, limit: 10 });
   assertEventsTagged(assertArray(panelEvents, "panel lifecycle events/list is not an array"), validationTags, "panel lifecycle validation tags not readable");
+  assertPanelLifecycleEventContracts({ assert, events: panelEvents, panelId });
   return createdPanelEvent;
 });
 await check("extensions/scaffold", async () => {

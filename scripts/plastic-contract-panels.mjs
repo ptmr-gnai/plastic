@@ -10,6 +10,25 @@ export const assertPanelControlMethodDescriptions = ({ assert, descriptions }) =
   assertEventOutput({ assert, description: descriptions.close, eventType: "panel.removed", projection: "windows" });
 };
 
+export const assertPanelLifecycleEventContracts = ({ assert, events, panelId }) => {
+  const byType = Object.fromEntries(events.map((event) => [event.type, event]));
+  const created = byType["panel.created"];
+  const renamed = byType["panel.renamed"];
+  const moved = byType["panel.moved"];
+  const removed = byType["panel.removed"];
+  assert(created?.payload?.id === panelId, "panel.created payload id mismatch");
+  assert(created.payload.title === "Contract Panel", "panel.created payload title mismatch");
+  assert(created.payload.kind === "generic", "panel.created payload kind mismatch");
+  assert(created.payload.order === 10, "panel.created payload order mismatch");
+  assert(renamed?.payload?.id === panelId, "panel.renamed payload id mismatch");
+  assert(renamed.payload.title === "Contract Panel Renamed", "panel.renamed payload title mismatch");
+  assert(moved?.payload?.id === panelId, "panel.moved payload id mismatch");
+  assert(moved.payload.order === 1, "panel.moved payload order mismatch");
+  assert(removed?.payload?.id === panelId, "panel.removed payload id mismatch");
+  assert(removed.payload.reason === "closed", "panel.removed payload reason mismatch");
+  assert(events.every((event) => event.scope?.panelId === panelId), "panel lifecycle event scope mismatch");
+};
+
 const assertPanelSchema = ({ assert, schema, label }) => {
   assert(schema?.required?.includes("id"), `${label} schema must require id`);
   assert(schema?.required?.includes("title"), `${label} schema must require title`);
