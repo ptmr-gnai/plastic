@@ -22,6 +22,7 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
   assert(mcp.command === "node" && mcp.args?.includes("scripts/plastic-mcp-server.mjs"), `${source} MCP command mismatch`);
   assert(mcp.env?.PLASTIC_RPC_URL === rpcUrl, `${source} MCP RPC URL mismatch`);
   assert(mcp.tools?.some((tool) => tool.name === "plastic_rpc" && tool.methodRegistry === "shared"), `${source} MCP transport missing plastic_rpc tool metadata`);
+  assert(mcp.tools?.some((tool) => tool.name === "plastic_rpc" && tool.inputSchema?.required?.includes("method")), `${source} MCP plastic_rpc tool missing RPC input schema`);
   assert(mcp.actions?.some((action) => action.id === "call-plastic-rpc" && action.tool === "plastic_rpc" && action.arguments?.method === "agent/orient"), `${source} MCP transport missing plastic_rpc call action`);
   assert(mcp.actions?.some((action) => action.id === "call-plastic-rpc" && action.inputSchema?.required?.includes("method")), `${source} MCP transport call action missing RPC input schema`);
   return { count: items.length };

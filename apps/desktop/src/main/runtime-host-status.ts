@@ -43,6 +43,7 @@ const createAgentTransportDescriptors = (config: RuntimeHostConfig) => [
       {
         name: "plastic_rpc",
         methodRegistry: "shared",
+        inputSchema: rpcCallInputSchema,
         description: "Calls any registered Plastic RPC method through the shared method registry."
       }
     ],

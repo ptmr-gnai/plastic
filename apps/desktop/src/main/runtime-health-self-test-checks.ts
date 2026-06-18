@@ -443,8 +443,10 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
   const mcp = transports.find((transport) => transport.id === "mcp-stdio");
   const methodsUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/methods") : undefined;
   const selfTestUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/self-test") : undefined;
-  const hasMethodInputSchema = (action: unknown) =>
-    asRecord(action).id === "call-plastic-rpc" && ((asRecord(asRecord(action).inputSchema).required as unknown[] | undefined)?.includes("method") === true);
+  const hasRpcInputSchema = (item: unknown) => (asRecord(asRecord(item).inputSchema).required as unknown[] | undefined)?.includes("method") === true;
+  const hasRpcCallActionSchema = (action: unknown) => asRecord(action).id === "call-plastic-rpc" && hasRpcInputSchema(action);
+  const hasMcpTool = Array.isArray(mcp?.tools) && mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && asRecord(tool).methodRegistry === "shared");
+  const hasMcpToolInputSchema = Array.isArray(mcp?.tools) && mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && hasRpcInputSchema(tool));
   return [
     !Array.isArray(http?.links) || !http.links.some((link) => {
       const record = asRecord(link);
@@ -464,19 +466,18 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
     })
       ? "http-rpc:call-action"
       : null,
-    !Array.isArray(http?.actions) || !http.actions.some(hasMethodInputSchema)
+    !Array.isArray(http?.actions) || !http.actions.some(hasRpcCallActionSchema)
       ? "http-rpc:call-action-input-schema"
       : null,
-    !Array.isArray(mcp?.tools) || !mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && asRecord(tool).methodRegistry === "shared")
-      ? "mcp-stdio:plastic-rpc-tool"
-      : null,
+    hasMcpTool ? null : "mcp-stdio:plastic-rpc-tool",
     !Array.isArray(mcp?.actions) || !mcp.actions.some((action) => {
       const record = asRecord(action);
       return record.id === "call-plastic-rpc" && record.tool === "plastic_rpc" && asRecord(asRecord(action).arguments).method === "agent/orient";
     })
       ? "mcp-stdio:call-action"
       : null,
-    !Array.isArray(mcp?.actions) || !mcp.actions.some(hasMethodInputSchema)
+    hasMcpToolInputSchema ? null : "mcp-stdio:plastic-rpc-tool-input-schema",
+    !Array.isArray(mcp?.actions) || !mcp.actions.some(hasRpcCallActionSchema)
       ? "mcp-stdio:call-action-input-schema"
       : null
   ].filter((item): item is string => Boolean(item));
