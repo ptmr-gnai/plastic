@@ -29,9 +29,19 @@ const fallbackOrientationLinks = [
   { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }
 ];
 
+const fallbackWorkbenchLinks = [
+  { rel: "host", href: "runtime/host", method: "runtime/host" },
+  { rel: "modules", href: "runtime/modules", method: "runtime/modules" },
+  { rel: "audit-status", href: "runtime/auditStatus", method: "runtime/auditStatus" },
+  { rel: "audit-action-plan", href: "runtime/auditActionPlan", method: "runtime/auditActionPlan" },
+  { rel: "audit-action", href: "runtime/runAuditAction", method: "runtime/runAuditAction" },
+  { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }
+];
+
 const runtimeAffordances = await import("../apps/desktop/dist-electron/main/runtime-health-affordance-checks.js").catch(() => ({}));
 
 export const requiredWorkbenchActions = runtimeAffordances.expectedWorkbenchActions ?? fallbackWorkbenchActions;
+export const requiredWorkbenchLinks = runtimeAffordances.expectedWorkbenchLinks ?? fallbackWorkbenchLinks;
 export const requiredOrientationActions = runtimeAffordances.expectedOrientationActions ?? fallbackOrientationActions;
 export const requiredOrientationLinks = runtimeAffordances.expectedOrientationLinks ?? fallbackOrientationLinks;
 

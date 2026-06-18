@@ -6,7 +6,8 @@ import {
   hasLinkAffordance,
   requiredOrientationActions,
   requiredOrientationLinks,
-  requiredWorkbenchActions
+  requiredWorkbenchActions,
+  requiredWorkbenchLinks
 } from "./plastic-contract-agent-affordances.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
@@ -57,6 +58,9 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertActionMetadata({ assert, actions: workbench.control.recommendedActions, source: "workbench recommendedActions" });
   for (const action of requiredWorkbenchActions) {
     assert(hasActionAffordance(workbench.control.recommendedActions, action), `workbench missing ${action.id} recommended action`);
+  }
+  for (const link of requiredWorkbenchLinks) {
+    assert(hasLinkAffordance(workbench.control.links, link), `workbench missing ${link.rel} link`);
   }
   assertFocusedPanelActions({
     assert,
