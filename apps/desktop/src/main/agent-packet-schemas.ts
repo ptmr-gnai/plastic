@@ -63,11 +63,14 @@ const recentAuditActionSchema = {
 
 const auditStatusSchema = {
   type: "object",
-  required: ["verdict", "audit", "failureSummary", "actionIds", "recentActions"],
+  required: ["available", "verdict", "audit", "diagnosis", "failureSummary", "nextAction", "actionIds", "recentActions"],
   properties: {
+    available: { type: "boolean" },
     verdict: { type: "string" },
     audit: auditMetadataSchema,
+    diagnosis: { type: "object" },
     failureSummary: { type: "object" },
+    nextAction: { type: ["string", "null"] },
     actionIds: { type: "array", items: { type: "string" } },
     recentActions: { type: "array", items: recentAuditActionSchema }
   }
