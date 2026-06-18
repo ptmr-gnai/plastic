@@ -1,5 +1,6 @@
 import type { createRuntimeHostConfig } from "./runtime-host-config.js";
 import type { PlasticState } from "@plastic/core";
+import { rpcCallInputSchema } from "./runtime-control-schemas.js";
 
 type RuntimeHostConfig = ReturnType<typeof createRuntimeHostConfig>;
 type RuntimeMode = "electron" | "headless";
@@ -194,7 +195,7 @@ export const decorateRuntimeState = (input: {
         { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" }
       ],
       actions: [
-        { id: "call", title: "Call RPC method", method: "rpc/call" },
+        { id: "call", title: "Call RPC method", method: "rpc/call", inputSchema: rpcCallInputSchema },
         { id: "read-host", title: "Read runtime host", method: "runtime/host" },
         { id: "read-capabilities", title: "Read host capabilities", method: "runtime/capabilities" }
       ]

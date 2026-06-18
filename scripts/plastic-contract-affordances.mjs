@@ -77,6 +77,28 @@ export const assertResourceMethodReferences = ({ assert, resources, methodIds, s
   assert(unknown.length === 0, `${source} resource affordances reference unknown methods: ${unknown.join(", ")}`);
 };
 
+const schemaHasInputShape = (schema) =>
+  Boolean(schema && typeof schema === "object" && Object.keys(schema.properties ?? {}).length > 0);
+
+export const assertResourceActionInputLegibility = ({ assert, resources, methods, source }) => {
+  const methodsById = new Map((Array.isArray(methods) ? methods : []).map((method) => [method.id, method]));
+  const vague = [];
+  for (const resource of Array.isArray(resources) ? resources : []) {
+    for (const action of resource.actions ?? []) {
+      const method = methodsById.get(action.method);
+      if (method && schemaHasInputShape(method.inputSchema) && action.input === undefined && action.inputSchema === undefined) {
+        vague.push(`${resource.id}:${action.id}:${action.method}`);
+      }
+    }
+  }
+  assert(vague.length === 0, `${source} resource actions with input-bearing methods must expose input or inputSchema: ${vague.join(", ")}`);
+};
+
+export const assertResourceAffordanceIntegrity = (input) => {
+  assertResourceMethodReferences(input);
+  assertResourceActionInputLegibility(input);
+};
+
 export const assertContextualResourceAffordances = (input) => {
   assertPanelResourceAffordances(input);
   assertExtensionResourceAffordances(input);

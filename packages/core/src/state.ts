@@ -66,6 +66,33 @@ const buildStateResources = (input: {
   ...input.windowItems.map(windowResource)
 ];
 
+const eventMetaSchema = { type: "object", description: "Optional durable event metadata." };
+const themeInputSchema = { type: "object", required: ["theme"], properties: { theme: { type: "string", enum: ["light", "dark"] } } };
+const describeMethodInputSchema = { type: "object", required: ["id"], properties: { id: { type: "string" } } };
+const extensionIdInputSchema = { type: "object", required: ["id"], properties: { id: { type: "string" } } };
+const panelCreateInputSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    kind: { type: "string" },
+    extensionId: { type: "string" },
+    rendererId: { type: "string" },
+    subtitle: { type: "string" },
+    body: { type: "string" },
+    windowId: { type: "string" },
+    order: { type: "number" },
+    meta: eventMetaSchema
+  }
+};
+const panelRenameInputSchema = { type: "object", required: ["id", "title"], properties: { id: { type: "string" }, title: { type: "string" }, subtitle: { type: "string" }, meta: eventMetaSchema } };
+const panelMoveInputSchema = { type: "object", required: ["id"], properties: { id: { type: "string" }, windowId: { type: "string" }, order: { type: "number" }, meta: eventMetaSchema } };
+const panelRemoveInputSchema = { type: "object", required: ["id"], properties: { id: { type: "string" }, reason: { type: "string" }, meta: eventMetaSchema } };
+const windowCreateInputSchema = { type: "object", properties: { title: { type: "string" } } };
+const extensionScanInputSchema = { type: "object", properties: { meta: eventMetaSchema } };
+const extensionRegisterPanelInputSchema = { type: "object", required: ["extensionId"], properties: { extensionId: { type: "string" } } };
+const chatSendInputSchema = { type: "object", required: ["chatId", "content"], properties: { chatId: { type: "string" }, content: { type: "string" } } };
+
 const plasticAppResource = (eventCount: number, methodCount: number): PlasticResource => ({
   id: "plastic",
   kind: "app",
@@ -82,19 +109,15 @@ const plasticAppResource = (eventCount: number, methodCount: number): PlasticRes
     { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" }
   ],
   actions: [
-    { id: "set-theme", title: "Set theme", method: "app/setTheme" },
-    { id: "create-panel", title: "Create panel", method: "panels/create" },
-    { id: "create-window", title: "Create window", method: "windows/create" },
-    { id: "scan-extensions", title: "Scan extensions", method: "extensions/scan" },
+    { id: "set-theme", title: "Set theme", method: "app/setTheme", inputSchema: themeInputSchema },
+    { id: "create-panel", title: "Create panel", method: "panels/create", inputSchema: panelCreateInputSchema },
+    { id: "create-window", title: "Create window", method: "windows/create", inputSchema: windowCreateInputSchema },
+    { id: "scan-extensions", title: "Scan extensions", method: "extensions/scan", inputSchema: extensionScanInputSchema },
     {
       id: "describe-method",
       title: "Describe method",
       method: "methods/describe",
-      inputSchema: {
-        type: "object",
-        required: ["id"],
-        properties: { id: { type: "string" } }
-      },
+      inputSchema: describeMethodInputSchema,
       description: "Read schema, examples, effects, and verification hints for one RPC method."
     }
   ]
@@ -116,9 +139,9 @@ const extensionCollectionResource = (items: PlasticExtension[]): PlasticResource
   state: { count: items.length, items },
   links: [{ rel: "self", href: "extensions/list", method: "extensions/list" }],
   actions: [
-    { id: "scan", title: "Scan extensions", method: "extensions/scan" },
-    { id: "get", title: "Get extension", method: "extensions/get" },
-    { id: "register-panel", title: "Register extension panel", method: "extensions/registerPanel" }
+    { id: "scan", title: "Scan extensions", method: "extensions/scan", inputSchema: extensionScanInputSchema },
+    { id: "get", title: "Get extension", method: "extensions/get", inputSchema: extensionIdInputSchema },
+    { id: "register-panel", title: "Register extension panel", method: "extensions/registerPanel", inputSchema: extensionRegisterPanelInputSchema }
   ]
 });
 
@@ -148,7 +171,7 @@ const panelCollectionResource = (items: PlasticPanel[]): PlasticResource => ({
   title: "Panels",
   state: { count: items.length, items },
   links: [{ rel: "self", href: "panels/list", method: "panels/list" }],
-  actions: [{ id: "create", title: "Create panel", method: "panels/create" }]
+  actions: [{ id: "create", title: "Create panel", method: "panels/create", inputSchema: panelCreateInputSchema }]
 });
 
 const panelActionsResource = (): PlasticResource => ({
@@ -158,9 +181,9 @@ const panelActionsResource = (): PlasticResource => ({
   state: {},
   links: [{ rel: "panels", href: "panels/list", method: "panels/list" }],
   actions: [
-    { id: "rename", title: "Rename panel", method: "panels/rename" },
-    { id: "move", title: "Move panel", method: "panels/move" },
-    { id: "remove", title: "Remove panel", method: "panels/remove" }
+    { id: "rename", title: "Rename panel", method: "panels/rename", inputSchema: panelRenameInputSchema },
+    { id: "move", title: "Move panel", method: "panels/move", inputSchema: panelMoveInputSchema },
+    { id: "remove", title: "Remove panel", method: "panels/remove", inputSchema: panelRemoveInputSchema }
   ]
 });
 
@@ -185,7 +208,7 @@ const panelResource = (panel: PlasticPanel): PlasticResource<PlasticPanel> => ({
     ...(panel.kind === "chat"
       ? [
           { id: "read-chat-messages", title: "Read chat messages", method: "chats/messages", input: { chatId: panel.id } },
-          { id: "send-chat-message", title: "Send chat message", method: "chats/sendToCodex", input: { chatId: panel.id } }
+          { id: "send-chat-message", title: "Send chat message", method: "chats/sendToCodex", input: { chatId: panel.id }, inputSchema: chatSendInputSchema }
         ]
       : [])
   ]
@@ -197,7 +220,7 @@ const windowCollectionResource = (items: PlasticWindow[]): PlasticResource => ({
   title: "Windows",
   state: { count: items.length, items },
   links: [{ rel: "self", href: "windows/list", method: "windows/list" }],
-  actions: [{ id: "create", title: "Create window", method: "windows/create" }]
+  actions: [{ id: "create", title: "Create window", method: "windows/create", inputSchema: windowCreateInputSchema }]
 });
 
 const windowResource = (window: PlasticWindow): PlasticResource<PlasticWindow> => ({
