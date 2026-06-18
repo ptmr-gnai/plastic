@@ -1,3 +1,4 @@
+import { visibleRefWindowSchema } from "./deixis-method-metadata.js";
 import { plasticExtensionSchema } from "./extension-query-methods.js";
 import { plasticEventSchema, plasticMethodSchema } from "./runtime-control-schemas.js";
 import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
@@ -81,7 +82,7 @@ export const plasticSnapshotOutputSchema = {
     resources: { type: "array", items: plasticStateResourceSchema },
     windows: { type: "array", items: plasticSnapshotWindowSchema },
     extensions: { type: "array", items: plasticExtensionSchema },
-    visibleRefs: { type: "array", items: { type: "object" } },
+    visibleRefs: { type: "array", items: visibleRefWindowSchema },
     events: {
       type: "object",
       required: ["count", "latest", "recent"],

@@ -25,7 +25,7 @@ const visibleRefSchema = {
   }
 };
 
-const visibleRefWindowSchema = {
+export const visibleRefWindowSchema = {
   type: "object",
   required: ["windowId", "refs"],
   properties: {

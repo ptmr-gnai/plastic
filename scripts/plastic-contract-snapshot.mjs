@@ -31,6 +31,9 @@ export const assertSnapshotMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.extensions?.items?.required?.includes("source"), "plastic/snapshot extension schema must expose source");
   assert(description.outputSchema?.properties?.extensions?.items?.properties?.source?.enum?.includes("bundled"), "plastic/snapshot extension schema must expose bundled source");
   assert(description.outputSchema?.properties?.extensions?.items?.required?.includes("renderers"), "plastic/snapshot extension schema must require renderers");
+  assert(description.outputSchema?.properties?.visibleRefs?.items?.required?.includes("windowId"), "plastic/snapshot visible refs schema must require windowId");
+  assert(description.outputSchema?.properties?.visibleRefs?.items?.required?.includes("refs"), "plastic/snapshot visible refs schema must require refs");
+  assert(description.outputSchema?.properties?.visibleRefs?.items?.properties?.refs?.items?.required?.includes("tag"), "plastic/snapshot visible ref schema must require tag");
   assert(description.outputSchema?.properties?.windows?.items?.required?.includes("panelIds"), "plastic/snapshot window schema must expose panelIds");
   assert(description.outputSchema?.properties?.windows?.items?.properties?.open?.type === "boolean", "plastic/snapshot window schema must expose open");
   assert(description.outputSchema?.properties?.events?.required?.includes("recent"), "plastic/snapshot events schema must require recent");
