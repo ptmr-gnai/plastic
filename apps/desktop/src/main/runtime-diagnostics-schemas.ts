@@ -95,14 +95,17 @@ export const auditStatusOutputSchema = {
         { type: "null" },
         {
           type: "object",
-          required: ["schemaVersion", "generatedAt", "inProgress", "expectedStepIds", "checks", "expectedChecks"],
+          required: ["schemaVersion", "generatedAt", "inProgress", "expectedStepIds", "checks", "expectedChecks", "runtimeUnification", "failures", "results"],
           properties: {
             schemaVersion: { type: "number" },
             generatedAt: { type: "string" },
             inProgress: { type: "boolean" },
             expectedStepIds: { type: "array", items: { type: "string" } },
             checks: { type: "number" },
-            expectedChecks: { type: "number" }
+            expectedChecks: { type: "number" },
+            runtimeUnification: { type: "object" },
+            failures: { type: "object" },
+            results: { type: "array", items: { type: "object" } }
           }
         }
       ]
