@@ -202,8 +202,8 @@ const panelResource = (panel: PlasticPanel): PlasticResource<PlasticPanel> => ({
   ],
   actions: [
     { id: "get-panel", title: "Get panel", method: "panels/get", input: { id: panel.id } },
-    { id: "rename-panel", title: "Rename panel", method: "panels/rename", input: { id: panel.id } },
-    { id: "move-panel", title: "Move panel", method: "panels/move", input: { id: panel.id } },
+    { id: "rename-panel", title: "Rename panel", method: "panels/rename", input: { id: panel.id }, inputSchema: panelRenameInputSchema },
+    { id: "move-panel", title: "Move panel", method: "panels/move", input: { id: panel.id }, inputSchema: panelMoveInputSchema },
     { id: "remove-panel", title: "Remove panel", method: "panels/remove", input: { id: panel.id } },
     ...(panel.kind === "chat"
       ? [

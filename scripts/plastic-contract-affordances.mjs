@@ -80,19 +80,33 @@ export const assertResourceMethodReferences = ({ assert, resources, methodIds, s
 const schemaHasInputShape = (schema) =>
   Boolean(schema && typeof schema === "object" && Object.keys(schema.properties ?? {}).length > 0);
 
+const inputSatisfiesRequiredFields = (input, schema) => {
+  const required = Array.isArray(schema?.required) ? schema.required : [];
+  if (required.length === 0) {
+    return input !== undefined;
+  }
+  if (!input || typeof input !== "object") {
+    return false;
+  }
+  return required.every((key) => Object.prototype.hasOwnProperty.call(input, key) && input[key] !== undefined);
+};
+
 export const assertResourceActionInputLegibility = ({ assert, resources, methods, source }) => {
   const methodsById = new Map((Array.isArray(methods) ? methods : []).map((method) => [method.id, method]));
   const vague = [];
   for (const resource of Array.isArray(resources) ? resources : []) {
     for (const action of resource.actions ?? []) {
       const method = methodsById.get(action.method);
-      if (method && schemaHasInputShape(method.inputSchema) && action.input === undefined && action.inputSchema === undefined) {
+      if (method && schemaHasInputShape(method.inputSchema) && !inputSatisfiesRequiredFields(action.input, method.inputSchema) && action.inputSchema === undefined) {
         vague.push(`${resource.id}:${action.id}:${action.method}`);
       }
     }
   }
   assert(vague.length === 0, `${source} resource actions with input-bearing methods must expose input or inputSchema: ${vague.join(", ")}`);
 };
+
+export const assertActionInputLegibility = ({ assert, actions, methods, source }) =>
+  assertResourceActionInputLegibility({ assert, resources: [{ id: source, actions }], methods, source });
 
 export const assertResourceAffordanceIntegrity = (input) => {
   assertResourceMethodReferences(input);

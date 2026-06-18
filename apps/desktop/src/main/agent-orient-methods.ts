@@ -15,7 +15,7 @@ import type {
   RunPromise
 } from "./runtime-method-context.js";
 import { capabilityStatusSummary } from "./agent-capability-summary.js";
-import { agentAction, focusedPanelActions } from "./agent-action-affordances.js";
+import { agentAction, agentActionSchemas, focusedPanelActions } from "./agent-action-affordances.js";
 import { readAgentAuditStatus } from "./agent-audit-status.js";
 import { agentOrientOutputSchema } from "./agent-packet-schemas.js";
 import { readRuntimeAgentTransports, readRuntimeControlPlane, readRuntimeModules } from "./agent-runtime-modules.js";
@@ -278,13 +278,13 @@ const buildCapabilities = async (input: {
     agentAction({ id: "read-host", title: "Read runtime host", method: "runtime/host" }),
     agentAction({ id: "run-self-test", title: "Run Plastic self-test", method: "plastic/selfTest" }),
     agentAction({ id: "read-audit-status", title: "Read latest runtime audit status", method: "runtime/auditStatus" }),
-    agentAction({ id: "plan-audit-action", title: "Inspect a current runtime audit action", method: "runtime/auditActionPlan" }),
-    agentAction({ id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction" }),
+    agentAction({ id: "plan-audit-action", title: "Inspect a current runtime audit action", method: "runtime/auditActionPlan", inputSchema: agentActionSchemas.auditActionInputSchema }),
+    agentAction({ id: "run-audit-action", title: "Run a current runtime audit action", method: "runtime/runAuditAction", inputSchema: agentActionSchemas.auditActionInputSchema }),
     agentAction({ id: "read-control-plane", title: "Read runtime control plane", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }),
-    agentAction({ id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: input.latestEventId } }),
+    agentAction({ id: "read-timeline", title: "Read recent timeline", method: "events/timeline", input: { after: input.latestEventId }, inputSchema: agentActionSchemas.timelineInputSchema }),
     ...focusedPanelActions({ panelId: input.panelId, panelKind: input.panelKind }),
     agentAction({ id: "inspect-visible-refs", title: "Inspect visible refs", method: "deixis/listVisibleRefs" }),
-    agentAction({ id: "capture-screenshot", title: "Capture screenshot", method: "windows/screenshot" })
+    agentAction({ id: "capture-screenshot", title: "Capture screenshot", method: "windows/screenshot", inputSchema: agentActionSchemas.screenshotInputSchema })
   ],
   links: [
     { rel: "self", href: "agent/orient", method: "agent/orient" },

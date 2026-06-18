@@ -1,4 +1,4 @@
-import { agentAction } from "./agent-action-affordances.js";
+import { agentAction, agentActionSchemas } from "./agent-action-affordances.js";
 import { createAgentOrientModule } from "./agent-orient-methods.js";
 import { createAgentWorkbenchModule } from "./agent-workbench-methods.js";
 import { createDeixisMethodModule } from "./deixis-methods.js";
@@ -305,7 +305,7 @@ export const createElectronRuntimeHostStandardModules = (input: ElectronRuntimeH
         sourceHintsFor: input.sourceHintsFor,
         visualActions: ({ ref, panelId }) => [
           agentAction({ id: "list-refs", title: "List visible refs", method: "deixis/listVisibleRefs" }),
-          agentAction({ id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: ref ? { ref } : {} }),
+          agentAction({ id: "screenshot", title: "Capture screenshot", method: "windows/screenshot", input: ref ? { ref } : {}, inputSchema: agentActionSchemas.screenshotInputSchema }),
           ...(panelId ? [agentAction({ id: "focus-panel", title: "Focus panel", method: "windows/focusPanel", input: { panelId } })] : [])
         ]
       },

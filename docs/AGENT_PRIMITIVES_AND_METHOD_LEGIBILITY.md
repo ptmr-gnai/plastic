@@ -65,7 +65,7 @@ The remaining legibility work has moved up a layer:
 
 The contract harness now verifies HATEOAS method integrity for `plastic/state` and `plastic/snapshot`: every resource link/action that names an RPC method must reference a method present in the live method catalog, with transport-only links such as `http/post` explicitly exempted.
 
-Resource actions must also be input-legible. If an action points at a method whose live catalog entry has an input shape, the resource action must provide either concrete `input` or an `inputSchema`. This keeps generic app, panel, extension, window, and host actions directly callable from `plastic/state` and `plastic/snapshot`.
+Resource and agent-packet actions must also be input-legible. If an action points at a method whose live catalog entry has an input shape, the action must provide concrete `input` satisfying required fields or an `inputSchema`. This keeps generic app, panel, extension, window, host, `agent/workbench`, and `agent/orient` actions directly callable from their discovery packets.
 
 ## Required Method Metadata
 

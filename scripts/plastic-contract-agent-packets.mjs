@@ -1,5 +1,6 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertAgentTransports } from "./plastic-contract-agent-transports.mjs";
+import { assertActionInputLegibility } from "./plastic-contract-affordances.mjs";
 import {
   hasActionAffordance,
   hasLinkAffordance,
@@ -9,7 +10,7 @@ import {
 } from "./plastic-contract-agent-affordances.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
-export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount, capabilityCount, modules, methodIds }) => {
+export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mode, methodCount, capabilityCount, modules, methodIds, methods }) => {
   const moduleIds = modules.ids;
   assert(workbench?.app?.mode === mode, "workbench app mode does not match state");
   assert(workbench.app.hostBase?.id === "runtime-host-base" && workbench.app.hostBase?.version === 1, "workbench shared host base marker mismatch");
@@ -49,6 +50,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertAgentTransports({ assert, assertArray, transports: workbench.control.agentTransports, rpcUrl: workbench.control.controlPlane.runtime.rpcUrl, source: "workbench" });
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assertKnownMethodReferences({ assert, references: workbench.control.recommendedActions, methodIds, source: "workbench recommendedActions" });
+  assertActionInputLegibility({ assert, actions: workbench.control.recommendedActions, methods, source: "workbench recommendedActions" });
   assertActionMetadata({ assert, actions: workbench.control.recommendedActions, source: "workbench recommendedActions" });
   for (const action of requiredWorkbenchActions) {
     assert(hasActionAffordance(workbench.control.recommendedActions, action), `workbench missing ${action.id} recommended action`);
@@ -83,7 +85,7 @@ export const assertAgentWorkbenchMethodDescription = ({ assert, description }) =
   return { id: description.id, required: description.outputSchema.required };
 };
 
-export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount, capabilityCount, modules, methodIds }) => {
+export const assertAgentOrientationPacket = ({ assert, assertArray, orientation, methodCount, capabilityCount, modules, methodIds, methods }) => {
   const moduleIds = modules.ids;
   assert(orientation?.agent?.id, "agent/orient missing agent id");
   assert(orientation.embodiment?.projectDir, "agent/orient missing projectDir");
@@ -99,6 +101,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   });
   assertArray(orientation.capabilities?.recommendedActions, "agent/orient missing recommendedActions");
   assertKnownMethodReferences({ assert, references: orientation.capabilities.recommendedActions, methodIds, source: "agent/orient recommendedActions" });
+  assertActionInputLegibility({ assert, actions: orientation.capabilities.recommendedActions, methods, source: "agent/orient recommendedActions" });
   assertActionMetadata({ assert, actions: orientation.capabilities.recommendedActions, source: "agent/orient recommendedActions" });
   assert(orientation.capabilities.modules?.count >= 1, "agent/orient missing runtime module count");
   assert(orientation.capabilities.modules.count === moduleIds.length, "agent/orient module count does not match runtime/modules");
