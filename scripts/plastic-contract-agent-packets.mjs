@@ -48,7 +48,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assert(workbench.control.controlPlane.build.methodsPath === "/methods", "workbench build control plane methodsPath mismatch");
   assert(workbench.control.controlPlane.build.eventStreamPath === "/events/stream", "workbench build control plane eventStreamPath mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: workbench.control.controlPlane, source: "workbench" });
-  assertAgentTransports({ assert, assertArray, transports: workbench.control.agentTransports, rpcUrl: workbench.control.controlPlane.runtime.rpcUrl, source: "workbench" });
+  assertAgentTransports({ assert, assertArray, transports: workbench.control.agentTransports, rpcUrl: workbench.control.controlPlane.runtime.rpcUrl, source: "workbench", methods });
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
   assertArray(workbench.control.links, "workbench control links missing");
   assertKnownMethodReferences({ assert, references: workbench.control.links, methodIds, source: "workbench links" });
@@ -140,7 +140,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   assert(orientation.capabilities.controlPlane.build.methodsPath === "/methods", "agent/orient build control plane methodsPath mismatch");
   assert(orientation.capabilities.controlPlane.build.eventStreamPath === "/events/stream", "agent/orient build control plane eventStreamPath mismatch");
   assertControlPlaneEndpointUrls({ assert, controlPlane: orientation.capabilities.controlPlane, source: "agent/orient" });
-  assertAgentTransports({ assert, assertArray, transports: orientation.capabilities.agentTransports, rpcUrl: orientation.capabilities.controlPlane.runtime.rpcUrl, source: "agent/orient" });
+  assertAgentTransports({ assert, assertArray, transports: orientation.capabilities.agentTransports, rpcUrl: orientation.capabilities.controlPlane.runtime.rpcUrl, source: "agent/orient", methods });
   for (const action of requiredOrientationActions) {
     assert(hasActionAffordance(orientation.capabilities.recommendedActions, action), `agent/orient missing ${action.id} action`);
   }

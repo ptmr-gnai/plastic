@@ -237,7 +237,7 @@ await check("runtime/capabilities", async () => {
 });
 
 await check("runtime/host", async () => {
-  return assertRuntimeHostSurface({ assert, assertArray, rpc, mode: state.app.mode, runtimeStartedControlPlane, assertMatchingControlPlaneDescriptors });
+  return assertRuntimeHostSurface({ assert, assertArray, rpc, mode: state.app.mode, runtimeStartedControlPlane, assertMatchingControlPlaneDescriptors, methods });
 });
 
 await check("runtime/modules", async () => {
@@ -287,7 +287,7 @@ await check("headless agent backend fallback", async () => {
 });
 
 await check("build/status", async () => {
-  return assertBuildStatusSurface({ assert, assertArray, buildGet, rpc, state, runtimeStartedControlPlane });
+  return assertBuildStatusSurface({ assert, assertArray, buildGet, methods, rpc, state, runtimeStartedControlPlane });
 });
 
 await check("build HTTP transport", async () => {
@@ -298,6 +298,7 @@ await check("build HTTP transport", async () => {
     buildGet,
     buildRpc,
     buildUrl,
+    methods,
     runtimeGet,
     rpc,
     state

@@ -1,5 +1,6 @@
-export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl, source }) => {
+export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl, source, methods }) => {
   const items = assertArray(transports, `${source} agentTransports is not an array`);
+  const methodIds = new Set((Array.isArray(methods) ? methods : []).map((method) => method.id));
   const methodsUrl = rpcUrl.replace(/\/rpc$/, "/methods");
   const selfTestUrl = rpcUrl.replace(/\/rpc$/, "/self-test");
   const http = items.find((transport) => transport.id === "http-rpc");
@@ -25,5 +26,17 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
   assert(mcp.tools?.some((tool) => tool.name === "plastic_rpc" && tool.inputSchema?.required?.includes("method")), `${source} MCP plastic_rpc tool missing RPC input schema`);
   assert(mcp.actions?.some((action) => action.id === "call-plastic-rpc" && action.tool === "plastic_rpc" && action.arguments?.method === "agent/orient"), `${source} MCP transport missing plastic_rpc call action`);
   assert(mcp.actions?.some((action) => action.id === "call-plastic-rpc" && action.inputSchema?.required?.includes("method")), `${source} MCP transport call action missing RPC input schema`);
+  if (methodIds.size > 0) {
+    const delegatedMethods = items.flatMap((transport) =>
+      (transport.actions ?? [])
+        .map((action) => action.arguments?.method)
+        .filter((method) => typeof method === "string")
+    );
+    const unknownDelegatedMethods = delegatedMethods.filter((method) => !methodIds.has(method));
+    assert(
+      unknownDelegatedMethods.length === 0,
+      `${source} agent transport actions reference unknown delegated methods: ${unknownDelegatedMethods.join(", ")}`
+    );
+  }
   return { count: items.length };
 };

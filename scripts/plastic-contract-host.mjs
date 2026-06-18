@@ -1,6 +1,6 @@
 import { assertAgentTransports } from "./plastic-contract-agent-transports.mjs";
 
-export const assertRuntimeHostSurface = async ({ assert, assertArray, rpc, mode, runtimeStartedControlPlane, assertMatchingControlPlaneDescriptors }) => {
+export const assertRuntimeHostSurface = async ({ assert, assertArray, rpc, mode, runtimeStartedControlPlane, assertMatchingControlPlaneDescriptors, methods }) => {
   const host = await rpc("runtime/host");
   const events = await rpc("events/list", { types: ["runtime.started"], limit: 5 });
   const started = assertArray(events.items ?? events, "runtime.started events/list returned no items").at(-1);
@@ -14,7 +14,7 @@ export const assertRuntimeHostSurface = async ({ assert, assertArray, rpc, mode,
   assert(host.eventPath, "runtime/host missing eventPath");
   assert(host.controlPlane?.runtime?.transport === "http", "runtime/host missing runtime control plane");
   assertMatchingControlPlaneDescriptors({ assert, actual: host.controlPlane, expected: runtimeStartedControlPlane, source: "runtime/host" });
-  assertAgentTransports({ assert, assertArray, transports: host.agentTransports, rpcUrl: host.controlPlane.runtime.rpcUrl, source: "runtime/host" });
+  assertAgentTransports({ assert, assertArray, transports: host.agentTransports, rpcUrl: host.controlPlane.runtime.rpcUrl, source: "runtime/host", methods });
   assert(host.capabilities?.count >= 1, "runtime/host missing capabilities");
   assertArray(host.capabilities.items, "runtime/host capabilities items is not an array");
   assert(host.diagnostics?.mode === mode, "runtime/host diagnostics mode mismatch");

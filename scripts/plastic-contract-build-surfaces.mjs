@@ -6,6 +6,7 @@ export const assertBuildStatusSurface = async ({
   assert,
   assertArray,
   buildGet,
+  methods,
   rpc,
   state,
   runtimeStartedControlPlane
@@ -25,7 +26,7 @@ export const assertBuildStatusSurface = async ({
   assert(stableJson(status.value.agentTransports) === stableJson(build.agentTransports), "build /status agent transports mismatch");
   assertBuildStatusMethodDescription({ assert, description: await rpc("methods/describe", { id: "build/status" }) });
   assertBuildTypecheckMethodDescription({ assert, description: await rpc("methods/describe", { id: "build/typecheck" }) });
-  assertAgentTransports({ assert, assertArray, transports: build.agentTransports, rpcUrl: build.controlPlane.runtime.rpcUrl, source: "build/status" });
+  assertAgentTransports({ assert, assertArray, transports: build.agentTransports, rpcUrl: build.controlPlane.runtime.rpcUrl, source: "build/status", methods });
   assertControlPlaneEndpointUrls({ assert, controlPlane: build.controlPlane, source: "build/status" });
   assertMatchingControlPlaneDescriptors({ assert, actual: build.controlPlane, expected: runtimeStartedControlPlane, source: "build/status" });
   return {
@@ -67,6 +68,7 @@ export const assertBuildHttpTransportSurface = async ({
   buildGet,
   buildRpc,
   buildUrl,
+  methods,
   runtimeGet,
   rpc,
   state
@@ -87,7 +89,7 @@ export const assertBuildHttpTransportSurface = async ({
   assert(status.value?.status === "running" && status.value?.mode === state.app.mode, "build /status state mismatch");
   assert(status.value?.hostBase?.id === "runtime-host-base", "build /status missing shared host base marker");
   assert(stableJson(status.value.controlPlane) === stableJson(controlPlaneDescriptor), "build /status control plane does not match startup control plane");
-  assertAgentTransports({ assert, assertArray, transports: status.value.agentTransports, rpcUrl: controlPlane.runtime.rpcUrl, source: "build /status" });
+  assertAgentTransports({ assert, assertArray, transports: status.value.agentTransports, rpcUrl: controlPlane.runtime.rpcUrl, source: "build /status", methods });
   assert(status.value.buildSocket?.endsWith(`:${controlPlane.build.port}`), "build status socket does not match startup control plane");
   assert(buildSnapshot.value?.app?.mode === state.app.mode, "build /snapshot mode mismatch");
   assert(diagnostics?.workspaceDir, "build /rpc app/diagnostics missing workspaceDir");
