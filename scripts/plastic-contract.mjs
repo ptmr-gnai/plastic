@@ -168,7 +168,6 @@ await check("plastic/selfTest description", async () => {
 await check("runtime/auditStatus description", async () => {
   return assertRuntimeAuditStatusMethodDescription({ assert, description: await rpc("methods/describe", { id: "runtime/auditStatus" }) });
 });
-
 await check("runtime/runAuditAction description", async () => {
   const description = await rpc("methods/describe", { id: "runtime/runAuditAction" });
   const planDescription = await rpc("methods/describe", { id: "runtime/auditActionPlan" });
@@ -198,12 +197,13 @@ await check("runtime/runAuditAction description", async () => {
   assert(plan.invocation?.method === "runtime/runAuditAction" && plan.invocation?.input?.id === action.id, "runtime/auditActionPlan invocation mismatch");
   assert(plan.audit?.metadata?.schemaVersion === auditStatus.summary?.schemaVersion, "runtime/auditActionPlan audit schema mismatch");
   assert(plan.audit.metadata.generatedAt === auditStatus.summary?.generatedAt, "runtime/auditActionPlan audit timestamp mismatch");
-  assert(plan.audit.metadata.usable === auditStatus.summary?.runtimeUnification?.usable, "runtime/auditActionPlan audit usability mismatch");
+  assert(plan.audit.metadata.inProgress === auditStatus.summary?.inProgress && plan.audit.metadata.usable === auditStatus.summary?.runtimeUnification?.usable, "runtime/auditActionPlan audit progress/usability mismatch");
+  assert(plan.audit.metadata.strictElectron === auditStatus.summary?.runtimeUnification?.strictElectron && plan.audit.metadata.unified === auditStatus.summary?.runtimeUnification?.unified, "runtime/auditActionPlan audit runtime-unification mismatch");
   assert(plan.audit.metadata.methodParity?.mode === auditStatus.verdict.methodParity?.mode && plan.audit.metadata.methodParity?.failureTotal === auditStatus.verdict.methodParity?.failureTotal, "runtime/auditActionPlan audit method parity mismatch");
+  assert(plan.audit.metadata.methodParity?.reportPath === (auditStatus.summary?.runtimeUnification?.methodParity?.reportPath ?? null), "runtime/auditActionPlan audit method parity report path mismatch");
   assert(JSON.stringify(plan.audit.metadata.expectedStepIds) === JSON.stringify(auditStatus.summary?.expectedStepIds), "runtime/auditActionPlan audit step ids mismatch");
   return { id: description.id, planId: planDescription.id, plannedAction: plan.id, durableEvents: description.effects.durableEvents };
 });
-
 await check("bridge/callPlasticRpcTool description", async () => {
   const description = await rpc("methods/describe", { id: "bridge/callPlasticRpcTool" });
   assert(description.description?.includes("agent/orient"), "bridge/callPlasticRpcTool must teach agent/orient orientation");
@@ -212,7 +212,6 @@ await check("bridge/callPlasticRpcTool description", async () => {
   assert(description.examples?.some((example) => example.input?.method === "agent/orient"), "bridge/callPlasticRpcTool example must call agent/orient");
   return { id: description.id, examples: description.examples.length };
 });
-
 await check("method discovery parity", async () => {
   await assertMethodDiscoveryParity({ methods, rpc });
   return { described: methods.length };

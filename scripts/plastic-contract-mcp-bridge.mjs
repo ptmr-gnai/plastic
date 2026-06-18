@@ -119,8 +119,13 @@ const run = async () => {
       assert(planPayload.value?.invocation?.method === "runtime/runAuditAction", "MCP auditActionPlan invocation mismatch");
       assert(planPayload.value?.audit?.metadata?.schemaVersion === payload.value?.summary?.schemaVersion, "MCP auditActionPlan metadata schema mismatch");
       assert(planPayload.value?.audit?.metadata?.generatedAt === payload.value?.summary?.generatedAt, "MCP auditActionPlan metadata timestamp mismatch");
+      assert(planPayload.value?.audit?.metadata?.inProgress === payload.value?.summary?.inProgress, "MCP auditActionPlan metadata progress mismatch");
+      assert(planPayload.value?.audit?.metadata?.usable === payload.value?.summary?.runtimeUnification?.usable, "MCP auditActionPlan metadata usability mismatch");
+      assert(planPayload.value?.audit?.metadata?.strictElectron === payload.value?.summary?.runtimeUnification?.strictElectron, "MCP auditActionPlan metadata strict Electron mismatch");
+      assert(planPayload.value?.audit?.metadata?.unified === payload.value?.summary?.runtimeUnification?.unified, "MCP auditActionPlan metadata unified mismatch");
       assert(planPayload.value?.audit?.metadata?.methodParity?.mode === payload.value?.verdict?.methodParity?.mode, "MCP auditActionPlan metadata method parity mode mismatch");
       assert(planPayload.value?.audit?.metadata?.methodParity?.failureTotal === payload.value?.verdict?.methodParity?.failureTotal, "MCP auditActionPlan metadata method parity total mismatch");
+      assert(planPayload.value?.audit?.metadata?.methodParity?.reportPath === (payload.value?.summary?.runtimeUnification?.methodParity?.reportPath ?? null), "MCP auditActionPlan metadata method parity report path mismatch");
       assert(planPayload.methodEffects?.reversibility?.reversible === true, "MCP auditActionPlan missing read-only reversibility");
       assert(planPayload.methodEffects?.effects?.durableEvents?.length === 0, "MCP auditActionPlan should not append durable events");
     }
