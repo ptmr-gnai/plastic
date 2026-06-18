@@ -1,6 +1,6 @@
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 
-const codexStatusOutputSchema = {
+export const codexStatusOutputSchema = {
   type: "object",
   required: ["connected", "initialized", "pid", "pendingRequests"],
   properties: {
