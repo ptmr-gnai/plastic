@@ -52,7 +52,8 @@ const transportActionShape = (action) => stableValue({
   href: action.href,
   method: action.method,
   tool: action.tool,
-  arguments: action.arguments
+  arguments: action.arguments,
+  inputSchema: action.inputSchema
 });
 const transportToolShape = (tool) => stableValue({
   name: tool.name,
