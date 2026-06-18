@@ -104,6 +104,11 @@ export async function assertRpcCallDispatch({ assert, rpc, runId, validationMeta
   assert(linkedDescription.id === panelsDescription.id, "generated describe link returned wrong method");
   const panels = await rpc(invokeLink.method, { ...invokeLink.input, input: {} });
   assert(Array.isArray(panels), "rpc/call panels/list did not return panel array");
+  const describeMethodDescription = await rpc("methods/describe", { id: "methods/describe" });
+  const describeInvokeLink = describeMethodDescription.links?.find((link) => link.rel === "invoke" && link.target === "methods/describe");
+  assert(describeInvokeLink, "methods/describe missing generated invoke link");
+  const delegatedDescription = await rpc(describeInvokeLink.method, { ...describeInvokeLink.input, input: { id: "panels/list" } });
+  assert(delegatedDescription.id === panelsDescription.id, "generated methods/describe invoke link returned wrong method");
   const type = "contract.rpc_call.appended";
   const marker = `${runId}-rpc-call`;
   const appendDescription = await rpc("methods/describe", { id: "events/append" });
@@ -124,7 +129,7 @@ export async function assertRpcCallDispatch({ assert, rpc, runId, validationMeta
   } catch (error) {
     assert(String(error.message ?? error).includes("cannot call itself"), "rpc/call self-call error mismatch");
   }
-  return { delegatedMethods: ["panels/list", "events/append"], panels: panels.length, eventId: event.id };
+  return { delegatedMethods: ["panels/list", "methods/describe", "events/append"], panels: panels.length, eventId: event.id };
 }
 
 function assertMethodSchema({ assert, schema, label }) {
