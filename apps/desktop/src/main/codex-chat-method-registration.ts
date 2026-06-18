@@ -14,10 +14,10 @@ import {
 
 type ChatBinding = {
   chatId: string;
+  runtimeId: string;
   threadId: string | null;
   activeTurnId: string | null;
   activeTurnStatus: string | null;
-  [key: string]: unknown;
 };
 
 type ThreadStartPayload = {

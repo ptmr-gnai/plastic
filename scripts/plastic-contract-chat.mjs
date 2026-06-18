@@ -6,8 +6,10 @@ export const assertChatMethodDescriptions = ({ assert, descriptions }) => {
   assert(descriptions.injectUserMessage.outputSchema?.required?.includes("id"), "chats/injectUserMessage output schema must expose event id");
   assert(descriptions.injectUserMessage.effects?.durableEvents?.includes("chat.user_message.injected"), "chats/injectUserMessage must describe injected event");
   assert(descriptions.binding.outputSchema?.required?.includes("chatId"), "chats/getBinding output schema must require chatId");
+  assert(descriptions.binding.outputSchema?.required?.includes("runtimeId"), "chats/getBinding output schema must require runtimeId");
   assert(descriptions.binding.outputSchema?.required?.includes("threadId"), "chats/getBinding output schema must require threadId");
   assert(descriptions.binding.outputSchema?.required?.includes("activeTurnId"), "chats/getBinding output schema must require activeTurnId");
+  assert(descriptions.binding.outputSchema?.additionalProperties !== true, "chats/getBinding output schema should be closed around stable binding fields");
   assert(descriptions.create.outputSchema?.required?.includes("panelId"), "chats/createCodexChat output schema must require panelId");
   assert(descriptions.create.outputSchema?.required?.includes("panelEvent"), "chats/createCodexChat output schema must require panelEvent");
   assert(descriptions.create.outputSchema?.properties?.panelEvent?.required?.includes("id"), "chats/createCodexChat panelEvent schema must expose id");

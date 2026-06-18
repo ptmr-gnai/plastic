@@ -51,7 +51,7 @@ export const fallbackSendToCodexInputSchema = {
 
 const chatBindingOutputSchema = {
   type: "object",
-  required: ["chatId", "threadId", "activeTurnId", "activeTurnStatus"],
+  required: ["chatId", "runtimeId", "threadId", "activeTurnId", "activeTurnStatus"],
   properties: {
     chatId: { type: "string" },
     runtimeId: { type: "string" },
@@ -59,8 +59,7 @@ const chatBindingOutputSchema = {
     activeTurnId: { type: ["string", "null"] },
     activeTurnStatus: { type: ["string", "null"] },
     availability: { type: "object" }
-  },
-  additionalProperties: true
+  }
 };
 
 const createCodexChatOutputSchema = {
