@@ -1,3 +1,4 @@
+import { assertLinkInputLegibility } from "./plastic-contract-affordances.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
 export function assertMethodCatalogsMatch({ assert, actual, expected, actualLabel, expectedLabel }) {
@@ -8,6 +9,7 @@ export function assertMethodCatalogsMatch({ assert, actual, expected, actualLabe
 }
 
 export function assertMethodCatalogSurface({ assert, label, methods }) {
+  const methodIds = new Set(methods.map((method) => method.id));
   for (const method of methods) {
     assert(method.description, `${label} ${method.id} missing description`);
     assert(method.inputSchema, `${label} ${method.id} missing inputSchema`);
@@ -22,6 +24,19 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
       method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id && link.input?.method === method.id),
       `${label} ${method.id} missing invoke link with concrete input`
     );
+    const unknownLinkMethods = (method.links ?? [])
+      .filter((link) => typeof link.method === "string" && !methodIds.has(link.method))
+      .map((link) => `${link.rel}:${link.method}`);
+    assert(
+      unknownLinkMethods.length === 0,
+      `${label} ${method.id} links reference unknown methods: ${unknownLinkMethods.join(", ")}`
+    );
+    assertLinkInputLegibility({
+      assert,
+      links: method.links ?? [],
+      methods,
+      source: `${label} ${method.id} links`
+    });
   }
 }
 

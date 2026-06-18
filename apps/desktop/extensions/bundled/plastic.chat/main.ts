@@ -4,7 +4,8 @@ const extensionLink = (context: ExtensionActivationContext) => ({
   rel: "extension",
   href: "extensions/get",
   method: "extensions/get",
-  target: context.extension.id
+  target: context.extension.id,
+  input: { id: context.extension.id }
 });
 
 const chatExtensionAvailability = {
