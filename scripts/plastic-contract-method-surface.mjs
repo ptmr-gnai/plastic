@@ -1,6 +1,30 @@
 import { assertActionInputLegibility, assertLinkInputLegibility } from "./plastic-contract-affordances.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
+const codexAliasMethodIds = new Set([
+  "codex/threadStart",
+  "codex/threadResume",
+  "codex/threadFork",
+  "codex/threadList",
+  "codex/threadRead",
+  "codex/threadArchive",
+  "codex/threadNameSet",
+  "codex/turnStart",
+  "codex/turnSteer",
+  "codex/turnInterrupt",
+  "codex/modelList",
+  "codex/configRead"
+]);
+
+const descriptionOnlyOutputMethodIds = new Set([
+  "rpc/call",
+  "chats/interrupt",
+  "codex/initialize",
+  "codex/request",
+  "deixis/evalDom",
+  ...codexAliasMethodIds
+]);
+
 export function assertMethodCatalogsMatch({ assert, actual, expected, actualLabel, expectedLabel }) {
   assert(
     stableJson(actual) === stableJson(expected),
@@ -17,6 +41,7 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
     assert(method.outputSchema, `${label} ${method.id} missing outputSchema`);
     assert(method.effects, `${label} ${method.id} missing effects`);
     assert(method.reversibility, `${label} ${method.id} missing reversibility`);
+    assertOpenSchemaBoundaries({ assert, method, label });
     const describeLinks = (method.links ?? []).filter((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id);
     const invokeLinks = (method.links ?? []).filter((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id);
     assert(describeLinks.length === 1, `${label} ${method.id} must expose exactly one describe link`);
@@ -70,6 +95,24 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
     assert(
       undeclaredExpectedEvents.length === 0,
       `${label} ${method.id} examples expect undeclared durable events: ${undeclaredExpectedEvents.join(", ")}`
+    );
+  }
+}
+
+function assertOpenSchemaBoundaries({ assert, method, label }) {
+  if (method.inputSchema?.additionalProperties === true) {
+    assert(
+      codexAliasMethodIds.has(method.id),
+      `${label} ${method.id} input schema uses additionalProperties outside delegated Codex alias boundary`
+    );
+  }
+
+  const output = method.outputSchema;
+  const descriptionOnlyOutput = Boolean(output?.description) && output.type === undefined && output.properties === undefined && output.required === undefined;
+  if (descriptionOnlyOutput) {
+    assert(
+      descriptionOnlyOutputMethodIds.has(method.id),
+      `${label} ${method.id} output schema is description-only outside delegated/open result boundary`
     );
   }
 }
