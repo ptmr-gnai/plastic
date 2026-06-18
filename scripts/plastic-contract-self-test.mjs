@@ -49,6 +49,8 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(hostIdentityCheck.details.agentTransportsMatch === true, "plastic/selfTest host transport identity check failed");
   const auditCheck = selfTest.checks?.find((candidate) => candidate.id === "runtime-audit:status");
   assert(["missing", "running", "passed", "degraded", "failed"].includes(auditCheck?.details?.status), "plastic/selfTest audit status check failed");
+  assert(typeof auditCheck.details.methodParity?.mode === "string", "plastic/selfTest audit status missing method parity mode");
+  assert(auditCheck.details.methodParity.failureTotal === null || typeof auditCheck.details.methodParity.failureTotal === "number", "plastic/selfTest audit status invalid method parity total");
   assert(typeof auditCheck.details.actions === "number", "plastic/selfTest audit status actions check failed");
   assert(auditCheck.details.invalidActionInvocations?.length === 0, "plastic/selfTest audit actions have invalid invocation metadata");
   const transportCheck = selfTest.checks?.find((candidate) => candidate.id === "agent-transports:affordances");

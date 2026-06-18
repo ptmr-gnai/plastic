@@ -60,6 +60,7 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   const actions = Array.isArray(verdict?.actions) ? verdict.actions.map(asRecord) : [];
   const diagnosis = asRecord(verdict?.diagnosis);
   const failureSummary = asRecord(verdict?.failureSummary);
+  const methodParity = asRecord(verdict?.methodParity);
   const firstFailure = failureSummary.first === null ? null : asRecord(failureSummary.first);
   const invalidActionInvocations = actions
     .filter((action) =>
@@ -83,6 +84,12 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   ) {
     throw new Error("runtime/auditStatus verdict failure summary is incomplete");
   }
+  if (
+    typeof methodParity.mode !== "string"
+    || (methodParity.failureTotal !== null && typeof methodParity.failureTotal !== "number")
+  ) {
+    throw new Error("runtime/auditStatus verdict method parity is incomplete");
+  }
   if (!Array.isArray(verdict?.actions)) {
     throw new Error("runtime/auditStatus verdict actions are missing");
   }
@@ -94,6 +101,10 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
     available: statusRecord.available === true,
     status,
     diagnosisCode: diagnosis.code,
+    methodParity: {
+      mode: methodParity.mode,
+      failureTotal: methodParity.failureTotal
+    },
     failureCount: failureSummary.count,
     failureIds: failureSummary.ids.filter((id): id is string => typeof id === "string"),
     blockingFailureIds: failureSummary.blockingIds.filter((id): id is string => typeof id === "string"),
