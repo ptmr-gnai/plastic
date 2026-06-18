@@ -15,12 +15,12 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
     assert(method.effects, `${label} ${method.id} missing effects`);
     assert(method.reversibility, `${label} ${method.id} missing reversibility`);
     assert(
-      method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id),
-      `${label} ${method.id} missing describe link`
+      method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id && link.input?.id === method.id),
+      `${label} ${method.id} missing describe link with concrete input`
     );
     assert(
-      method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id),
-      `${label} ${method.id} missing invoke link`
+      method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id && link.input?.method === method.id),
+      `${label} ${method.id} missing invoke link with concrete input`
     );
   }
 }
