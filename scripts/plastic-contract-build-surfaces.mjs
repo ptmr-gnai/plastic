@@ -47,6 +47,7 @@ const assertBuildStatusMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.status?.enum?.includes("running"), "build/status output schema must expose running status");
   assert(description.outputSchema?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "build/status output schema must expose hostBase marker");
   assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.methodRegistry?.enum?.includes("shared"), "build/status output schema must expose shared method registry transports");
+  assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "build/status output schema must expose transport action inputSchema");
 };
 
 const assertBuildTypecheckMethodDescription = ({ assert, description }) => {

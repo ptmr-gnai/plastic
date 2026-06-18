@@ -1,3 +1,5 @@
+import { agentTransportSchema } from "./runtime-control-schemas.js";
+
 export const buildStatusOutputSchema = {
   type: "object",
   required: [
@@ -33,18 +35,7 @@ export const buildStatusOutputSchema = {
         build: { type: "object" }
       }
     },
-    agentTransports: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["id", "status", "methodRegistry"],
-        properties: {
-          id: { type: "string" },
-          status: { type: "string" },
-          methodRegistry: { type: "string", enum: ["shared"] }
-        }
-      }
-    },
+    agentTransports: { type: "array", items: agentTransportSchema },
     buildSocket: { type: "string" },
     hostBase: {
       type: "object",

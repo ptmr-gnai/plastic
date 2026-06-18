@@ -39,6 +39,7 @@ const assertRuntimeHostMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.mode?.enum?.includes("headless"), "runtime/host output schema must expose headless mode");
   assert(description.outputSchema?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "runtime/host output schema must expose hostBase marker");
   assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.methodRegistry?.enum?.includes("shared"), "runtime/host output schema must expose shared method registry transports");
+  assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "runtime/host output schema must expose transport action inputSchema");
 };
 
 const assertMatchingHostIdentity = ({ assert, live, durable }) => {

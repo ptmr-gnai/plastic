@@ -146,3 +146,47 @@ export const rpcCallInputSchema = {
 export const rpcCallOutputSchema = {
   description: "Result returned by the delegated Plastic RPC method."
 };
+
+export const agentTransportSchema = {
+  type: "object",
+  required: ["id", "status", "methodRegistry"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    status: { type: "string" },
+    transport: { type: "string" },
+    methodRegistry: { type: "string", enum: ["shared"] },
+    rpcUrl: { type: "string" },
+    command: { type: "string" },
+    args: { type: "array", items: { type: "string" } },
+    env: { type: "object" },
+    links: { type: "array", items: { type: "object" } },
+    tools: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          methodRegistry: { type: "string", enum: ["shared"] },
+          inputSchema: {}
+        }
+      }
+    },
+    actions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          method: { type: "string" },
+          href: { type: "string" },
+          tool: { type: "string" },
+          arguments: { type: "object" },
+          inputSchema: {}
+        }
+      }
+    },
+    notes: { type: "string" }
+  }
+};

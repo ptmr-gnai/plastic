@@ -1,3 +1,5 @@
+import { agentTransportSchema } from "./runtime-control-schemas.js";
+
 const actionAffordanceSchema = {
   type: "object",
   required: ["id", "title", "method", "intent", "risk"],
@@ -64,7 +66,7 @@ export const agentWorkbenchOutputSchema = {
       properties: {
         capabilities: capabilityPacketSchema,
         controlPlane: controlPlaneSchema,
-        agentTransports: { type: "array", items: { type: "object" } },
+        agentTransports: { type: "array", items: agentTransportSchema },
         auditStatus: auditStatusSchema,
         modules: { type: "object" },
         methodCount: { type: "number" },
@@ -114,7 +116,7 @@ export const agentOrientOutputSchema = {
         modules: { type: "object" },
         auditStatus: auditStatusSchema,
         controlPlane: controlPlaneSchema,
-        agentTransports: { type: "array", items: { type: "object" } },
+        agentTransports: { type: "array", items: agentTransportSchema },
         methodCount: { type: "number" },
         methods: { type: "array", items: { type: "object" } },
         recommendedActions: { type: "array", items: actionAffordanceSchema },

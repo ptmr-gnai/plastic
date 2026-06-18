@@ -1,3 +1,5 @@
+import { agentTransportSchema } from "./runtime-control-schemas.js";
+
 export const runtimeHostOutputSchema = {
   type: "object",
   required: [
@@ -34,18 +36,7 @@ export const runtimeHostOutputSchema = {
         build: { type: "object" }
       }
     },
-    agentTransports: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["id", "status", "methodRegistry"],
-        properties: {
-          id: { type: "string" },
-          status: { type: "string" },
-          methodRegistry: { type: "string", enum: ["shared"] }
-        }
-      }
-    },
+    agentTransports: { type: "array", items: agentTransportSchema },
     hostBase: {
       type: "object",
       required: ["id", "version"],
