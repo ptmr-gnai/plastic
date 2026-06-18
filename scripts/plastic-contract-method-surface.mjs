@@ -60,6 +60,29 @@ export function assertRpcCallMethodDescription({ assert, description }) {
   assert(description.examples?.some((example) => example.input?.method === "panels/list"), "rpc/call examples must show delegated invocation");
 }
 
+export async function assertRpcCallDispatch({ assert, rpc, runId, validationMeta }) {
+  const panels = await rpc("rpc/call", { method: "panels/list", input: {} });
+  assert(Array.isArray(panels), "rpc/call panels/list did not return panel array");
+  const type = "contract.rpc_call.appended";
+  const marker = `${runId}-rpc-call`;
+  const event = await rpc("rpc/call", {
+    method: "events/append",
+    input: { type, payload: { marker }, scope: { workspaceId: "default" }, meta: validationMeta }
+  });
+  assert(event?.type === type, "rpc/call events/append returned wrong event type");
+  assert(event.payload?.marker === marker, "rpc/call events/append payload mismatch");
+  const events = await rpc("events/list", { types: [type], limit: 25 });
+  assert(Array.isArray(events), "rpc/call follow-up events/list did not return array");
+  assert(events.some((item) => item.id === event.id && item.payload?.marker === marker), "rpc/call appended event was not durable");
+  try {
+    await rpc("rpc/call", { method: "rpc/call", input: {} });
+    throw new Error("rpc/call unexpectedly called itself");
+  } catch (error) {
+    assert(String(error.message ?? error).includes("cannot call itself"), "rpc/call self-call error mismatch");
+  }
+  return { delegatedMethods: ["panels/list", "events/append"], panels: panels.length, eventId: event.id };
+}
+
 function assertMethodSchema({ assert, schema, label }) {
   assert(schema?.required?.includes("id"), `${label} schema must require id`);
   assert(schema?.required?.includes("title"), `${label} schema must require title`);

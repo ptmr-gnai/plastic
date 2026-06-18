@@ -2,7 +2,7 @@ import { access, rm } from "node:fs/promises";
 import {
   assert, assertArray, buildEventStream, buildGet, buildRpc, buildUrl, check, assertControlLegibilityAndThemeProjection,
   assertEventsTagged, assertMethodDiscoveryParity, assertPanelLifecycleProjection,
-  assertCapabilityStatuses, assertRpcCallDispatch, assertRuntimeCapabilityInventory,
+  assertCapabilityStatuses, assertRuntimeCapabilityInventory,
   assertRuntimeStartedCapabilityInventory, assertRuntimeStartedControlPlane, assertMatchingCapabilityInventories,
   assertRuntimeAuditStatus, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
@@ -15,7 +15,7 @@ import { assertEventQueryBehavior, assertEventsAppendMethodDescription, assertEv
 import { assertDeixisMethodDescriptions, assertResolvedRefAffordances } from "./plastic-contract-deixis.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
-import { assertDescribeMethodDescription, assertMethodCatalogsMatch, assertMethodCatalogSurface, assertPlasticMethodsMethodDescription, assertRpcCallMethodDescription } from "./plastic-contract-method-surface.mjs";
+import { assertDescribeMethodDescription, assertMethodCatalogsMatch, assertMethodCatalogSurface, assertPlasticMethodsMethodDescription, assertRpcCallDispatch, assertRpcCallMethodDescription } from "./plastic-contract-method-surface.mjs";
 import { assertSelfTestDurableEvent, assertSelfTestHttpResources, assertSelfTestMethodDescription, assertSelfTestSurface } from "./plastic-contract-self-test.mjs";
 import { assertRunAuditActionMethodDescription, assertRuntimeAuditActionPlanMethodDescription, assertRuntimeAuditStatusMethodDescription } from "./plastic-contract-audit-status.mjs";
 import { assertBuildHttpTransportSurface, assertBuildStatusSurface } from "./plastic-contract-build-surfaces.mjs";
@@ -219,7 +219,7 @@ await check("method discovery parity", async () => {
 
 await check("rpc/call dispatch", async () => {
   assertRpcCallMethodDescription({ assert, description: await rpc("methods/describe", { id: "rpc/call" }) });
-  return assertRpcCallDispatch({ rpc });
+  return assertRpcCallDispatch({ assert, rpc, runId, validationMeta });
 });
 
 await check("control method legibility and theme projection", async () => {

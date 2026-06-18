@@ -304,18 +304,6 @@ const assertPanelMailboxProjection = async ({ rpc, panelIdPrefix, meta }) => {
   return { sentEventId: sent.id, readEventId: read.id, messageId: message.id };
 };
 
-export const assertRpcCallDispatch = async ({ rpc }) => {
-  const panels = await rpc("rpc/call", { method: "panels/list", input: {} });
-  assert(Array.isArray(panels), "rpc/call panels/list did not return panel array");
-  try {
-    await rpc("rpc/call", { method: "rpc/call", input: {} });
-    throw new Error("rpc/call unexpectedly called itself");
-  } catch (error) {
-    assert(String(error.message ?? error).includes("cannot call itself"), "rpc/call self-call error mismatch");
-  }
-  return { delegatedMethod: "panels/list", panels: panels.length };
-};
-
 export const assertRuntimeModuleInventory = async ({ rpc }) => {
   const modules = await rpc("runtime/modules");
   const items = assertArray(modules.items, "runtime/modules.items is not an array");
