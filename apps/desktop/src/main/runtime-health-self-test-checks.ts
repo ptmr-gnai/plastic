@@ -62,6 +62,7 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   const failureSummary = asRecord(verdict?.failureSummary);
   const methodParity = asRecord(verdict?.methodParity);
   const firstFailure = failureSummary.first === null ? null : asRecord(failureSummary.first);
+  const reportPath = methodParity.reportPath;
   const invalidActionInvocations = actions
     .filter((action) =>
       action.method !== "runtime/runAuditAction"
@@ -87,8 +88,12 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   if (
     typeof methodParity.mode !== "string"
     || (methodParity.failureTotal !== null && typeof methodParity.failureTotal !== "number")
+    || (reportPath !== null && typeof reportPath !== "string")
   ) {
     throw new Error("runtime/auditStatus verdict method parity is incomplete");
+  }
+  if (typeof verdict?.usable !== "boolean" || typeof verdict.strictElectron !== "string" || typeof verdict.unified !== "string") {
+    throw new Error("runtime/auditStatus verdict runtime-unification metadata is incomplete");
   }
   if (!Array.isArray(verdict?.actions)) {
     throw new Error("runtime/auditStatus verdict actions are missing");
@@ -101,9 +106,13 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
     available: statusRecord.available === true,
     status,
     diagnosisCode: diagnosis.code,
+    usable: verdict.usable,
+    strictElectron: verdict.strictElectron,
+    unified: verdict.unified,
     methodParity: {
       mode: methodParity.mode,
-      failureTotal: methodParity.failureTotal
+      failureTotal: methodParity.failureTotal,
+      reportPath: reportPath ?? null
     },
     failureCount: failureSummary.count,
     failureIds: failureSummary.ids.filter((id): id is string => typeof id === "string"),
