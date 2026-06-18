@@ -20,6 +20,15 @@ export const expectedOrientationLinks = [
   { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }
 ];
 
+export const expectedWorkbenchLinks = [
+  { rel: "host", href: "runtime/host", method: "runtime/host" },
+  { rel: "modules", href: "runtime/modules", method: "runtime/modules" },
+  { rel: "audit-status", href: "runtime/auditStatus", method: "runtime/auditStatus" },
+  { rel: "audit-action-plan", href: "runtime/auditActionPlan", method: "runtime/auditActionPlan" },
+  { rel: "audit-action", href: "runtime/runAuditAction", method: "runtime/runAuditAction" },
+  { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } }
+];
+
 export const hasServiceAffordance = (
   resource: Record<string, unknown>,
   expected: { rel: string; href: string; method: string; actionId: string }

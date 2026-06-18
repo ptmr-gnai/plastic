@@ -4,6 +4,7 @@ import {
   expectedOrientationLinks,
   expectedSnapshotLinks,
   expectedWorkbenchActions,
+  expectedWorkbenchLinks,
   hasActionAffordance,
   hasLinkAffordance,
   hasServiceAffordance
@@ -368,6 +369,7 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
   const control = asRecord(workbenchRecord.control);
   const capabilities = asRecord(orientationRecord.capabilities);
   const workbenchActions = Array.isArray(control.recommendedActions) ? control.recommendedActions.map(asRecord) : [];
+  const workbenchLinks = Array.isArray(control.links) ? control.links.map(asRecord) : [];
   const orientationActions = Array.isArray(capabilities.recommendedActions) ? capabilities.recommendedActions.map(asRecord) : [];
   const orientationLinks = Array.isArray(capabilities.links) ? capabilities.links.map(asRecord) : [];
   const agentTransports = Array.isArray(control.agentTransports) ? control.agentTransports.map(asRecord) : [];
@@ -379,12 +381,14 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
   const controlPlane = asRecord(control.controlPlane);
   const runtimeControlPlane = asRecord(controlPlane.runtime);
   const buildControlPlane = asRecord(controlPlane.build);
-  const missingWorkbenchActions = expectedWorkbenchActions.filter((action) => !hasActionAffordance(workbenchActions, action));
-  const missingOrientationActions = expectedOrientationActions.filter((action) => !hasActionAffordance(orientationActions, action));
-  const missingOrientationLinks = expectedOrientationLinks.filter((link) => !hasLinkAffordance(orientationLinks, link));
-  const unknownWorkbenchActions = unknownMethodReferences(workbenchActions, methodIds);
-  const unknownOrientationActions = unknownMethodReferences(orientationActions, methodIds);
-  const unknownOrientationLinks = unknownMethodReferences(orientationLinks, methodIds);
+  const missing = [
+    { source: "agent/workbench", kind: "actions", ids: expectedWorkbenchActions.filter((action) => !hasActionAffordance(workbenchActions, action)).map((action) => action.id) },
+    { source: "agent/workbench", kind: "links", ids: expectedWorkbenchLinks.filter((link) => !hasLinkAffordance(workbenchLinks, link)).map((link) => link.rel) },
+    { source: "agent/orient", kind: "actions", ids: expectedOrientationActions.filter((action) => !hasActionAffordance(orientationActions, action)).map((action) => action.id) },
+    { source: "agent/orient", kind: "links", ids: expectedOrientationLinks.filter((link) => !hasLinkAffordance(orientationLinks, link)).map((link) => link.rel) }
+  ].find(({ ids }) => ids.length > 0);
+  const unknownWorkbenchActions = unknownMethodReferences(workbenchActions, methodIds), unknownWorkbenchLinks = unknownMethodReferences(workbenchLinks, methodIds);
+  const unknownOrientationActions = unknownMethodReferences(orientationActions, methodIds), unknownOrientationLinks = unknownMethodReferences(orientationLinks, methodIds);
   if (runtimeControlPlane.transport !== "http" || buildControlPlane.transport !== "http") {
     throw new Error("agent/workbench missing shared runtime/build control plane");
   }
@@ -394,16 +398,10 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
   if (typeof auditStatus.verdict !== "string" || typeof failureSummary.count !== "number") {
     throw new Error("agent/workbench missing compact audit status");
   }
-  if (missingWorkbenchActions.length > 0) {
-    throw new Error(`agent/workbench missing actions: ${missingWorkbenchActions.map((action) => action.id).join(", ")}`);
+  if (missing) {
+    throw new Error(`${missing.source} missing ${missing.kind}: ${missing.ids.join(", ")}`);
   }
-  if (missingOrientationActions.length > 0) {
-    throw new Error(`agent/orient missing actions: ${missingOrientationActions.map((action) => action.id).join(", ")}`);
-  }
-  if (missingOrientationLinks.length > 0) {
-    throw new Error(`agent/orient missing links: ${missingOrientationLinks.map((link) => link.rel).join(", ")}`);
-  }
-  if (unknownWorkbenchActions.length > 0 || unknownOrientationActions.length > 0 || unknownOrientationLinks.length > 0) {
+  if (unknownWorkbenchActions.length > 0 || unknownWorkbenchLinks.length > 0 || unknownOrientationActions.length > 0 || unknownOrientationLinks.length > 0) {
     throw new Error("agent orientation packet references unknown methods");
   }
   const invalidActions = invalidAgentActions([...workbenchActions, ...orientationActions]);
@@ -412,9 +410,11 @@ export const checkAgentOrientationHealth = (workbench: unknown, orientation: unk
   }
   return {
     workbenchActions: workbenchActions.length,
+    workbenchLinks: workbenchLinks.length,
     orientationActions: orientationActions.length,
     orientationLinks: orientationLinks.length,
     unknownWorkbenchActions,
+    unknownWorkbenchLinks,
     unknownOrientationActions,
     unknownOrientationLinks,
     agentTransports: agentTransports.length,
