@@ -37,6 +37,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assert(Array.isArray(workbench.control.auditStatus.failureSummary.ids), "workbench audit status missing failure ids");
   assertArray(workbench.control.auditStatus.actionIds, "workbench audit status action ids missing");
   assertArray(workbench.control.auditStatus.recentActions, "workbench audit status recent actions missing");
+  assertRecentAuditActionRows({ assert, recentActions: workbench.control.auditStatus.recentActions, source: "workbench" });
   assertRecentAuditActionMetadata({ assert, recentActions: workbench.control.auditStatus.recentActions, source: "workbench" });
   assert(workbench.control.controlPlane?.runtime?.transport === "http", "workbench missing runtime control plane");
   assert(workbench.control.controlPlane.runtime.rpcPath === "/rpc", "workbench runtime control plane rpcPath mismatch");
@@ -91,6 +92,7 @@ export const assertAgentWorkbenchMethodDescription = ({ assert, description }) =
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("failureTotal"), "agent/workbench output schema must expose audit method parity total");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("reportPath"), "agent/workbench output schema must expose audit method parity report path");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.recentActions?.items?.properties?.auditMetadata?.anyOf?.some((candidate) => candidate.properties?.methodParity), "agent/workbench output schema must expose recent audit action method parity");
+  assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.recentActions?.items?.required?.includes("actionId"), "agent/workbench output schema must expose recent audit action rows");
   assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.required?.includes("runtime"), "agent/workbench output schema must expose runtime control plane");
   assert(description.outputSchema?.properties?.control?.properties?.links?.items?.type === "object", "agent/workbench output schema must expose control links");
   assert(description.outputSchema?.properties?.control?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "agent/workbench output schema must expose transport action inputSchema");
@@ -132,6 +134,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   assert(Array.isArray(orientation.capabilities.auditStatus.failureSummary.ids), "agent/orient audit status missing failure ids");
   assertArray(orientation.capabilities.auditStatus.actionIds, "agent/orient audit status action ids missing");
   assertArray(orientation.capabilities.auditStatus.recentActions, "agent/orient audit status recent actions missing");
+  assertRecentAuditActionRows({ assert, recentActions: orientation.capabilities.auditStatus.recentActions, source: "agent/orient" });
   assertRecentAuditActionMetadata({ assert, recentActions: orientation.capabilities.auditStatus.recentActions, source: "agent/orient" });
   assert(orientation.capabilities.controlPlane?.runtime?.transport === "http", "agent/orient missing runtime control plane");
   assert(orientation.capabilities.controlPlane.runtime.rpcPath === "/rpc", "agent/orient runtime control plane rpcPath mismatch");
@@ -180,6 +183,7 @@ export const assertAgentOrientMethodDescription = ({ assert, description }) => {
   assert(actions?.items?.properties?.risk?.enum?.includes("medium"), "agent/orient output schema must expose action risk");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("failureTotal"), "agent/orient output schema must expose audit method parity total");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("reportPath"), "agent/orient output schema must expose audit method parity report path");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.recentActions?.items?.required?.includes("actionId"), "agent/orient output schema must expose recent audit action rows");
   assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.required?.includes("build"), "agent/orient output schema must expose build control plane");
   assert(description.outputSchema?.properties?.capabilities?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "agent/orient output schema must expose transport action inputSchema");
   return { id: description.id, required: description.outputSchema.required };
@@ -213,6 +217,18 @@ const assertRecentAuditActionMetadata = ({ assert, recentActions, source }) => {
     }
     assertCompactAuditMetadata({ assert, metadata: action.auditMetadata, source: `${source} recent audit action metadata` });
   }
+};
+
+const assertRecentAuditActionRows = ({ assert, recentActions, source }) => {
+  const invalidRows = recentActions.filter((action) =>
+    (action.actionId !== null && typeof action.actionId !== "string")
+    || typeof action.ok !== "boolean"
+    || (action.exitCode !== null && typeof action.exitCode !== "number")
+    || !action.env
+    || typeof action.env !== "object"
+    || Array.isArray(action.env)
+  );
+  assert(invalidRows.length === 0, `${source} recent audit action rows have invalid shape`);
 };
 
 const assertCompactAuditMetadata = ({ assert, metadata, source }) => {
