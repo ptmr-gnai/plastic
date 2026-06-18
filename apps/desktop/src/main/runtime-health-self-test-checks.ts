@@ -9,6 +9,7 @@ import {
 } from "./runtime-health-affordance-checks.js";
 import { checkAuditMetadata } from "./runtime-health-audit-checks.js";
 import { invalidControlPlaneUrls } from "./runtime-health-control-plane-checks.js";
+import { invalidResourceAffordances } from "./runtime-health-resource-affordance-checks.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
 export const checkBuildStatusHealth = (buildStatus: unknown, methods: PlasticMethod[]) => {
@@ -169,19 +170,24 @@ export const checkCapabilityProjectionHealth = (
 export const checkProjectionDiscoveryHealth = (
   state: unknown,
   snapshot: unknown,
-  methodList: Array<{ id: string; availability?: { status?: string } }>
+  methodList: PlasticMethod[]
 ) => {
   const stateRecord = asRecord(state);
   const snapshotRecord = asRecord(snapshot);
   const stateControlPlane = asRecord(stateRecord.controlPlane);
   const snapshotControlPlane = asRecord(snapshotRecord.controlPlane);
   const stateResources = Array.isArray(stateRecord.resources) ? stateRecord.resources.map(asRecord) : [];
+  const snapshotResources = Array.isArray(snapshotRecord.resources) ? snapshotRecord.resources.map(asRecord) : [];
   const serviceResources = stateResources.filter((resource) => resource.kind === "service");
   const snapshotLinks = Array.isArray(snapshotRecord.links) ? snapshotRecord.links.map(asRecord) : [];
   const snapshotMethods = asRecord(snapshotRecord.methods);
   const snapshotMethodItems = Array.isArray(snapshotMethods.items) ? snapshotMethods.items.map(asRecord) : [];
   const invalidStateControlPlaneUrls = invalidControlPlaneUrls(stateControlPlane);
   const invalidSnapshotControlPlaneUrls = invalidControlPlaneUrls(snapshotControlPlane);
+  const invalidResourceAffordanceItems = [
+    ...invalidResourceAffordances(stateResources, methodList, "state"),
+    ...invalidResourceAffordances(snapshotResources, methodList, "snapshot")
+  ];
   if (asRecord(stateControlPlane.runtime).transport !== "http" || asRecord(snapshotControlPlane.runtime).transport !== "http") {
     throw new Error("state/snapshot projections must expose the shared runtime HTTP control plane");
   }
@@ -190,6 +196,9 @@ export const checkProjectionDiscoveryHealth = (
   }
   if (invalidSnapshotControlPlaneUrls.length > 0) {
     throw new Error(`plastic/snapshot control plane URLs are invalid: ${invalidSnapshotControlPlaneUrls.join(", ")}`);
+  }
+  if (invalidResourceAffordanceItems.length > 0) {
+    throw new Error(`projection resource affordances are invalid: ${invalidResourceAffordanceItems.join(", ")}`);
   }
   if (!serviceResources.some((resource) => hasServiceAffordance(resource, {
     rel: "host",
@@ -231,7 +240,8 @@ export const checkProjectionDiscoveryHealth = (
     snapshotLinks: snapshotLinks.length,
     methods: snapshotMethodItems.length,
     invalidStateControlPlaneUrls,
-    invalidSnapshotControlPlaneUrls
+    invalidSnapshotControlPlaneUrls,
+    invalidResourceAffordances: invalidResourceAffordanceItems
   };
 };
 

@@ -21,6 +21,7 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   const projectionCheck = selfTest.checks?.find((candidate) => candidate.id === "projections:discovery");
   assert(projectionCheck?.details?.invalidStateControlPlaneUrls?.length === 0, "plastic/selfTest state control-plane URLs are invalid");
   assert(projectionCheck.details.invalidSnapshotControlPlaneUrls?.length === 0, "plastic/selfTest snapshot control-plane URLs are invalid");
+  assert(projectionCheck.details.invalidResourceAffordances?.length === 0, "plastic/selfTest projection resource affordances are invalid");
   const capabilityCheck = selfTest.checks?.find((candidate) => candidate.id === "capabilities:list");
   assert(capabilityCheck?.details?.missingRequiredCapabilities?.length === 0, "plastic/selfTest required capability check failed");
   assert(capabilityCheck.details.invalidStatuses?.length === 0, "plastic/selfTest capability status check failed");
