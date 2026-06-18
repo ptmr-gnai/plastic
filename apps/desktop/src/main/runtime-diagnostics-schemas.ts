@@ -46,6 +46,40 @@ const compactAuditMetadataSchema = {
   }
 };
 
+const auditDiagnosisSchema = {
+  type: "object",
+  required: ["code", "phase", "summary"],
+  properties: {
+    code: { type: "string" },
+    phase: { type: ["string", "null"] },
+    summary: { type: "string" }
+  }
+};
+
+const auditFailureSummarySchema = {
+  type: "object",
+  required: ["count", "ids", "blockingIds", "first"],
+  properties: {
+    count: { type: "number" },
+    ids: { type: "array", items: { type: "string" } },
+    blockingIds: { type: "array", items: { type: "string" } },
+    first: {
+      anyOf: [
+        { type: "null" },
+        {
+          type: "object",
+          required: ["id", "command", "exit"],
+          properties: {
+            id: { type: "string" },
+            command: { type: ["string", "null"] },
+            exit: { type: ["number", "string", "null"] }
+          }
+        }
+      ]
+    }
+  }
+};
+
 const recentAuditActionSchema = {
   type: "object",
   required: ["eventId", "timestamp", "actionId", "ok", "args", "env", "auditMetadata", "stdoutTail", "stderrTail"],
@@ -83,8 +117,8 @@ export const auditStatusOutputSchema = {
         unified: { type: "string" },
         methodParity: methodParityOutputSchema,
         failurePhase: { type: ["string", "null"] },
-        failureSummary: { type: "object" },
-        diagnosis: { type: "object" },
+        failureSummary: auditFailureSummarySchema,
+        diagnosis: auditDiagnosisSchema,
         hints: { type: "array", items: { type: "string" } },
         nextAction: { type: "string" },
         actions: { type: "array" }
@@ -138,7 +172,7 @@ export const auditActionPlanOutputSchema = {
       properties: {
         metadata: compactAuditMetadataSchema,
         status: { type: "string", enum: ["missing", "running", "passed", "degraded", "failed"] },
-        diagnosis: { type: "object" }
+        diagnosis: auditDiagnosisSchema
       }
     }
   }

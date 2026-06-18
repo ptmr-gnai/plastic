@@ -35,6 +35,10 @@ export const assertRuntimeAuditStatusMethodDescription = ({ assert, description 
   assert(description.outputSchema?.properties?.verdict?.required?.includes("methodParity"), "runtime/auditStatus output schema must require method parity");
   assert(description.outputSchema?.properties?.verdict?.properties?.methodParity?.required?.includes("failureTotal"), "runtime/auditStatus output schema must expose method parity total");
   assert(description.outputSchema?.properties?.verdict?.properties?.methodParity?.required?.includes("reportPath"), "runtime/auditStatus output schema must expose method parity report path");
+  assert(description.outputSchema?.properties?.verdict?.properties?.diagnosis?.required?.includes("code"), "runtime/auditStatus output schema must expose diagnosis code");
+  assert(description.outputSchema?.properties?.verdict?.properties?.diagnosis?.required?.includes("summary"), "runtime/auditStatus output schema must expose diagnosis summary");
+  assert(description.outputSchema?.properties?.verdict?.properties?.failureSummary?.required?.includes("blockingIds"), "runtime/auditStatus output schema must expose blocking failure ids");
+  assert(description.outputSchema?.properties?.verdict?.properties?.failureSummary?.required?.includes("first"), "runtime/auditStatus output schema must expose first failure");
   assert(description.outputSchema?.properties?.recentActions?.items?.required?.includes("stdoutTail"), "runtime/auditStatus output schema must expose recent action tails");
   assert(description.outputSchema?.properties?.recentActions?.items?.properties?.auditMetadata?.anyOf?.some((candidate) => candidate.properties?.methodParity), "runtime/auditStatus output schema must expose recent action method parity metadata");
   assert(description.outputSchema?.properties?.summary?.anyOf?.some((candidate) => candidate.properties?.inProgress?.type === "boolean"), "runtime/auditStatus output schema must expose summary.inProgress");
@@ -48,6 +52,8 @@ export const assertRuntimeAuditActionPlanMethodDescription = ({ assert, descript
   assert(description.outputSchema?.required?.includes("audit"), "runtime/auditActionPlan output schema must require audit");
   assert(description.outputSchema?.properties?.invocation?.properties?.method?.enum?.includes("runtime/runAuditAction"), "runtime/auditActionPlan output schema must expose run invocation method");
   assert(description.outputSchema?.properties?.audit?.properties?.status?.enum?.includes("running"), "runtime/auditActionPlan output schema must expose audit running status");
+  assert(description.outputSchema?.properties?.audit?.properties?.diagnosis?.required?.includes("code"), "runtime/auditActionPlan output schema must expose audit diagnosis code");
+  assert(description.outputSchema?.properties?.audit?.properties?.diagnosis?.required?.includes("summary"), "runtime/auditActionPlan output schema must expose audit diagnosis summary");
   assert(description.outputSchema?.properties?.audit?.properties?.metadata?.properties?.methodParity?.required?.includes("failureTotal"), "runtime/auditActionPlan output schema must expose audit method parity total");
   assert(description.outputSchema?.properties?.audit?.properties?.metadata?.properties?.methodParity?.required?.includes("reportPath"), "runtime/auditActionPlan output schema must expose audit method parity report path");
   return { id: description.id, required: description.outputSchema.required };
