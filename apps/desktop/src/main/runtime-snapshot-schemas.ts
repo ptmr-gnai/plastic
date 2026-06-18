@@ -1,3 +1,4 @@
+import { buildStatusOutputSchema } from "./runtime-build-schemas.js";
 import { codexStatusOutputSchema } from "./codex-backend-method-metadata.js";
 import { visibleRefWindowSchema } from "./deixis-method-metadata.js";
 import { plasticExtensionSchema } from "./extension-query-methods.js";
@@ -67,7 +68,7 @@ export const plasticSnapshotOutputSchema = {
         }
       }
     },
-    build: { type: "object" },
+    build: buildStatusOutputSchema,
     runtime: { type: "object" },
     codex: codexStatusOutputSchema,
     controlPlane: runtimeHostControlPlaneSchema,
