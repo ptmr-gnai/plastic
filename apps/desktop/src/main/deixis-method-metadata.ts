@@ -1,4 +1,4 @@
-import { plasticEventSchema } from "./runtime-control-schemas.js";
+import { eventsTimelineOutputSchema, plasticEventSchema } from "./runtime-control-schemas.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 
 const refInputSchema = {
@@ -57,6 +57,17 @@ const refActionOutputSchema = {
   }
 };
 
+const refAffordanceSchema = {
+  type: "object",
+  required: ["id", "title", "method"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    method: { type: "string" },
+    input: {}
+  }
+};
+
 export const listVisibleRefsMetadata = {
   description: "Lists visible data-plastic-ref elements grouped by Electron window.",
   inputSchema: noInputSchema,
@@ -87,8 +98,8 @@ export const resolveRefMetadata = {
       state: { type: "object" },
       sourceHints: { type: "array", items: { type: "string" } },
       lineage: { type: "array", items: plasticEventSchema },
-      verification: { type: "array", items: { type: "object" } },
-      actions: { type: "array", items: { type: "object" } }
+      verification: { type: "array", items: refAffordanceSchema },
+      actions: { type: "array", items: refAffordanceSchema }
     }
   },
   examples: [{ title: "Resolve a panel ref", input: { ref: "panel:chat-main" }, verifyWith: { method: "deixis/listVisibleRefs", input: {} } }],
@@ -113,9 +124,9 @@ export const verifyRefActionMetadata = {
       ok: { type: "boolean" },
       ref: { type: "string" },
       panelId: { type: ["string", "null"] },
-      matchedEvents: { type: "array", items: { type: "object" } },
-      refEvents: { type: "array", items: { type: "object" } },
-      timeline: { type: "object" },
+      matchedEvents: { type: "array", items: plasticEventSchema },
+      refEvents: { type: "array", items: plasticEventSchema },
+      timeline: eventsTimelineOutputSchema,
       verificationEventId: { type: "string" }
     }
   },
