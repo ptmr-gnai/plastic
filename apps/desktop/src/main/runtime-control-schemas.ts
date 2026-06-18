@@ -62,6 +62,39 @@ export const eventsListOutputSchema = {
   items: plasticEventSchema
 };
 
+export const plasticMethodLinkSchema = {
+  type: "object",
+  required: ["rel", "href"],
+  properties: {
+    rel: { type: "string" },
+    href: { type: "string" },
+    method: { type: "string" },
+    target: { type: "string" },
+    input: {},
+    inputSchema: {}
+  }
+};
+
+const plasticMethodExampleVerificationSchema = {
+  type: "object",
+  required: ["method", "input"],
+  properties: {
+    method: { type: "string" },
+    input: {}
+  }
+};
+
+const plasticMethodExampleSchema = {
+  type: "object",
+  required: ["title", "input"],
+  properties: {
+    title: { type: "string" },
+    input: {},
+    expectedEvents: { type: "array", items: { type: "string" } },
+    verifyWith: plasticMethodExampleVerificationSchema
+  }
+};
+
 export const eventTimelineItemSchema = {
   type: "object",
   required: ["eventId", "timestamp", "actor", "scope", "type", "summary", "causes", "effects", "links"],
@@ -74,7 +107,7 @@ export const eventTimelineItemSchema = {
     summary: { type: "string" },
     causes: { type: "array", items: { type: "string" } },
     effects: { type: "array", items: { type: "string" } },
-    links: { type: "array", items: { type: "object" } },
+    links: { type: "array", items: plasticMethodLinkSchema },
     raw: plasticEventSchema
   }
 };
@@ -110,7 +143,7 @@ export const plasticMethodSchema = {
     },
     inputSchema: {},
     outputSchema: {},
-    examples: { type: "array", items: { type: "object" } },
+    examples: { type: "array", items: plasticMethodExampleSchema },
     effects: { type: "object" },
     preconditions: { type: "array", items: { type: "string" } },
     reversibility: { type: "object" },
@@ -125,7 +158,7 @@ export const plasticMethodSchema = {
         notes: { type: "string" }
       }
     },
-    links: { type: "array", items: { type: "object" } }
+    links: { type: "array", items: plasticMethodLinkSchema }
   }
 };
 
@@ -160,7 +193,7 @@ export const agentTransportSchema = {
     command: { type: "string" },
     args: { type: "array", items: { type: "string" } },
     env: { type: "object" },
-    links: { type: "array", items: { type: "object" } },
+    links: { type: "array", items: plasticMethodLinkSchema },
     tools: {
       type: "array",
       items: {

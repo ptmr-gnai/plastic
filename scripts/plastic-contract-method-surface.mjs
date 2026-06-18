@@ -143,4 +143,10 @@ function assertMethodSchema({ assert, schema, label }) {
   assert(schema?.properties?.availability?.required?.includes("status"), `${label} availability schema must require status`);
   assert(schema?.properties?.availability?.properties?.status?.enum?.includes("available"), `${label} availability schema must expose available status`);
   assert(schema?.properties?.availability?.properties?.status?.enum?.includes("unavailable"), `${label} availability schema must expose unavailable status`);
+  assert(schema?.properties?.links?.items?.required?.includes("rel"), `${label} links schema must require rel`);
+  assert(schema?.properties?.links?.items?.required?.includes("href"), `${label} links schema must require href`);
+  assert(schema?.properties?.links?.items?.properties?.inputSchema, `${label} links schema must expose inputSchema`);
+  assert(schema?.properties?.examples?.items?.required?.includes("title"), `${label} examples schema must require title`);
+  assert(schema?.properties?.examples?.items?.properties?.expectedEvents?.items?.type === "string", `${label} examples schema must expose expected event types`);
+  assert(schema?.properties?.examples?.items?.properties?.verifyWith?.required?.includes("method"), `${label} examples schema must expose verification method`);
 }
