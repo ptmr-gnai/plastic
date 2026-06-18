@@ -10,6 +10,11 @@ export const assertStateMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.events?.required?.includes("count"), "plastic/state events schema must require count");
   assert(description.outputSchema?.properties?.events?.required?.includes("latest"), "plastic/state events schema must require latest");
   assert(description.outputSchema?.properties?.events?.properties?.latest?.type?.includes("null"), "plastic/state events latest must allow no event id");
+  assert(description.outputSchema?.properties?.resources?.items?.required?.includes("links"), "plastic/state resource schema must require links");
+  assert(description.outputSchema?.properties?.resources?.items?.required?.includes("actions"), "plastic/state resource schema must require actions");
+  assert(description.outputSchema?.properties?.resources?.items?.properties?.links?.items?.required?.includes("href"), "plastic/state resource link schema must require href");
+  assert(description.outputSchema?.properties?.resources?.items?.properties?.actions?.items?.required?.includes("method"), "plastic/state resource action schema must require method");
+  assert(description.outputSchema?.properties?.resources?.items?.properties?.actions?.items?.properties?.inputSchema, "plastic/state resource action schema must expose inputSchema");
   assert(description.outputSchema?.properties?.controlPlane?.required?.includes("runtime"), "plastic/state output schema must expose runtime control plane");
   assert(description.outputSchema?.properties?.controlPlane?.required?.includes("build"), "plastic/state output schema must expose build control plane");
   assert(description.outputSchema?.properties?.controlPlane?.properties?.runtime?.required?.includes("rpcUrl"), "plastic/state output schema must expose runtime RPC URL");

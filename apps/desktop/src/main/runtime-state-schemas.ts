@@ -9,6 +9,45 @@ const plasticStateEventsSchema = {
   }
 };
 
+const plasticStateResourceLinkSchema = {
+  type: "object",
+  required: ["rel", "href"],
+  properties: {
+    rel: { type: "string" },
+    href: { type: "string" },
+    method: { type: "string" },
+    target: { type: "string" },
+    input: {},
+    inputSchema: {}
+  }
+};
+
+const plasticStateResourceActionSchema = {
+  type: "object",
+  required: ["id", "title", "method"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    method: { type: "string" },
+    input: {},
+    inputSchema: {},
+    description: { type: "string" }
+  }
+};
+
+const plasticStateResourceSchema = {
+  type: "object",
+  required: ["id", "kind", "state", "links", "actions"],
+  properties: {
+    id: { type: "string" },
+    kind: { type: "string" },
+    title: { type: "string" },
+    state: {},
+    links: { type: "array", items: plasticStateResourceLinkSchema },
+    actions: { type: "array", items: plasticStateResourceActionSchema }
+  }
+};
+
 export const plasticStateOutputSchema = {
   type: "object",
   required: ["app", "events", "resources", "controlPlane"],
@@ -29,7 +68,7 @@ export const plasticStateOutputSchema = {
         }
       }
     },
-    resources: { type: "array", items: { type: "object" } },
+    resources: { type: "array", items: plasticStateResourceSchema },
     panels: { type: "array", items: { type: "object" } },
     windows: { type: "array", items: { type: "object" } },
     events: plasticStateEventsSchema,
