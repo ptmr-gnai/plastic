@@ -81,6 +81,9 @@ export const assertSelfTestMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.required?.includes("summary"), "plastic/selfTest output schema must require summary");
   assert(description.outputSchema?.properties?.summary?.required?.includes("sharedCheckIds"), "plastic/selfTest summary schema must expose sharedCheckIds");
   assert(description.outputSchema?.properties?.summary?.required?.includes("hostCheckIds"), "plastic/selfTest summary schema must expose hostCheckIds");
+  assert(description.outputSchema?.properties?.checks?.items?.required?.includes("id"), "plastic/selfTest check schema must require id");
+  assert(description.outputSchema?.properties?.checks?.items?.required?.includes("ok"), "plastic/selfTest check schema must require ok");
+  assert(description.outputSchema?.properties?.checks?.items?.properties?.details, "plastic/selfTest check schema must expose details");
   assert(description.effects?.durableEvents?.includes("plastic.self_test.completed"), "plastic/selfTest missing durable event effect");
   return { id: description.id, summaryRequired: description.outputSchema.properties.summary.required };
 };

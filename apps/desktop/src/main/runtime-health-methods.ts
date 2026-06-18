@@ -159,6 +159,16 @@ const summarizeHealthChecks = (checks: HealthCheck[], sharedCheckIds: string[]) 
   };
 };
 
+const healthCheckSchema = {
+  type: "object",
+  required: ["id", "ok"],
+  properties: {
+    id: { type: "string" },
+    ok: { type: "boolean" },
+    details: {}
+  }
+};
+
 const selfTestOutputSchema = {
   type: "object",
   required: ["ok", "summary", "checks", "eventId"],
@@ -168,7 +178,7 @@ const selfTestOutputSchema = {
       type: "object",
       required: ["total", "shared", "host", "failedIds", "sharedCheckIds", "hostCheckIds"]
     },
-    checks: { type: "array" },
+    checks: { type: "array", items: healthCheckSchema },
     eventId: { type: "string" }
   }
 };
