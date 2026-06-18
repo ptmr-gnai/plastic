@@ -52,8 +52,8 @@ const verificationStatusItemSchema = {
     warningCount: { type: "number" },
     errorCount: { type: "number" },
     checkCount: { type: "number" },
-    warnings: { type: "array" },
-    errors: { type: "array" }
+    warnings: { type: "array", items: { type: "string" } },
+    errors: { type: "array", items: { type: "string" } }
   }
 };
 

@@ -57,6 +57,9 @@ const asBoolean = (value: unknown): boolean | undefined =>
 const asArray = (value: unknown): unknown[] =>
   Array.isArray(value) ? value : [];
 
+const asStringArray = (value: unknown): string[] =>
+  asArray(value).filter((item): item is string => typeof item === "string");
+
 const verificationEventTypes = new Set(["extension.verified", "extension.verify_failed"]);
 
 export const latestVerificationStatus = (events: PlasticEvent[]) => {
@@ -84,8 +87,8 @@ export const latestVerificationStatus = (events: PlasticEvent[]) => {
     if (!extensionId || ok === undefined) {
       continue;
     }
-    const warnings = asArray(payload.warnings);
-    const errors = asArray(payload.errors);
+    const warnings = asStringArray(payload.warnings);
+    const errors = asStringArray(payload.errors);
     const checks = asArray(payload.checks);
     const report = {
       extensionId,
