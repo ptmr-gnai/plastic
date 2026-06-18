@@ -52,3 +52,20 @@ export const assertExtensionResourceAffordances = ({ assert, resources, source }
   assert(hasActionAffordance(extension.actions, { id: "activate-extension", method: "extensions/activate", input: { extensionId } }), `${source} extension resource missing activate action with extension input`);
   assert(hasActionAffordance(extension.actions, { id: "verify-extension", method: "extensions/verify", input: { extensionId } }), `${source} extension resource missing verify action with extension input`);
 };
+
+export const assertWindowResourceAffordances = ({ assert, resources, source }) => {
+  const window = (Array.isArray(resources) ? resources : []).find((resource) => resource.kind === "window");
+  assert(window, `${source} does not expose individual window resources`);
+  const panelId = window.state?.panelIds?.[0];
+  if (typeof panelId !== "string") {
+    return;
+  }
+  assert(hasActionAffordance(window.actions, { id: `focus-panel:${panelId}`, method: "windows/focusPanel", input: { panelId } }), `${source} window resource missing focus action with panel input`);
+  assert(hasActionAffordance(window.actions, { id: `scroll-panel:${panelId}`, method: "windows/scrollToRef", input: { ref: `panel:${panelId}` } }), `${source} window resource missing scroll action with ref input`);
+};
+
+export const assertContextualResourceAffordances = (input) => {
+  assertPanelResourceAffordances(input);
+  assertExtensionResourceAffordances(input);
+  assertWindowResourceAffordances(input);
+};

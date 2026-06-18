@@ -62,7 +62,8 @@ const buildStateResources = (input: {
   panelCollectionResource(input.panelItems),
   panelActionsResource(),
   ...input.panelItems.map(panelResource),
-  windowCollectionResource(input.windowItems)
+  windowCollectionResource(input.windowItems),
+  ...input.windowItems.map(windowResource)
 ];
 
 const plasticAppResource = (eventCount: number, methodCount: number): PlasticResource => ({
@@ -197,4 +198,30 @@ const windowCollectionResource = (items: PlasticWindow[]): PlasticResource => ({
   state: { count: items.length, items },
   links: [{ rel: "self", href: "windows/list", method: "windows/list" }],
   actions: [{ id: "create", title: "Create window", method: "windows/create" }]
+});
+
+const windowResource = (window: PlasticWindow): PlasticResource<PlasticWindow> => ({
+  id: `window:${window.id}`,
+  kind: "window",
+  title: window.title,
+  state: window,
+  links: [
+    { rel: "collection", href: "windows/list", method: "windows/list" },
+    { rel: "timeline", href: "events/timeline", method: "events/timeline", target: window.id, input: { scope: { windowId: window.id }, limit: 12 } }
+  ],
+  actions: [
+    { id: "list-windows", title: "List windows", method: "windows/list" },
+    ...window.panelIds.map((panelId) => ({
+      id: `focus-panel:${panelId}`,
+      title: `Focus panel ${panelId}`,
+      method: "windows/focusPanel",
+      input: { panelId }
+    })),
+    ...window.panelIds.map((panelId) => ({
+      id: `scroll-panel:${panelId}`,
+      title: `Scroll to panel ${panelId}`,
+      method: "windows/scrollToRef",
+      input: { ref: `panel:${panelId}` }
+    }))
+  ]
 });

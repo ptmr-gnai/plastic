@@ -7,7 +7,7 @@ import {
   assertRuntimeAuditStatus, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 import { assertAgentOrientMethodDescription, assertAgentOrientationPacket, assertAgentWorkbenchMethodDescription, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
-import { assertExtensionResourceAffordances, assertPanelResourceAffordances, expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
+import { assertContextualResourceAffordances, expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
 import { assertRuntimeCapabilitiesMethodDescription } from "./plastic-contract-capabilities.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagnostics.mjs";
@@ -73,8 +73,7 @@ await check("plastic/state", async () => {
   assert(serviceResources.some((resource) => hasServiceAffordance(resource, { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest", actionId: "run-self-test" })), "state service resource missing self-test affordances");
   assertStateMethodDescription({ assert, description });
   assert(panelResources.length > 0, "state does not expose panels");
-  assertPanelResourceAffordances({ assert, resources: state.resources, source: "state" });
-  assertExtensionResourceAffordances({ assert, resources: state.resources, source: "state" });
+  assertContextualResourceAffordances({ assert, resources: state.resources, source: "state" });
   assert(state.app.mode === "electron" || state.app.mode === "headless", "state.app.mode must identify the host");
   assert(runtimeStartedControlPlane.mode === state.app.mode, "runtime.started mode mismatch");
   return { mode: state.app.mode, panels: panelResources.length, events: state.events?.count ?? null, controlPlane: state.controlPlane.runtime.transport };
@@ -136,8 +135,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });
   assertMethodCatalogsMatch({ assert, actual: snapshot.methods.items, expected: methods, actualLabel: "snapshot methods", expectedLabel: "plastic/methods" });
-  assertPanelResourceAffordances({ assert, resources: snapshot.resources, source: "snapshot" });
-  assertExtensionResourceAffordances({ assert, resources: snapshot.resources, source: "snapshot" });
+  assertContextualResourceAffordances({ assert, resources: snapshot.resources, source: "snapshot" });
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
   for (const link of expectedSnapshotLinks) {
     assert(hasLinkAffordance(snapshot.links, link), `snapshot missing ${link.method} link`);

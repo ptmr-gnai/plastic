@@ -61,6 +61,8 @@ The remaining legibility work has moved up a layer:
 
 `plastic/state` and `plastic/snapshot` also project individual `kind: "extension"` resources. Extension resources expose concrete get, activate, verify, register-panel, fork, timeline, and method-description affordances using the correct `id` or `extensionId` payload shape for each method.
 
+`plastic/state` and `plastic/snapshot` now project individual `kind: "window"` resources. Window resources expose concrete focus and scroll actions for their projected panels, using exact `panelId` and `panel:<id>` ref payloads.
+
 ## Required Method Metadata
 
 Every method must be describable with:
