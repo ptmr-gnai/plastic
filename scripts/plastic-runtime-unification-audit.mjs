@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const outPath = process.env.PLASTIC_RUNTIME_UNIFICATION_AUDIT_OUT ?? ".plastic/tmp/runtime-unification-audit.json";
+const parityReportPath = process.env.PLASTIC_METHOD_PARITY_REPORT_OUT ?? ".plastic/tmp/electron-method-parity.json";
 const validationEnv = {
   PLASTIC_RUNTIME_URL: process.env.PLASTIC_RUNTIME_URL ?? "http://127.0.0.1:7431",
   PLASTIC_BUILD_URL: process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7432",
@@ -57,6 +58,23 @@ const assertSummaryShape = (summary) => {
   assertSummaryInvariant(typeof summary.runtimeUnification.usable === "boolean", "runtimeUnification.usable must be boolean");
   assertSummaryInvariant(["passed", "failed", "not-run"].includes(summary.runtimeUnification.strictElectron), "strictElectron must be a known status");
   assertSummaryInvariant(["passed", "failed", "degraded", "not-run"].includes(summary.runtimeUnification.unified), "unified must be a known status");
+  assertSummaryInvariant(summary.runtimeUnification.methodParity === null || typeof summary.runtimeUnification.methodParity?.failureSummary?.total === "number", "methodParity failure summary must be null or numeric");
+};
+
+const readMethodParitySummary = async () => {
+  try {
+    const report = JSON.parse(await readFile(parityReportPath, "utf8"));
+    return {
+      reportPath: parityReportPath,
+      mode: typeof report.mode === "string" ? report.mode : "unknown",
+      failureSummary: report.comparisonFailureSummary ?? null
+    };
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
 };
 
 const writeSummary = async (results, options = {}) => {
@@ -98,7 +116,8 @@ const writeSummary = async (results, options = {}) => {
       usable: blockingFailures.length === 0 && byId.headless?.ok === true && byId.unified?.ok === true,
       strictElectron,
       unified,
-      blockingFailures
+      blockingFailures,
+      methodParity: byId.unified?.ok ? await readMethodParitySummary() : null
     },
     results
   };
