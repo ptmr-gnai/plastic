@@ -34,6 +34,8 @@ export const assertRuntimeAuditStatusMethodDescription = ({ assert, description 
   assert(description.outputSchema?.properties?.verdict?.properties?.status?.enum?.includes("running"), "runtime/auditStatus output schema must expose running status");
   assert(description.outputSchema?.properties?.verdict?.required?.includes("methodParity"), "runtime/auditStatus output schema must require method parity");
   assert(description.outputSchema?.properties?.verdict?.properties?.methodParity?.required?.includes("failureTotal"), "runtime/auditStatus output schema must expose method parity total");
+  assert(description.outputSchema?.properties?.recentActions?.items?.required?.includes("stdoutTail"), "runtime/auditStatus output schema must expose recent action tails");
+  assert(description.outputSchema?.properties?.recentActions?.items?.properties?.auditMetadata?.anyOf?.some((candidate) => candidate.properties?.methodParity), "runtime/auditStatus output schema must expose recent action method parity metadata");
   assert(description.outputSchema?.properties?.summary?.anyOf?.some((candidate) => candidate.properties?.inProgress?.type === "boolean"), "runtime/auditStatus output schema must expose summary.inProgress");
   return { id: description.id, statuses: description.outputSchema.properties.verdict.properties.status.enum };
 };

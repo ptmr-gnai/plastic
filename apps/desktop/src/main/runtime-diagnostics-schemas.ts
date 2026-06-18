@@ -46,6 +46,27 @@ const compactAuditMetadataSchema = {
   }
 };
 
+const recentAuditActionSchema = {
+  type: "object",
+  required: ["eventId", "timestamp", "actionId", "ok", "args", "env", "auditMetadata", "stdoutTail", "stderrTail"],
+  properties: {
+    eventId: { type: "string" },
+    timestamp: { type: "string" },
+    actionId: { type: ["string", "null"] },
+    title: { type: ["string", "null"] },
+    ok: { type: "boolean" },
+    completedAt: { type: "string" },
+    command: { type: ["string", "null"] },
+    args: { type: "array", items: { type: "string" } },
+    env: { type: "object" },
+    auditMetadata: { anyOf: [{ type: "null" }, compactAuditMetadataSchema] },
+    exitCode: { type: ["number", "null"] },
+    signal: { type: ["string", "null"] },
+    stdoutTail: { type: "string" },
+    stderrTail: { type: "string" }
+  }
+};
+
 export const auditStatusOutputSchema = {
   type: "object",
   required: ["available", "path", "verdict", "summary", "recentActions"],
@@ -86,7 +107,7 @@ export const auditStatusOutputSchema = {
         }
       ]
     },
-    recentActions: { type: "array" }
+    recentActions: { type: "array", items: recentAuditActionSchema }
   }
 };
 
