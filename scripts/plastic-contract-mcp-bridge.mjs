@@ -1,5 +1,6 @@
 import { assert, rpc, rpcUrl } from "./plastic-contract-helpers.mjs";
 import { createPlasticMcpClient } from "./plastic-mcp-client.mjs";
+import { stableJson } from "./plastic-stable-json.mjs";
 
 const actorId = `contract.mcp.${Date.now()}`;
 
@@ -12,10 +13,12 @@ const callPlasticRpcTool = (mcp, { id, method, input }) =>
 const assertMcpToolMetadata = async (mcp) => {
   const listedTools = await mcp.listTools();
   const plasticTool = listedTools.find((candidate) => candidate.name === "plastic_rpc");
+  const rpcCall = await rpc("methods/describe", { id: "rpc/call" });
   assert(plasticTool, "MCP tools/list missing plastic_rpc");
   assert(plasticTool.description?.includes("agent/orient"), "MCP plastic_rpc description must teach agent/orient");
   assert(plasticTool.description?.includes("runtime/auditStatus"), "MCP plastic_rpc description must teach runtime/auditStatus");
   assert(plasticTool.description?.includes("runtime/auditActionPlan"), "MCP plastic_rpc description must teach runtime/auditActionPlan");
+  assert(stableJson(plasticTool.inputSchema) === stableJson(rpcCall.inputSchema), "MCP plastic_rpc input schema must match rpc/call");
 };
 
 const initializeMcp = async (mcp) => {

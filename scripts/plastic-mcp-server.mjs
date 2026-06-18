@@ -63,19 +63,16 @@ const tool = {
   description: "Call any registered Plastic RPC method through the shared Plastic method registry. The result includes delegated method effects and reversibility when available. For orientation, call agent/orient or agent/workbench first. For headed/headless audit state, call runtime/auditStatus, inspect a current action with runtime/auditActionPlan, then call runtime/runAuditAction only when execution is intended.",
   inputSchema: {
     type: "object",
+    required: ["method"],
     properties: {
       method: {
         type: "string",
-        description: "Plastic RPC method id, for example plastic/state or chats/createCodexChat."
+        description: "Registered Plastic RPC method id to invoke."
       },
       input: {
-        type: "object",
-        additionalProperties: true,
-        description: "Input payload for the method."
+        description: "Input passed through to the delegated RPC method."
       }
-    },
-    required: ["method"],
-    additionalProperties: false
+    }
   }
 };
 
