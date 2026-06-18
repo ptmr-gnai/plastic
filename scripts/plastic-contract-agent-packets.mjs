@@ -205,7 +205,27 @@ const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {
 };
 
 const assertRecentAuditActionMetadata = ({ assert, recentActions, source }) => {
-  assert(recentActions.every((action) => action.auditMetadata === null || action.auditMetadata?.schemaVersion === 1), `${source} recent audit action metadata must be null or schema-versioned`);
+  for (const action of recentActions) {
+    if (action.auditMetadata === null) {
+      continue;
+    }
+    assertCompactAuditMetadata({ assert, metadata: action.auditMetadata, source: `${source} recent audit action metadata` });
+  }
+};
+
+const assertCompactAuditMetadata = ({ assert, metadata, source }) => {
+  assert(metadata?.schemaVersion === 1, `${source} must be schema-versioned`);
+  assert(typeof metadata.generatedAt === "string" && !Number.isNaN(Date.parse(metadata.generatedAt)), `${source} missing generated timestamp`);
+  assert(typeof metadata.inProgress === "boolean", `${source} missing progress flag`);
+  assert(typeof metadata.checks === "number", `${source} missing check count`);
+  assert(typeof metadata.expectedChecks === "number", `${source} missing expected check count`);
+  assert(Array.isArray(metadata.expectedStepIds), `${source} missing expected step ids`);
+  assert(typeof metadata.usable === "boolean", `${source} missing usable flag`);
+  assert(typeof metadata.strictElectron === "string", `${source} missing strict Electron status`);
+  assert(typeof metadata.unified === "string", `${source} missing unified status`);
+  assert(typeof metadata.methodParity?.mode === "string", `${source} missing method parity mode`);
+  assert(metadata.methodParity.reportPath === null || typeof metadata.methodParity.reportPath === "string", `${source} invalid method parity report path`);
+  assert(metadata.methodParity.failureTotal === null || typeof metadata.methodParity.failureTotal === "number", `${source} invalid method parity total`);
 };
 
 const assertActionMetadata = ({ assert, actions, source }) => {
