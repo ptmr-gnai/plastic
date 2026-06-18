@@ -5,8 +5,10 @@ let canonicalAgentTransportSource = null;
 
 export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl, source, methods }) => {
   const items = assertArray(transports, `${source} agentTransports is not an array`);
-  const methodIds = new Set((Array.isArray(methods) ? methods : []).map((method) => method.id));
-  const rpcCallInputSchema = (Array.isArray(methods) ? methods : []).find((method) => method.id === "rpc/call")?.inputSchema;
+  const methodItems = Array.isArray(methods) ? methods : [];
+  const methodsById = Object.fromEntries(methodItems.map((method) => [method.id, method]));
+  const methodIds = new Set(methodItems.map((method) => method.id));
+  const rpcCallInputSchema = methodsById["rpc/call"]?.inputSchema;
   const methodsUrl = rpcUrl.replace(/\/rpc$/, "/methods");
   const selfTestUrl = rpcUrl.replace(/\/rpc$/, "/self-test");
   const eventStreamUrl = rpcUrl.replace(/\/rpc$/, "/events/stream");
@@ -44,6 +46,11 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
     assert(
       unknownDelegatedMethods.length === 0,
       `${source} agent transport actions reference unknown delegated methods: ${unknownDelegatedMethods.join(", ")}`
+    );
+    const unavailableDelegatedMethods = delegatedMethods.filter((method) => methodsById[method]?.availability?.status !== "available");
+    assert(
+      unavailableDelegatedMethods.length === 0,
+      `${source} agent transport actions reference unavailable delegated methods: ${unavailableDelegatedMethods.join(", ")}`
     );
   }
   if (rpcCallInputSchema) {
