@@ -455,7 +455,8 @@ await check("contract scaffold cleanup", async () => {
   assert(!discovered.some((extension) => extension.id === scaffoldedExtensionId), "scaffolded extension still discovered after cleanup");
   const removedEvents = assertArray(await rpc("events/list", { types: ["extension.removed"], scope: { extensionId: scaffoldedExtensionId }, limit: 10 }), "extension removed events/list is not an array");
   assertEventsTagged(removedEvents, validationTags, "extension removed validation tags not readable"); assertExtensionRemovedEventContract({ assert, events: removedEvents, extensionId: scaffoldedExtensionId });
-  await rpc("panels/close", { id: scaffoldedExtensionPanelId });
+  await rpc("panels/close", { id: scaffoldedExtensionPanelId, meta: validationMeta });
+  assertEventsTagged(assertArray(await rpc("events/list", { types: ["panel.removed"], scope: { panelId: scaffoldedExtensionPanelId }, limit: 10 }), "scaffolded extension panel removed events/list is not an array"), validationTags, "scaffolded extension panel cleanup validation tags not readable");
   const panels = await rpc("panels/list");
   assert(!panels.some((panel) => panel.id === scaffoldedExtensionPanelId), "scaffolded extension panel still projected after cleanup");
   extensions = await rpc("extensions/list");
