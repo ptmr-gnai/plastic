@@ -50,8 +50,23 @@ const normalizeAuditMetadata = (value: unknown) => {
   const metadata = value && typeof value === "object" && !Array.isArray(value)
     ? value as ReturnType<typeof compactAuditMetadata>
     : null;
-  return metadata?.schemaVersion === 1 ? metadata : null;
+  return isCompactAuditMetadata(metadata) ? metadata : null;
 };
+
+const isCompactAuditMetadata = (metadata: ReturnType<typeof compactAuditMetadata> | null) =>
+  metadata?.schemaVersion === 1
+  && typeof metadata.generatedAt === "string"
+  && typeof metadata.inProgress === "boolean"
+  && typeof metadata.checks === "number"
+  && typeof metadata.expectedChecks === "number"
+  && Array.isArray(metadata.expectedStepIds)
+  && metadata.expectedStepIds.every((id) => typeof id === "string")
+  && typeof metadata.usable === "boolean"
+  && typeof metadata.strictElectron === "string"
+  && typeof metadata.unified === "string"
+  && typeof metadata.methodParity?.mode === "string"
+  && (metadata.methodParity.reportPath === null || typeof metadata.methodParity.reportPath === "string")
+  && (metadata.methodParity.failureTotal === null || typeof metadata.methodParity.failureTotal === "number");
 
 const stringEnv = (value: unknown) =>
   value && typeof value === "object" && !Array.isArray(value)
