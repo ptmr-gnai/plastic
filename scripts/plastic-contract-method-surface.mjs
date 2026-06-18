@@ -37,6 +37,9 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
       methods,
       source: `${label} ${method.id} links`
     });
+    const exampleActions = (method.examples ?? [])
+      .map((example, index) => ({ id: `example:${index}:invoke`, method: method.id, input: example.input }));
+    assertActionInputLegibility({ assert, actions: exampleActions, methods, source: `${label} ${method.id} example inputs` });
     const verifyActions = (method.examples ?? [])
       .map((example, index) => example.verifyWith ? { id: `example:${index}:verify`, ...example.verifyWith } : null)
       .filter(Boolean);
