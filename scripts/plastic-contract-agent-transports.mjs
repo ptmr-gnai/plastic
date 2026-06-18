@@ -6,6 +6,7 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
   const rpcCallInputSchema = (Array.isArray(methods) ? methods : []).find((method) => method.id === "rpc/call")?.inputSchema;
   const methodsUrl = rpcUrl.replace(/\/rpc$/, "/methods");
   const selfTestUrl = rpcUrl.replace(/\/rpc$/, "/self-test");
+  const eventStreamUrl = rpcUrl.replace(/\/rpc$/, "/events/stream");
   const http = items.find((transport) => transport.id === "http-rpc");
   const mcp = items.find((transport) => transport.id === "mcp-stdio");
   assert(items.length === 2, `${source} agentTransports must expose exactly HTTP RPC and MCP stdio`);
@@ -16,6 +17,7 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
   assert(http.rpcUrl === rpcUrl, `${source} HTTP transport URL mismatch`);
   assert(http.links?.some((link) => link.rel === "methods" && link.method === "http/get" && link.href === methodsUrl), `${source} HTTP transport missing methods link`);
   assert(http.links?.some((link) => link.rel === "self-test" && link.method === "http/get" && link.href === selfTestUrl), `${source} HTTP transport missing self-test link`);
+  assert(http.links?.some((link) => link.rel === "event-stream" && link.method === "http/get" && link.href === eventStreamUrl), `${source} HTTP transport missing event stream link`);
   assert(http.links?.some((link) => link.rel === "rpc" && link.method === "http/post" && link.href === rpcUrl), `${source} HTTP transport missing RPC link`);
   assert(http.actions?.some((action) => action.id === "call-plastic-rpc" && action.method === "http/post" && action.href === rpcUrl), `${source} HTTP transport missing call action`);
   assert(http.actions?.some((action) => action.id === "call-plastic-rpc" && action.inputSchema?.required?.includes("method")), `${source} HTTP transport call action missing RPC input schema`);

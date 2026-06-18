@@ -21,6 +21,7 @@ const createAgentTransportDescriptors = (config: RuntimeHostConfig) => [
     links: [
       { rel: "methods", href: config.controlPlane.runtime.methodsUrl, method: "http/get" },
       { rel: "self-test", href: config.controlPlane.runtime.selfTestUrl, method: "http/get" },
+      { rel: "event-stream", href: config.controlPlane.runtime.eventStreamUrl, method: "http/get" },
       { rel: "rpc", href: config.controlPlane.runtime.rpcUrl, method: "http/post" }
     ],
     actions: [
