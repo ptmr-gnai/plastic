@@ -1,4 +1,4 @@
-import { assertLinkInputLegibility } from "./plastic-contract-affordances.mjs";
+import { assertActionInputLegibility, assertLinkInputLegibility } from "./plastic-contract-affordances.mjs";
 import { stableJson } from "./plastic-stable-json.mjs";
 
 export function assertMethodCatalogsMatch({ assert, actual, expected, actualLabel, expectedLabel }) {
@@ -37,6 +37,17 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
       methods,
       source: `${label} ${method.id} links`
     });
+    const verifyActions = (method.examples ?? [])
+      .map((example, index) => example.verifyWith ? { id: `example:${index}:verify`, ...example.verifyWith } : null)
+      .filter(Boolean);
+    const unknownVerifyMethods = verifyActions
+      .filter((action) => typeof action.method === "string" && !methodIds.has(action.method))
+      .map((action) => `${method.id}:${action.id}:${action.method}`);
+    assert(
+      unknownVerifyMethods.length === 0,
+      `${label} ${method.id} examples verify unknown methods: ${unknownVerifyMethods.join(", ")}`
+    );
+    assertActionInputLegibility({ assert, actions: verifyActions, methods, source: `${label} ${method.id} examples` });
   }
 }
 
