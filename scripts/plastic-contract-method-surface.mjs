@@ -106,8 +106,11 @@ export async function assertRpcCallDispatch({ assert, rpc, runId, validationMeta
   assert(Array.isArray(panels), "rpc/call panels/list did not return panel array");
   const type = "contract.rpc_call.appended";
   const marker = `${runId}-rpc-call`;
-  const event = await rpc("rpc/call", {
-    method: "events/append",
+  const appendDescription = await rpc("methods/describe", { id: "events/append" });
+  const appendInvokeLink = appendDescription.links?.find((link) => link.rel === "invoke" && link.target === "events/append");
+  assert(appendInvokeLink, "events/append missing generated invoke link");
+  const event = await rpc(appendInvokeLink.method, {
+    ...appendInvokeLink.input,
     input: { type, payload: { marker }, scope: { workspaceId: "default" }, meta: validationMeta }
   });
   assert(event?.type === type, "rpc/call events/append returned wrong event type");
