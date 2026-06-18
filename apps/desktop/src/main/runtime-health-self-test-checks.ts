@@ -3,8 +3,6 @@ import {
   expectedOrientationActions,
   expectedOrientationLinks,
   expectedSnapshotLinks,
-  expectedWorkbenchActions,
-  expectedWorkbenchLinks,
   hasActionAffordance,
   hasLinkAffordance,
   hasServiceAffordance
@@ -361,81 +359,6 @@ const moduleMethodIds = (runtimeModules: unknown, moduleIds: string[]): string[]
     throw new Error(`Runtime module methods missing for ${moduleIds.join(", ")}`);
   }
   return methodIds;
-};
-
-export const checkAgentOrientationHealth = (workbench: unknown, orientation: unknown, methodIds: Set<string>) => {
-  const workbenchRecord = asRecord(workbench);
-  const orientationRecord = asRecord(orientation);
-  const control = asRecord(workbenchRecord.control);
-  const capabilities = asRecord(orientationRecord.capabilities);
-  const workbenchActions = Array.isArray(control.recommendedActions) ? control.recommendedActions.map(asRecord) : [];
-  const workbenchLinks = Array.isArray(control.links) ? control.links.map(asRecord) : [];
-  const orientationActions = Array.isArray(capabilities.recommendedActions) ? capabilities.recommendedActions.map(asRecord) : [];
-  const orientationLinks = Array.isArray(capabilities.links) ? capabilities.links.map(asRecord) : [];
-  const agentTransports = Array.isArray(control.agentTransports) ? control.agentTransports.map(asRecord) : [];
-  const auditStatus = asRecord(control.auditStatus);
-  const auditMetadata = checkAuditMetadata(auditStatus.audit, "agent/workbench audit status");
-  const orientationAuditStatus = asRecord(capabilities.auditStatus);
-  const orientationAuditMetadata = checkAuditMetadata(orientationAuditStatus.audit, "agent/orient audit status");
-  const failureSummary = asRecord(auditStatus.failureSummary);
-  const controlPlane = asRecord(control.controlPlane);
-  const runtimeControlPlane = asRecord(controlPlane.runtime);
-  const buildControlPlane = asRecord(controlPlane.build);
-  const missing = [
-    { source: "agent/workbench", kind: "actions", ids: expectedWorkbenchActions.filter((action) => !hasActionAffordance(workbenchActions, action)).map((action) => action.id) },
-    { source: "agent/workbench", kind: "links", ids: expectedWorkbenchLinks.filter((link) => !hasLinkAffordance(workbenchLinks, link)).map((link) => link.rel) },
-    { source: "agent/orient", kind: "actions", ids: expectedOrientationActions.filter((action) => !hasActionAffordance(orientationActions, action)).map((action) => action.id) },
-    { source: "agent/orient", kind: "links", ids: expectedOrientationLinks.filter((link) => !hasLinkAffordance(orientationLinks, link)).map((link) => link.rel) }
-  ].find(({ ids }) => ids.length > 0);
-  const unknownWorkbenchActions = unknownMethodReferences(workbenchActions, methodIds), unknownWorkbenchLinks = unknownMethodReferences(workbenchLinks, methodIds);
-  const unknownOrientationActions = unknownMethodReferences(orientationActions, methodIds), unknownOrientationLinks = unknownMethodReferences(orientationLinks, methodIds);
-  if (runtimeControlPlane.transport !== "http" || buildControlPlane.transport !== "http") {
-    throw new Error("agent/workbench missing shared runtime/build control plane");
-  }
-  if (!agentTransports.some((transport) => transport.id === "http-rpc") || !agentTransports.some((transport) => transport.id === "mcp-stdio")) {
-    throw new Error("agent/workbench missing HTTP RPC or MCP transport affordance");
-  }
-  if (typeof auditStatus.verdict !== "string" || typeof failureSummary.count !== "number") {
-    throw new Error("agent/workbench missing compact audit status");
-  }
-  if (missing) {
-    throw new Error(`${missing.source} missing ${missing.kind}: ${missing.ids.join(", ")}`);
-  }
-  if (unknownWorkbenchActions.length > 0 || unknownWorkbenchLinks.length > 0 || unknownOrientationActions.length > 0 || unknownOrientationLinks.length > 0) {
-    throw new Error("agent orientation packet references unknown methods");
-  }
-  const invalidActions = invalidAgentActions([...workbenchActions, ...orientationActions]);
-  if (invalidActions.length > 0) {
-    throw new Error(`agent orientation packet actions missing intent/risk: ${invalidActions.join(", ")}`);
-  }
-  return {
-    workbenchActions: workbenchActions.length,
-    workbenchLinks: workbenchLinks.length,
-    orientationActions: orientationActions.length,
-    orientationLinks: orientationLinks.length,
-    unknownWorkbenchActions,
-    unknownWorkbenchLinks,
-    unknownOrientationActions,
-    unknownOrientationLinks,
-    agentTransports: agentTransports.length,
-    auditVerdict: auditStatus.verdict,
-    auditFailureCount: failureSummary.count,
-    auditMetadata,
-    orientationAuditMetadata
-  };
-};
-
-const unknownMethodReferences = (references: Record<string, unknown>[], methodIds: Set<string>) =>
-  references
-    .map((reference) => reference.method)
-    .filter((method): method is string => typeof method === "string" && !methodIds.has(method));
-
-const invalidAgentActions = (actions: Record<string, unknown>[]) => {
-  const validIntents = new Set(["read", "inspect", "execute"]);
-  const validRisks = new Set(["none", "low", "medium"]);
-  return actions
-    .filter((action) => !validIntents.has(String(action.intent)) || !validRisks.has(String(action.risk)))
-    .map((action) => String(action.id ?? action.method ?? "unknown"));
 };
 
 const invalidAgentTransportAffordances = (transports: Record<string, unknown>[], methods: PlasticMethod[]) => {

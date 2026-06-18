@@ -15,7 +15,6 @@ import {
   checkMethodRegistryHealth
 } from "./runtime-health-checks.js";
 import {
-  checkAgentOrientationHealth,
   checkAgentTransportsHealth,
   checkBuildStatusHealth,
   checkCapabilityProjectionHealth,
@@ -26,6 +25,7 @@ import {
   checkRuntimeStartedDescriptorHealth,
   checkWindowRuntimeHealth
 } from "./runtime-health-self-test-checks.js";
+import { checkAgentOrientationHealth } from "./runtime-health-agent-packet-checks.js";
 import { checkRuntimeHostIdentityHealth } from "./runtime-health-host-checks.js";
 import { noInputSchema } from "./runtime-method-metadata.js";
 import type { RuntimeMethodContext, RuntimeModule } from "./runtime-method-context.js";
@@ -122,7 +122,8 @@ export const createRuntimeHealthModule = (input: {
             await record("agent-orientation:packets", async () =>
               checkAgentOrientationHealth(
                 await runPromise(methods.call("agent/workbench", { limit: 3 })),
-                await runPromise(methods.call("agent/orient", { panelId: projectedPanels[0]?.id })), methodIds
+                await runPromise(methods.call("agent/orient", { panelId: projectedPanels[0]?.id })),
+                methodList
               )
             );
             await record("agent-transports:affordances", () => checkAgentTransportsHealth(events, methodList));
