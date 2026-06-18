@@ -95,7 +95,14 @@ export function assertRpcCallMethodDescription({ assert, description }) {
 }
 
 export async function assertRpcCallDispatch({ assert, rpc, runId, validationMeta }) {
-  const panels = await rpc("rpc/call", { method: "panels/list", input: {} });
+  const panelsDescription = await rpc("methods/describe", { id: "panels/list" });
+  const describeLink = panelsDescription.links?.find((link) => link.rel === "describe" && link.target === "panels/list");
+  const invokeLink = panelsDescription.links?.find((link) => link.rel === "invoke" && link.target === "panels/list");
+  assert(describeLink, "panels/list missing generated describe link");
+  assert(invokeLink, "panels/list missing generated invoke link");
+  const linkedDescription = await rpc(describeLink.method, describeLink.input);
+  assert(linkedDescription.id === panelsDescription.id, "generated describe link returned wrong method");
+  const panels = await rpc(invokeLink.method, { ...invokeLink.input, input: {} });
   assert(Array.isArray(panels), "rpc/call panels/list did not return panel array");
   const type = "contract.rpc_call.appended";
   const marker = `${runId}-rpc-call`;
