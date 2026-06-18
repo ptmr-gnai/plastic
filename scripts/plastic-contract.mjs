@@ -11,7 +11,7 @@ import { assertContextualResourceAffordances, assertResourceAffordanceIntegrity,
 import { assertRuntimeCapabilitiesMethodDescription } from "./plastic-contract-capabilities.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagnostics.mjs";
-import { assertEventsAppendMethodDescription, assertEventsListMethodDescription, assertEventsTimelineMethodDescription } from "./plastic-contract-events.mjs";
+import { assertEventQueryBehavior, assertEventsAppendMethodDescription, assertEventsListMethodDescription, assertEventsTimelineMethodDescription } from "./plastic-contract-events.mjs";
 import { assertDeixisMethodDescriptions, assertResolvedRefAffordances } from "./plastic-contract-deixis.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
@@ -379,7 +379,7 @@ await check("events/append", async () => {
     meta: validationMeta
   });
   assert(appended?.id, "events/append returned no event id");
-  const appendedEvents = await rpc("events/list", { type: "contract.event.appended", limit: 10 });
+  const appendedEvents = await rpc("events/list", { types: ["contract.event.appended"], limit: 10 });
   assertArray(appendedEvents, "events/list after append is not an array");
   const appendedEvent = appendedEvents.find((event) => event.id === appended.id); assert(appendedEvent, "appended event not readable");
   assert(validationTags.every((tag) => appendedEvent.meta?.tags?.includes(tag)), "appended validation tags not readable");
@@ -478,14 +478,7 @@ await check("events list/timeline", async () => {
   assertEventsAppendMethodDescription({ assert, description: await rpc("methods/describe", { id: "events/append" }) });
   assertEventsListMethodDescription({ assert, description: await rpc("methods/describe", { id: "events/list" }) });
   assertEventsTimelineMethodDescription({ assert, description: await rpc("methods/describe", { id: "events/timeline" }) });
-  events = await rpc("events/list", { types: ["panel.created"], scope: { panelId }, limit: 100 });
-  const eventItems = assertArray(events, "events/list is not an array");
-  assert(eventItems.length > 0, "events/list returned no events");
-  assert(eventItems.some((event) => event.id === createdPanelEvent.id), "panel create event missing from typed events");
-  const timeline = await rpc("events/timeline", { scope: { panelId }, limit: 10 });
-  const timelineItems = itemsFrom(timeline, "events/timeline returned no items");
-  assert(timelineItems.some((item) => item.eventId === createdPanelEvent.id), "panel create event missing from timeline");
-  return { events: eventItems.length, timeline: timelineItems.length };
+  return assertEventQueryBehavior({ assert, assertArray, createdPanelEvent, itemsFrom, panelId, rpc });
 });
 await check("plastic/selfTest", async () => {
   const selfTest = await rpc("plastic/selfTest");

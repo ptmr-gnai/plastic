@@ -25,6 +25,26 @@ export const assertEventsAppendMethodDescription = ({ assert, description }) => 
   assert(description.reversibility?.reversible === false, "events/append must describe append-only reversibility");
 };
 
+export const assertEventQueryBehavior = async ({ assert, assertArray, createdPanelEvent, itemsFrom, panelId, rpc }) => {
+  const events = assertArray(await rpc("events/list", { types: ["panel.created"], scope: { panelId }, limit: 100 }), "events/list is not an array");
+  assert(events.length > 0, "events/list returned no events");
+  assert(events.every((event) => event.type === "panel.created"), "events/list type filter returned other event types");
+  assert(events.every((event) => event.scope?.panelId === panelId), "events/list scope filter returned other panels");
+  assert(events.some((event) => event.id === createdPanelEvent.id), "panel create event missing from typed events");
+  const limitedEvents = assertArray(await rpc("events/list", { scope: { panelId }, limit: 1 }), "events/list limit result is not an array");
+  assert(limitedEvents.length === 1, "events/list limit did not constrain result size");
+  const eventsAfterCreate = assertArray(await rpc("events/list", { after: createdPanelEvent.id, scope: { panelId }, limit: "all" }), "events/list after cursor result is not an array");
+  assert(!eventsAfterCreate.some((event) => event.id === createdPanelEvent.id), "events/list after cursor included cursor event");
+  const timeline = await rpc("events/timeline", { scope: { panelId }, limit: 10 });
+  const timelineItems = itemsFrom(timeline, "events/timeline returned no items");
+  assert(timeline.cursor === timeline.latestEventId, "events/timeline cursor must match latestEventId");
+  assert(timelineItems.every((item) => item.scope?.panelId === panelId), "events/timeline scope filter returned other panels");
+  assert(timelineItems.some((item) => item.eventId === createdPanelEvent.id), "panel create event missing from timeline");
+  const limitedTimeline = await rpc("events/timeline", { scope: { panelId }, limit: 1 });
+  assert(itemsFrom(limitedTimeline, "limited events/timeline returned no items").length === 1, "events/timeline limit did not constrain result size");
+  return { events: events.length, afterCreate: eventsAfterCreate.length, timeline: timelineItems.length };
+};
+
 export const assertSetThemeMethodDescription = ({ assert, description }) => {
   assertPlasticEventSchema({ assert, schema: description.outputSchema, label: "app/setTheme output" });
   assert(description.inputSchema?.properties?.theme?.enum?.includes("light"), "app/setTheme must accept light theme");
