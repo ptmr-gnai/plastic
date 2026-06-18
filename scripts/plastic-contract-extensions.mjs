@@ -16,6 +16,9 @@ export const assertExtensionLifecycleMethodDescriptions = ({ assert, description
   assert(descriptions.activate.outputSchema?.required?.includes("activated"), "extensions/activate output schema must require activated");
   assert(descriptions.activate.outputSchema?.required?.includes("skipped"), "extensions/activate output schema must require skipped");
   assert(descriptions.activate.outputSchema?.required?.includes("failed"), "extensions/activate output schema must require failed");
+  assert(descriptions.activate.outputSchema?.properties?.activated?.items?.required?.includes("eventId"), "extensions/activate activated item schema must require eventId");
+  assert(descriptions.activate.outputSchema?.properties?.skipped?.items?.required?.includes("reason"), "extensions/activate skipped item schema must require reason");
+  assert(descriptions.activate.outputSchema?.properties?.failed?.items?.required?.includes("error"), "extensions/activate failed item schema must require error");
   assert(descriptions.activate.effects?.durableEvents?.includes("extension.loaded"), "extensions/activate must describe loaded events");
   assert(descriptions.registerPanel.outputSchema?.required?.includes("id"), "extensions/registerPanel output schema must expose event id");
   assert(descriptions.registerPanel.effects?.durableEvents?.includes("panel.created"), "extensions/registerPanel must describe panel.created");

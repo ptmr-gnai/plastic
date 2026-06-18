@@ -13,13 +13,43 @@ const extensionActivationAvailability = {
   notes: "Extension activation is a shared runtime primitive available in headed and headless modes."
 };
 
+const extensionActivatedItemSchema = {
+  type: "object",
+  required: ["extensionId", "eventId"],
+  properties: {
+    extensionId: { type: "string" },
+    entry: { type: "string" },
+    eventId: { type: "string" }
+  }
+};
+
+const extensionSkippedItemSchema = {
+  type: "object",
+  required: ["extensionId", "reason"],
+  properties: {
+    extensionId: { type: "string" },
+    reason: { type: "string" }
+  }
+};
+
+const extensionFailedItemSchema = {
+  type: "object",
+  required: ["extensionId", "error", "eventId"],
+  properties: {
+    extensionId: { type: "string" },
+    entry: { type: "string" },
+    error: { type: "string" },
+    eventId: { type: "string" }
+  }
+};
+
 const extensionActivationResultSchema = {
   type: "object",
   required: ["activated", "skipped", "failed"],
   properties: {
-    activated: { type: "array", items: { type: "object" } },
-    skipped: { type: "array", items: { type: "object" } },
-    failed: { type: "array", items: { type: "object" } },
+    activated: { type: "array", items: extensionActivatedItemSchema },
+    skipped: { type: "array", items: extensionSkippedItemSchema },
+    failed: { type: "array", items: extensionFailedItemSchema },
     extension: plasticExtensionSchema
   }
 };
