@@ -41,3 +41,14 @@ export const assertPanelResourceAffordances = ({ assert, resources, source }) =>
   assert(hasActionAffordance(panel.actions, { id: "rename-panel", method: "panels/rename", input: { id: panelId } }), `${source} panel resource missing rename action with panel input`);
   assert(hasActionAffordance(panel.actions, { id: "remove-panel", method: "panels/remove", input: { id: panelId } }), `${source} panel resource missing remove action with panel input`);
 };
+
+export const assertExtensionResourceAffordances = ({ assert, resources, source }) => {
+  const extension = (Array.isArray(resources) ? resources : []).find((resource) => resource.kind === "extension");
+  assert(extension, `${source} does not expose individual extension resources`);
+  const extensionId = extension.state?.id;
+  assert(typeof extensionId === "string", `${source} extension resource missing state.id`);
+  assert(hasLinkAffordance(extension.links, { rel: "self", href: "extensions/get", method: "extensions/get", input: { id: extensionId } }), `${source} extension resource missing self link with extension input`);
+  assert(hasActionAffordance(extension.actions, { id: "get-extension", method: "extensions/get", input: { id: extensionId } }), `${source} extension resource missing get action with extension input`);
+  assert(hasActionAffordance(extension.actions, { id: "activate-extension", method: "extensions/activate", input: { extensionId } }), `${source} extension resource missing activate action with extension input`);
+  assert(hasActionAffordance(extension.actions, { id: "verify-extension", method: "extensions/verify", input: { extensionId } }), `${source} extension resource missing verify action with extension input`);
+};

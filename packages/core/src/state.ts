@@ -58,6 +58,7 @@ const buildStateResources = (input: {
   plasticAppResource(input.eventCount, input.methodCount),
   runtimeHealthResource(),
   extensionCollectionResource(input.extensionItems),
+  ...input.extensionItems.map(extensionResource),
   panelCollectionResource(input.panelItems),
   panelActionsResource(),
   ...input.panelItems.map(panelResource),
@@ -117,6 +118,26 @@ const extensionCollectionResource = (items: PlasticExtension[]): PlasticResource
     { id: "scan", title: "Scan extensions", method: "extensions/scan" },
     { id: "get", title: "Get extension", method: "extensions/get" },
     { id: "register-panel", title: "Register extension panel", method: "extensions/registerPanel" }
+  ]
+});
+
+const extensionResource = (extension: PlasticExtension): PlasticResource<PlasticExtension> => ({
+  id: `extension:${extension.id}`,
+  kind: "extension",
+  title: extension.title,
+  state: extension,
+  links: [
+    { rel: "self", href: "extensions/get", method: "extensions/get", target: extension.id, input: { id: extension.id } },
+    { rel: "collection", href: "extensions/list", method: "extensions/list" },
+    { rel: "timeline", href: "events/timeline", method: "events/timeline", target: extension.id, input: { scope: { extensionId: extension.id }, limit: 12 } },
+    ...extension.methods.map((method) => ({ rel: "method", href: "methods/describe", method: "methods/describe", target: method.id, input: { id: method.id } }))
+  ],
+  actions: [
+    { id: "get-extension", title: "Get extension", method: "extensions/get", input: { id: extension.id } },
+    { id: "activate-extension", title: "Activate extension", method: "extensions/activate", input: { extensionId: extension.id } },
+    { id: "verify-extension", title: "Verify extension", method: "extensions/verify", input: { extensionId: extension.id } },
+    ...(extension.panels.length > 0 ? [{ id: "register-panel", title: "Register extension panel", method: "extensions/registerPanel", input: { extensionId: extension.id } }] : []),
+    ...(extension.source === "bundled" ? [{ id: "fork-bundled", title: "Fork bundled extension", method: "extensions/forkBundled", input: { extensionId: extension.id } }] : [])
   ]
 });
 
