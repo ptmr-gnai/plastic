@@ -96,6 +96,7 @@ export const checkMethodAffordanceHealth = (methods: PlasticMethod[]) => {
         && link.href === "methods/describe"
         && link.method === "methods/describe"
         && link.target === method.id
+        && (link.input as { id?: unknown } | undefined)?.id === method.id
       )
     )
     .map((method) => method.id);
@@ -106,6 +107,7 @@ export const checkMethodAffordanceHealth = (methods: PlasticMethod[]) => {
         && link.href === "rpc/call"
         && link.method === "rpc/call"
         && link.target === method.id
+        && (link.input as { method?: unknown } | undefined)?.method === method.id
       )
     )
     .map((method) => method.id);
