@@ -243,6 +243,7 @@ const compare = (base, current) => {
   const moduleDrift = compareModules(base.modules, current.modules);
   const capabilityDrift = compareCapabilities(base.capabilities, current.capabilities);
   const methodDrift = compareMethodMetadata({ baseIds, baseMethods: byId(base.methods), currentMethods: byId(current.methods) });
+  const discoveryDrift = compareDiscovery(base.discovery, current.discovery);
   const healthDrift = compareHealth(base.health, current.health);
   return {
     missing,
@@ -252,13 +253,34 @@ const compare = (base, current) => {
     ...capabilityDrift,
     hostShapeDrift: JSON.stringify(base.host) === JSON.stringify(current.host) ? [] : [{ base: base.host, current: current.host }],
     healthDrift,
-    discoveryDrift: JSON.stringify(base.discovery) === JSON.stringify(current.discovery) ? [] : [{ base: base.discovery, current: current.discovery }],
+    ...discoveryDrift,
     mcpToolDrift: JSON.stringify(base.mcpTools) === JSON.stringify(current.mcpTools) ? [] : [{ base: base.mcpTools, current: current.mcpTools }],
     methodCapabilityDrift: methodDrift.methodCapabilityDrift,
     methodAffordanceDrift: methodDrift.methodAffordanceDrift,
     methodMetadataDrift: methodDrift.methodMetadataDrift
   };
 };
+
+const compareDiscovery = (baseDiscovery, currentDiscovery) => ({
+  serviceResourceLinkDrift: JSON.stringify(baseDiscovery?.serviceResources?.links ?? []) === JSON.stringify(currentDiscovery?.serviceResources?.links ?? [])
+    ? []
+    : [{
+      base: baseDiscovery?.serviceResources?.links ?? [],
+      current: currentDiscovery?.serviceResources?.links ?? []
+    }],
+  serviceResourceActionDrift: JSON.stringify(baseDiscovery?.serviceResources?.actions ?? []) === JSON.stringify(currentDiscovery?.serviceResources?.actions ?? [])
+    ? []
+    : [{
+      base: baseDiscovery?.serviceResources?.actions ?? [],
+      current: currentDiscovery?.serviceResources?.actions ?? []
+    }],
+  snapshotLinkDrift: JSON.stringify(baseDiscovery?.snapshotLinks ?? []) === JSON.stringify(currentDiscovery?.snapshotLinks ?? [])
+    ? []
+    : [{
+      base: baseDiscovery?.snapshotLinks ?? [],
+      current: currentDiscovery?.snapshotLinks ?? []
+    }]
+});
 
 const compareHealth = (baseHealth, currentHealth) => {
   const failures = [];
@@ -386,7 +408,9 @@ const main = async () => {
       comparison.capabilityTitleDrift.length ? `capability title drift: ${comparison.capabilityTitleDrift.map((item) => item.id).join(", ")}` : null,
       comparison.hostShapeDrift.length ? "host shape drift" : null,
       comparison.healthDrift.length ? `health drift: ${comparison.healthDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.discoveryDrift.length ? "discovery affordance drift" : null,
+      comparison.serviceResourceLinkDrift.length ? "service resource link drift" : null,
+      comparison.serviceResourceActionDrift.length ? "service resource action drift" : null,
+      comparison.snapshotLinkDrift.length ? "snapshot link drift" : null,
       comparison.mcpToolDrift.length ? "MCP tool metadata drift" : null,
       comparison.methodCapabilityDrift.length ? `method capability drift: ${comparison.methodCapabilityDrift.map((item) => item.id).join(", ")}` : null,
       comparison.methodAffordanceDrift.length ? `method affordance drift: ${comparison.methodAffordanceDrift.map((item) => item.id).join(", ")}` : null,
