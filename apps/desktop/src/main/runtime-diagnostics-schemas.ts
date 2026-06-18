@@ -19,6 +19,33 @@ export const appDiagnosticsOutputSchema = {
   }
 };
 
+const methodParityOutputSchema = {
+  type: "object",
+  required: ["mode", "failureTotal"],
+  properties: {
+    reportPath: { type: ["string", "null"] },
+    mode: { type: "string" },
+    failureTotal: { type: ["number", "null"] }
+  }
+};
+
+const compactAuditMetadataSchema = {
+  type: "object",
+  required: ["schemaVersion", "generatedAt", "inProgress", "checks", "expectedChecks", "expectedStepIds", "usable", "strictElectron", "unified", "methodParity"],
+  properties: {
+    schemaVersion: { type: ["number", "null"] },
+    generatedAt: { type: ["string", "null"] },
+    inProgress: { type: "boolean" },
+    checks: { type: ["number", "null"] },
+    expectedChecks: { type: ["number", "null"] },
+    expectedStepIds: { type: "array", items: { type: "string" } },
+    usable: { type: "boolean" },
+    strictElectron: { type: "string" },
+    unified: { type: "string" },
+    methodParity: methodParityOutputSchema
+  }
+};
+
 export const auditStatusOutputSchema = {
   type: "object",
   required: ["available", "path", "verdict", "summary", "recentActions"],
@@ -27,13 +54,13 @@ export const auditStatusOutputSchema = {
     path: { type: "string" },
     verdict: {
       type: "object",
-      required: ["status", "usable", "failureSummary", "diagnosis", "hints", "nextAction", "actions"],
+      required: ["status", "usable", "methodParity", "failureSummary", "diagnosis", "hints", "nextAction", "actions"],
       properties: {
         status: { type: "string", enum: ["missing", "running", "passed", "degraded", "failed"] },
         usable: { type: "boolean" },
         strictElectron: { type: "string" },
         unified: { type: "string" },
-        methodParity: { type: "object" },
+        methodParity: methodParityOutputSchema,
         failurePhase: { type: ["string", "null"] },
         failureSummary: { type: "object" },
         diagnosis: { type: "object" },
@@ -85,7 +112,7 @@ export const auditActionPlanOutputSchema = {
       type: "object",
       required: ["metadata", "status", "diagnosis"],
       properties: {
-        metadata: { type: "object" },
+        metadata: compactAuditMetadataSchema,
         status: { type: "string", enum: ["missing", "running", "passed", "degraded", "failed"] },
         diagnosis: { type: "object" }
       }
@@ -101,7 +128,7 @@ export const runAuditActionOutputSchema = {
     action: { type: "object" },
     startedAt: { type: "string" },
     completedAt: { type: "string" },
-    auditMetadata: { type: "object" },
+    auditMetadata: compactAuditMetadataSchema,
     command: { type: "string" },
     args: { type: "array", items: { type: "string" } },
     env: { type: "object" },
