@@ -66,8 +66,13 @@ const assertMcpErrorPaths = async (mcp) => {
   });
   assert(Array.isArray(events), "MCP error events/list did not return events");
   assert(!events.some((event) => event.payload?.method === ""), "MCP missing method should not append bridge events");
-  assert(events.some((event) => event.type === "bridge.plastic_rpc.requested" && event.payload?.method === missingRpcMethod), "MCP unknown delegated method missing requested event");
-  assert(events.some((event) => event.type === "bridge.plastic_rpc.completed" && event.payload?.method === missingRpcMethod && event.payload?.ok === false), "MCP unknown delegated method missing failed completion event");
+  const requested = events.find((event) => event.type === "bridge.plastic_rpc.requested" && event.payload?.method === missingRpcMethod);
+  const completed = events.find((event) => event.type === "bridge.plastic_rpc.completed" && event.payload?.method === missingRpcMethod && event.payload?.ok === false);
+  assert(requested, "MCP unknown delegated method missing requested event");
+  assert(completed, "MCP unknown delegated method missing failed completion event");
+  assert(stableJson(requested.payload?.methodEffects) === stableJson(missingRpc.methodEffects), "MCP failed requested event methodEffects mismatch");
+  assert(stableJson(completed.payload?.methodEffects) === stableJson(missingRpc.methodEffects), "MCP failed completion event methodEffects mismatch");
+  assert(completed.payload?.error === missingRpc.error, "MCP failed completion event error mismatch");
 };
 
 const run = async () => {
