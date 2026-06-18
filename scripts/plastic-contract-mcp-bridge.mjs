@@ -14,11 +14,18 @@ const assertMcpToolMetadata = async (mcp) => {
   const listedTools = await mcp.listTools();
   const plasticTool = listedTools.find((candidate) => candidate.name === "plastic_rpc");
   const rpcCall = await rpc("methods/describe", { id: "rpc/call" });
+  const host = await rpc("runtime/host", {});
+  const advertisedTool = host.agentTransports
+    ?.find((transport) => transport.id === "mcp-stdio")
+    ?.tools?.find((candidate) => candidate.name === "plastic_rpc");
   assert(plasticTool, "MCP tools/list missing plastic_rpc");
+  assert(advertisedTool, "runtime/host missing advertised plastic_rpc tool");
   assert(plasticTool.description?.includes("agent/orient"), "MCP plastic_rpc description must teach agent/orient");
   assert(plasticTool.description?.includes("runtime/auditStatus"), "MCP plastic_rpc description must teach runtime/auditStatus");
   assert(plasticTool.description?.includes("runtime/auditActionPlan"), "MCP plastic_rpc description must teach runtime/auditActionPlan");
   assert(stableJson(plasticTool.inputSchema) === stableJson(rpcCall.inputSchema), "MCP plastic_rpc input schema must match rpc/call");
+  assert(plasticTool.description === advertisedTool.description, "MCP plastic_rpc description must match runtime/host transport descriptor");
+  assert(stableJson(plasticTool.inputSchema) === stableJson(advertisedTool.inputSchema), "MCP plastic_rpc schema must match runtime/host transport descriptor");
 };
 
 const initializeMcp = async (mcp) => {

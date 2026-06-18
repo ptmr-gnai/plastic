@@ -10,6 +10,8 @@ export const runtimeHostBaseDescriptor = {
   version: 1
 } as const;
 
+const plasticRpcToolDescription = "Call any registered Plastic RPC method through the shared Plastic method registry. The result includes delegated method effects and reversibility when available. For orientation, call agent/orient or agent/workbench first. For headed/headless audit state, call runtime/auditStatus, inspect a current action with runtime/auditActionPlan, then call runtime/runAuditAction only when execution is intended.";
+
 const createAgentTransportDescriptors = (config: RuntimeHostConfig) => [
   {
     id: "http-rpc",
@@ -45,7 +47,7 @@ const createAgentTransportDescriptors = (config: RuntimeHostConfig) => [
         name: "plastic_rpc",
         methodRegistry: "shared",
         inputSchema: rpcCallInputSchema,
-        description: "Calls any registered Plastic RPC method through the shared method registry."
+        description: plasticRpcToolDescription
       }
     ],
     actions: [
