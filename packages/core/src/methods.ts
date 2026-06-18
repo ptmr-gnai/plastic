@@ -89,7 +89,7 @@ const upsertMethodAffordanceLinks = (method: PlasticMethod): PlasticLink[] => {
   return [
     ...links,
     ...(hasDescribe ? [] : [{ rel: "describe", href: "methods/describe", method: "methods/describe", target: method.id, input: { id: method.id } }]),
-    ...(hasInvoke ? [] : [{ rel: "invoke", href: "rpc/call", method: "rpc/call", target: method.id, input: { method: method.id } }])
+    ...(hasInvoke ? [] : [{ rel: "invoke", href: "rpc/call", method: "rpc/call", target: method.id, input: { method: method.id }, inputSchema: method.inputSchema }])
   ];
 };
 

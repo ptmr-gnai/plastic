@@ -24,6 +24,10 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
       method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id && link.input?.method === method.id),
       `${label} ${method.id} missing invoke link with concrete input`
     );
+    assert(
+      method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id && stableJson(link.inputSchema) === stableJson(method.inputSchema)),
+      `${label} ${method.id} invoke link missing delegated input schema`
+    );
     const unknownLinkMethods = (method.links ?? [])
       .filter((link) => typeof link.method === "string" && !methodIds.has(link.method))
       .map((link) => `${link.rel}:${link.method}`);
