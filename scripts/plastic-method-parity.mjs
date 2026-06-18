@@ -350,6 +350,11 @@ const compareCapabilities = (baseCapabilitiesList, currentCapabilitiesList) => {
       .filter((id) => currentCapabilities[id])
       .filter((id) => baseCapabilities[id].title !== currentCapabilities[id].title)
       .map((id) => ({ id, base: baseCapabilities[id].title, current: currentCapabilities[id].title })),
+    sharedCapabilityStatusDrift: baseCapabilityIds
+      .filter((id) => currentCapabilities[id])
+      .filter((id) => baseCapabilities[id].status === "available")
+      .filter((id) => currentCapabilities[id].status !== baseCapabilities[id].status)
+      .map((id) => ({ id, base: baseCapabilities[id].status, current: currentCapabilities[id].status })),
     capabilityStatusComparison: baseCapabilityIds
       .filter((id) => currentCapabilities[id])
       .map((id) => ({
@@ -425,6 +430,7 @@ const main = async () => {
       comparison.missingCapabilities.length ? `missing capabilities: ${comparison.missingCapabilities.join(", ")}` : null,
       comparison.addedCapabilities.length ? `added capabilities: ${comparison.addedCapabilities.join(", ")}` : null,
       comparison.capabilityTitleDrift.length ? `capability title drift: ${comparison.capabilityTitleDrift.map((item) => item.id).join(", ")}` : null,
+      comparison.sharedCapabilityStatusDrift.length ? `shared capability status drift: ${comparison.sharedCapabilityStatusDrift.map((item) => item.id).join(", ")}` : null,
       comparison.hostShapeDrift.length ? "host shape drift" : null,
       comparison.healthDrift.length ? `health drift: ${comparison.healthDrift.map((item) => item.id).join(", ")}` : null,
       comparison.serviceResourceLinkDrift.length ? "service resource link drift" : null,
