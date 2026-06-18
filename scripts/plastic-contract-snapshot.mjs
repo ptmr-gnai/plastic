@@ -22,6 +22,11 @@ export const assertSnapshotMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.methods?.required?.includes("items"), "plastic/snapshot methods schema must require items");
   assert(description.outputSchema?.properties?.methods?.properties?.items?.items?.required?.includes("availability"), "plastic/snapshot method items schema must expose availability");
   assert(description.outputSchema?.properties?.methods?.properties?.items?.items?.properties?.owner?.properties?.kind?.enum?.includes("runtime"), "plastic/snapshot method items schema must expose runtime owner");
+  assert(description.outputSchema?.properties?.panels?.items?.required?.includes("extensionId"), "plastic/snapshot panel schema must expose extensionId");
+  assert(description.outputSchema?.properties?.panels?.items?.required?.includes("order"), "plastic/snapshot panel schema must expose order");
+  assert(description.outputSchema?.properties?.panels?.items?.properties?.windowId?.type === "string", "plastic/snapshot panel schema must expose windowId");
+  assert(description.outputSchema?.properties?.windows?.items?.required?.includes("panelIds"), "plastic/snapshot window schema must expose panelIds");
+  assert(description.outputSchema?.properties?.windows?.items?.properties?.open?.type === "boolean", "plastic/snapshot window schema must expose open");
   assert(description.outputSchema?.properties?.events?.required?.includes("recent"), "plastic/snapshot events schema must require recent");
   assert(description.outputSchema?.properties?.events?.properties?.recent?.items?.properties?.actor?.properties?.kind?.enum?.includes("agent"), "plastic/snapshot recent event schema must expose agent actors");
   assert(description.outputSchema?.properties?.events?.properties?.latest?.anyOf?.some((candidate) => candidate.properties?.scope?.required?.includes("workspaceId")), "plastic/snapshot latest event schema must expose event scope");

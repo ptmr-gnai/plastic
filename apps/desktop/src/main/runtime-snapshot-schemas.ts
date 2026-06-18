@@ -1,6 +1,34 @@
 import { plasticEventSchema, plasticMethodSchema } from "./runtime-control-schemas.js";
 import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
 
+const plasticSnapshotPanelSchema = {
+  type: "object",
+  required: ["id", "title", "kind", "extensionId", "order"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    kind: { type: "string" },
+    extensionId: { type: "string" },
+    rendererId: { type: "string" },
+    subtitle: { type: "string" },
+    body: { type: "string" },
+    windowId: { type: "string" },
+    order: { type: "number" }
+  }
+};
+
+const plasticSnapshotWindowSchema = {
+  type: "object",
+  required: ["id", "title", "panelIds", "open"],
+  properties: {
+    id: { type: "string" },
+    electronWindowId: { type: "number" },
+    title: { type: "string" },
+    panelIds: { type: "array", items: { type: "string" } },
+    open: { type: "boolean" }
+  }
+};
+
 export const plasticSnapshotOutputSchema = {
   type: "object",
   required: [
@@ -47,9 +75,9 @@ export const plasticSnapshotOutputSchema = {
         items: { type: "array", items: plasticMethodSchema }
       }
     },
-    panels: { type: "array", items: { type: "object" } },
+    panels: { type: "array", items: plasticSnapshotPanelSchema },
     resources: { type: "array", items: { type: "object" } },
-    windows: { type: "array", items: { type: "object" } },
+    windows: { type: "array", items: plasticSnapshotWindowSchema },
     extensions: { type: "array", items: { type: "object" } },
     visibleRefs: { type: "array", items: { type: "object" } },
     events: {
