@@ -16,16 +16,20 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
     assert(method.outputSchema, `${label} ${method.id} missing outputSchema`);
     assert(method.effects, `${label} ${method.id} missing effects`);
     assert(method.reversibility, `${label} ${method.id} missing reversibility`);
+    const describeLinks = (method.links ?? []).filter((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id);
+    const invokeLinks = (method.links ?? []).filter((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id);
+    assert(describeLinks.length === 1, `${label} ${method.id} must expose exactly one describe link`);
+    assert(invokeLinks.length === 1, `${label} ${method.id} must expose exactly one invoke link`);
     assert(
-      method.links?.some((link) => link.rel === "describe" && link.method === "methods/describe" && link.target === method.id && link.input?.id === method.id),
+      describeLinks.some((link) => link.href === "methods/describe" && link.input?.id === method.id),
       `${label} ${method.id} missing describe link with concrete input`
     );
     assert(
-      method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id && link.input?.method === method.id),
+      invokeLinks.some((link) => link.href === "rpc/call" && link.input?.method === method.id),
       `${label} ${method.id} missing invoke link with concrete input`
     );
     assert(
-      method.links?.some((link) => link.rel === "invoke" && link.method === "rpc/call" && link.target === method.id && stableJson(link.inputSchema) === stableJson(method.inputSchema)),
+      invokeLinks.some((link) => stableJson(link.inputSchema) === stableJson(method.inputSchema)),
       `${label} ${method.id} invoke link missing delegated input schema`
     );
     const unknownLinkMethods = (method.links ?? [])
