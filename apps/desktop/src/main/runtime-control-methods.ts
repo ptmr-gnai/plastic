@@ -316,7 +316,7 @@ const registerEventAppend = async (input: {
             scope: { agentId: "agent:chat-main" }
           },
           expectedEvents: ["agent.note.created"],
-          verifyWith: { method: "events/list", input: { type: "agent.note.created", limit: 1 } }
+          verifyWith: { method: "events/list", input: { types: ["agent.note.created"], limit: 1 } }
         }
       ],
       effects: {

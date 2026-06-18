@@ -20,6 +20,10 @@ export const assertEventsTimelineMethodDescription = ({ assert, description }) =
 
 export const assertEventsAppendMethodDescription = ({ assert, description }) => {
   assertPlasticEventSchema({ assert, schema: description.outputSchema, label: "events/append output" });
+  assert(
+    description.examples?.some((example) => example.verifyWith?.method === "events/list" && Array.isArray(example.verifyWith.input?.types)),
+    "events/append example must verify through events/list types filter"
+  );
   assert(description.effects?.durableEvents?.includes("<input.type>"), "events/append must describe input-defined durable event effects");
   assert(description.effects?.mutatesProjection?.includes("events"), "events/append must describe event projection mutation");
   assert(description.reversibility?.reversible === false, "events/append must describe append-only reversibility");
