@@ -15,6 +15,7 @@ export const assertRuntimeHostSurface = async ({ assert, assertArray, rpc, mode,
   assert(host.controlPlane?.runtime?.transport === "http", "runtime/host missing runtime control plane");
   assertMatchingControlPlaneDescriptors({ assert, actual: host.controlPlane, expected: runtimeStartedControlPlane, source: "runtime/host" });
   assertAgentTransports({ assert, assertArray, transports: host.agentTransports, rpcUrl: host.controlPlane.runtime.rpcUrl, source: "runtime/host", methods });
+  assertAgentTransports({ assert, assertArray, transports: started.payload.host.agentTransports, rpcUrl: started.payload.host.controlPlane.runtime.rpcUrl, source: "runtime.started host", methods });
   assert(host.capabilities?.count >= 1, "runtime/host missing capabilities");
   assertArray(host.capabilities.items, "runtime/host capabilities items is not an array");
   assert(host.diagnostics?.mode === mode, "runtime/host diagnostics mode mismatch");
