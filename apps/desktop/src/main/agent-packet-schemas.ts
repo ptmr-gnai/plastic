@@ -1,4 +1,5 @@
 import { agentTransportSchema } from "./runtime-control-schemas.js";
+import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
 
 const actionAffordanceSchema = {
   type: "object",
@@ -10,15 +11,6 @@ const actionAffordanceSchema = {
     intent: { type: "string", enum: ["read", "inspect", "execute"] },
     risk: { type: "string", enum: ["none", "low", "medium"] },
     input: { type: "object" }
-  }
-};
-
-const controlPlaneSchema = {
-  type: "object",
-  required: ["runtime", "build"],
-  properties: {
-    runtime: { type: "object" },
-    build: { type: "object" }
   }
 };
 
@@ -140,7 +132,7 @@ export const agentWorkbenchOutputSchema = {
       required: ["capabilities", "controlPlane", "agentTransports", "auditStatus", "modules", "methodCount", "methodGroups", "links", "recommendedActions"],
       properties: {
         capabilities: capabilityPacketSchema,
-        controlPlane: controlPlaneSchema,
+        controlPlane: runtimeHostControlPlaneSchema,
         agentTransports: { type: "array", items: agentTransportSchema },
         auditStatus: auditStatusSchema,
         modules: { type: "object" },
@@ -191,7 +183,7 @@ export const agentOrientOutputSchema = {
         host: capabilityPacketSchema,
         modules: { type: "object" },
         auditStatus: auditStatusSchema,
-        controlPlane: controlPlaneSchema,
+        controlPlane: runtimeHostControlPlaneSchema,
         agentTransports: { type: "array", items: agentTransportSchema },
         methodCount: { type: "number" },
         methods: { type: "array", items: { type: "object" } },

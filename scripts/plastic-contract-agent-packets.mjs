@@ -101,6 +101,10 @@ export const assertAgentWorkbenchMethodDescription = ({ assert, description }) =
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.recentActions?.items?.properties?.auditMetadata?.anyOf?.some((candidate) => candidate.properties?.methodParity), "agent/workbench output schema must expose recent audit action method parity");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.recentActions?.items?.required?.includes("actionId"), "agent/workbench output schema must expose recent audit action rows");
   assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.required?.includes("runtime"), "agent/workbench output schema must expose runtime control plane");
+  assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.properties?.runtime?.required?.includes("rpcUrl"), "agent/workbench output schema must expose runtime RPC URL");
+  assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.properties?.runtime?.properties?.eventStreamPath?.enum?.includes("/events/stream"), "agent/workbench output schema must expose runtime event stream path");
+  assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.properties?.build?.required?.includes("statusUrl"), "agent/workbench output schema must expose build status URL");
+  assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.properties?.build?.properties?.statusPath?.enum?.includes("/status"), "agent/workbench output schema must expose build status path");
   assert(description.outputSchema?.properties?.control?.properties?.links?.items?.type === "object", "agent/workbench output schema must expose control links");
   assert(description.outputSchema?.properties?.control?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "agent/workbench output schema must expose transport action inputSchema");
   return { id: description.id, required: description.outputSchema.required };
@@ -199,6 +203,10 @@ export const assertAgentOrientMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("reportPath"), "agent/orient output schema must expose audit method parity report path");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.recentActions?.items?.required?.includes("actionId"), "agent/orient output schema must expose recent audit action rows");
   assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.required?.includes("build"), "agent/orient output schema must expose build control plane");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.properties?.runtime?.required?.includes("rpcUrl"), "agent/orient output schema must expose runtime RPC URL");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.properties?.runtime?.properties?.eventStreamPath?.enum?.includes("/events/stream"), "agent/orient output schema must expose runtime event stream path");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.properties?.build?.required?.includes("statusUrl"), "agent/orient output schema must expose build status URL");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.properties?.build?.properties?.statusPath?.enum?.includes("/status"), "agent/orient output schema must expose build status path");
   assert(description.outputSchema?.properties?.capabilities?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "agent/orient output schema must expose transport action inputSchema");
   return { id: description.id, required: description.outputSchema.required };
 };
