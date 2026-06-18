@@ -1,4 +1,4 @@
-import type { PlasticEvent, PlasticExtension, PlasticPanel, PlasticWindow } from "@plastic/core";
+import type { PlasticEvent, PlasticExtension, PlasticMethod, PlasticPanel, PlasticWindow } from "@plastic/core";
 import {
   expectedOrientationActions,
   expectedOrientationLinks,
@@ -13,14 +13,14 @@ import { checkAuditMetadata } from "./runtime-health-audit-checks.js";
 import { invalidControlPlaneUrls } from "./runtime-health-control-plane-checks.js";
 import type { RuntimeCapability } from "./runtime-method-context.js";
 
-export const checkBuildStatusHealth = (buildStatus: unknown) => {
+export const checkBuildStatusHealth = (buildStatus: unknown, methods: PlasticMethod[]) => {
   const status = asRecord(buildStatus);
   const hostBase = asRecord(status.hostBase);
   const controlPlane = asRecord(status.controlPlane);
   const runtimeControlPlane = asRecord(controlPlane.runtime);
   const buildControlPlane = asRecord(controlPlane.build);
   const transports = Array.isArray(status.agentTransports) ? status.agentTransports.map(asRecord) : [];
-  const invalidTransportAffordances = invalidAgentTransportAffordances(transports);
+  const invalidTransportAffordances = invalidAgentTransportAffordances(transports, methods);
   const invalidControlPlaneEndpointUrls = invalidControlPlaneUrls(controlPlane);
   if (status.status !== "running") {
     throw new Error("build/status did not report running");
@@ -105,13 +105,13 @@ export const checkRuntimeAuditStatusHealth = (auditStatus: unknown) => {
   };
 };
 
-export const checkAgentTransportsHealth = (events: PlasticEvent[]) => {
+export const checkAgentTransportsHealth = (events: PlasticEvent[], methods: PlasticMethod[]) => {
   const latestStarted = [...events].reverse().find((event) => event.type === "runtime.started");
   const host = asRecord(asRecord(latestStarted?.payload).host);
   const transports = Array.isArray(host.agentTransports) ? host.agentTransports.map(asRecord) : [];
   const http = transports.find((transport) => transport.id === "http-rpc");
   const mcp = transports.find((transport) => transport.id === "mcp-stdio");
-  const invalidTransportAffordances = invalidAgentTransportAffordances(transports);
+  const invalidTransportAffordances = invalidAgentTransportAffordances(transports, methods);
   if (!http || http.status !== "available" || http.methodRegistry !== "shared") {
     throw new Error("runtime.started missing shared HTTP RPC agent transport");
   }
@@ -438,16 +438,18 @@ const invalidAgentActions = (actions: Record<string, unknown>[]) => {
     .map((action) => String(action.id ?? action.method ?? "unknown"));
 };
 
-const invalidAgentTransportAffordances = (transports: Record<string, unknown>[]) => {
+const invalidAgentTransportAffordances = (transports: Record<string, unknown>[], methods: PlasticMethod[]) => {
   const http = transports.find((transport) => transport.id === "http-rpc");
   const mcp = transports.find((transport) => transport.id === "mcp-stdio");
+  const rpcCallInputSchemaJson = JSON.stringify(methods.find((method) => method.id === "rpc/call")?.inputSchema);
   const methodsUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/methods") : undefined;
   const selfTestUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/self-test") : undefined;
   const eventStreamUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/events/stream") : undefined;
   const hasRpcInputSchema = (item: unknown) => (asRecord(asRecord(item).inputSchema).required as unknown[] | undefined)?.includes("method") === true;
-  const hasRpcCallActionSchema = (action: unknown) => asRecord(action).id === "call-plastic-rpc" && hasRpcInputSchema(action);
+  const hasRpcCallInputSchema = (item: unknown) => hasRpcInputSchema(item) && JSON.stringify(asRecord(item).inputSchema) === rpcCallInputSchemaJson;
+  const hasExactRpcCallActionSchema = (action: unknown) => asRecord(action).id === "call-plastic-rpc" && hasRpcCallInputSchema(action);
   const hasMcpTool = Array.isArray(mcp?.tools) && mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && asRecord(tool).methodRegistry === "shared");
-  const hasMcpToolInputSchema = Array.isArray(mcp?.tools) && mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && hasRpcInputSchema(tool));
+  const hasMcpToolInputSchema = Array.isArray(mcp?.tools) && mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && hasRpcCallInputSchema(tool));
   const hasHttpLink = (rel: string, href: unknown) => Array.isArray(http?.links) && http.links.some((link) => {
     const record = asRecord(link);
     return record.rel === rel && record.method === "http/get" && record.href === href;
@@ -462,7 +464,7 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
     })
       ? "http-rpc:call-action"
       : null,
-    !Array.isArray(http?.actions) || !http.actions.some(hasRpcCallActionSchema)
+    !Array.isArray(http?.actions) || !http.actions.some(hasExactRpcCallActionSchema)
       ? "http-rpc:call-action-input-schema"
       : null,
     hasMcpTool ? null : "mcp-stdio:plastic-rpc-tool",
@@ -473,7 +475,7 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
       ? "mcp-stdio:call-action"
       : null,
     hasMcpToolInputSchema ? null : "mcp-stdio:plastic-rpc-tool-input-schema",
-    !Array.isArray(mcp?.actions) || !mcp.actions.some(hasRpcCallActionSchema)
+    !Array.isArray(mcp?.actions) || !mcp.actions.some(hasExactRpcCallActionSchema)
       ? "mcp-stdio:call-action-input-schema"
       : null
   ].filter((item): item is string => Boolean(item));

@@ -110,7 +110,7 @@ export const createRuntimeHealthModule = (input: {
               )
             );
             await record("build:surface", async () =>
-              checkBuildStatusHealth(await runPromise(methods.call("build/status", {})))
+              checkBuildStatusHealth(await runPromise(methods.call("build/status", {})), methodList)
             );
             const runtimeModules = await runPromise(methods.call("runtime/modules", {}));
             await record("runtime-modules:map", async () => checkRuntimeModuleMapHealth(runtimeModules));
@@ -125,7 +125,7 @@ export const createRuntimeHealthModule = (input: {
                 await runPromise(methods.call("agent/orient", { panelId: projectedPanels[0]?.id })), methodIds
               )
             );
-            await record("agent-transports:affordances", () => checkAgentTransportsHealth(events));
+            await record("agent-transports:affordances", () => checkAgentTransportsHealth(events, methodList));
             await record("panels:project", () => checkPanelRuntimeHealth(projectedPanels, projectedExtensions, runtimeModules, methodIds));
             await record("windows:project", () => checkWindowRuntimeHealth(projectedWindows, projectedPanels, runtimeModules, methodList));
             await record("extensions:project", () => checkExtensionRuntimeHealth(projectedExtensions, runtimeModules, methodIds));
