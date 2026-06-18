@@ -449,12 +449,13 @@ const compareMethodFieldDrift = ({ baseIds, baseMethods, currentMethods, fields 
 const main = async () => {
   const current = await capture();
   let comparison = null;
+  let summary = null;
   if (basePath) {
     const base = JSON.parse(await readFile(basePath, "utf8"));
     comparison = compare(base, current);
-    const failures = comparisonFailureMessages(comparison);
-    if (failures.length > 0) {
-      throw new Error(`Method parity failed between ${base.mode} and ${current.mode}: ${failures.join("; ")}`);
+    summary = comparisonFailureSummary(comparison);
+    if (summary.total > 0) {
+      throw new Error(`Method parity failed between ${base.mode} and ${current.mode}: ${comparisonFailureMessages(comparison).join("; ")}`);
     }
   }
   if (outPath) {
@@ -471,7 +472,7 @@ const main = async () => {
     sharedHealthChecks: current.health.sharedChecks.map((check) => check.id),
     mcpTools: current.mcpTools.map((tool) => tool.name),
     capabilityStatuses: Object.fromEntries(current.capabilities.map((capability) => [capability.id, capability.status])),
-    comparisonFailureSummary: comparisonFailureSummary(comparison),
+    comparisonFailureSummary: summary,
     comparison
   }, null, 2));
 };
