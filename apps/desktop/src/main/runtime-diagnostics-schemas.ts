@@ -80,6 +80,29 @@ const auditFailureSummarySchema = {
   }
 };
 
+const auditResultDiagnosticsSchema = {
+  type: "object",
+  required: ["tail", "hints"],
+  properties: {
+    tail: { type: "array", items: { type: "string" } },
+    hints: { type: "array", items: { type: "string" } }
+  }
+};
+
+const auditResultSchema = {
+  type: "object",
+  required: ["id", "ok", "exit", "ms", "command"],
+  properties: {
+    id: { type: "string" },
+    ok: { type: "boolean" },
+    exit: { type: ["number", "string"] },
+    ms: { type: "number" },
+    command: { type: "string" },
+    env: { type: "object" },
+    diagnostics: auditResultDiagnosticsSchema
+  }
+};
+
 const recentAuditActionSchema = {
   type: "object",
   required: ["eventId", "timestamp", "actionId", "ok", "args", "env", "auditMetadata", "stdoutTail", "stderrTail"],
@@ -139,7 +162,7 @@ export const auditStatusOutputSchema = {
             expectedChecks: { type: "number" },
             runtimeUnification: { type: "object" },
             failures: { type: "object" },
-            results: { type: "array", items: { type: "object" } }
+            results: { type: "array", items: auditResultSchema }
           }
         }
       ]

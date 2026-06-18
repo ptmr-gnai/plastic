@@ -43,6 +43,11 @@ export const assertRuntimeAuditStatusMethodDescription = ({ assert, description 
   assert(description.outputSchema?.properties?.recentActions?.items?.properties?.auditMetadata?.anyOf?.some((candidate) => candidate.properties?.methodParity), "runtime/auditStatus output schema must expose recent action method parity metadata");
   assert(description.outputSchema?.properties?.summary?.anyOf?.some((candidate) => candidate.properties?.inProgress?.type === "boolean"), "runtime/auditStatus output schema must expose summary.inProgress");
   assert(description.outputSchema?.properties?.summary?.anyOf?.some((candidate) => candidate.required?.includes("runtimeUnification") && candidate.required?.includes("failures") && candidate.required?.includes("results")), "runtime/auditStatus output schema must expose persisted audit summary fields");
+  const summarySchema = description.outputSchema?.properties?.summary?.anyOf?.find((candidate) => candidate.required?.includes("results"));
+  assert(summarySchema?.properties?.results?.items?.required?.includes("id"), "runtime/auditStatus summary result schema must require id");
+  assert(summarySchema?.properties?.results?.items?.required?.includes("ok"), "runtime/auditStatus summary result schema must require ok");
+  assert(summarySchema?.properties?.results?.items?.required?.includes("command"), "runtime/auditStatus summary result schema must require command");
+  assert(summarySchema?.properties?.results?.items?.properties?.diagnostics?.properties?.tail?.items?.type === "string", "runtime/auditStatus summary result diagnostics must expose tail lines");
   return { id: description.id, statuses: description.outputSchema.properties.verdict.properties.status.enum };
 };
 
