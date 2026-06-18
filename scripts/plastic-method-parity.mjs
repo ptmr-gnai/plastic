@@ -46,6 +46,19 @@ const actionShape = (action) => stableValue({
   target: action.target,
   input: action.input
 });
+const methodAffordanceShape = (link) => stableValue({
+  rel: link.rel,
+  href: link.href,
+  method: link.method,
+  target: link.target,
+  input: link.input
+});
+const methodAffordances = (method) => sortedStableObjects((method.links ?? [])
+  .filter((link) =>
+    (link.rel === "describe" && link.method === "methods/describe") ||
+    (link.rel === "invoke" && link.method === "rpc/call")
+  )
+  .map(methodAffordanceShape));
 const transportActionShape = (action) => stableValue({
   id: action.id,
   title: action.title,
@@ -165,8 +178,7 @@ const methodMetadataFields = [
   "effects",
   "preconditions",
   "reversibility",
-  "permissions",
-  "links"
+  "permissions"
 ];
 
 const capture = async () => {
@@ -205,6 +217,7 @@ const capture = async () => {
       reversibility: stableValue(method.reversibility),
       permissions: sorted(method.permissions),
       links: stableValue(method.links),
+      affordances: methodAffordances(method),
       owner: method.owner,
       requiredCapabilities: sorted(method.availability?.requiredCapabilities)
     })).sort((left, right) => left.id.localeCompare(right.id)),
@@ -242,6 +255,7 @@ const compare = (base, current) => {
     discoveryDrift: JSON.stringify(base.discovery) === JSON.stringify(current.discovery) ? [] : [{ base: base.discovery, current: current.discovery }],
     mcpToolDrift: JSON.stringify(base.mcpTools) === JSON.stringify(current.mcpTools) ? [] : [{ base: base.mcpTools, current: current.mcpTools }],
     methodCapabilityDrift: methodDrift.methodCapabilityDrift,
+    methodAffordanceDrift: methodDrift.methodAffordanceDrift,
     methodMetadataDrift: methodDrift.methodMetadataDrift
   };
 };
@@ -337,9 +351,18 @@ const compareMethodMetadata = ({ baseIds, baseMethods, currentMethods }) => {
         current: currentMethods[id][field]
       }))
   );
+  const methodAffordanceDrift = baseIds
+    .filter((id) => currentMethods[id])
+    .filter((id) => JSON.stringify(baseMethods[id].affordances) !== JSON.stringify(currentMethods[id].affordances))
+    .map((id) => ({
+      id,
+      base: baseMethods[id].affordances,
+      current: currentMethods[id].affordances
+    }));
   return {
     ownerDrift,
     methodCapabilityDrift,
+    methodAffordanceDrift,
     methodMetadataDrift
   };
 };
@@ -366,6 +389,7 @@ const main = async () => {
       comparison.discoveryDrift.length ? "discovery affordance drift" : null,
       comparison.mcpToolDrift.length ? "MCP tool metadata drift" : null,
       comparison.methodCapabilityDrift.length ? `method capability drift: ${comparison.methodCapabilityDrift.map((item) => item.id).join(", ")}` : null,
+      comparison.methodAffordanceDrift.length ? `method affordance drift: ${comparison.methodAffordanceDrift.map((item) => item.id).join(", ")}` : null,
       comparison.methodMetadataDrift.length ? `method metadata drift: ${comparison.methodMetadataDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null
     ].filter(Boolean);
     if (failures.length > 0) {
