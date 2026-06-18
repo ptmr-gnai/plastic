@@ -443,6 +443,8 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
   const mcp = transports.find((transport) => transport.id === "mcp-stdio");
   const methodsUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/methods") : undefined;
   const selfTestUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/self-test") : undefined;
+  const hasMethodInputSchema = (action: unknown) =>
+    asRecord(action).id === "call-plastic-rpc" && ((asRecord(asRecord(action).inputSchema).required as unknown[] | undefined)?.includes("method") === true);
   return [
     !Array.isArray(http?.links) || !http.links.some((link) => {
       const record = asRecord(link);
@@ -462,6 +464,9 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
     })
       ? "http-rpc:call-action"
       : null,
+    !Array.isArray(http?.actions) || !http.actions.some(hasMethodInputSchema)
+      ? "http-rpc:call-action-input-schema"
+      : null,
     !Array.isArray(mcp?.tools) || !mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && asRecord(tool).methodRegistry === "shared")
       ? "mcp-stdio:plastic-rpc-tool"
       : null,
@@ -470,6 +475,9 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
       return record.id === "call-plastic-rpc" && record.tool === "plastic_rpc" && asRecord(asRecord(action).arguments).method === "agent/orient";
     })
       ? "mcp-stdio:call-action"
+      : null,
+    !Array.isArray(mcp?.actions) || !mcp.actions.some(hasMethodInputSchema)
+      ? "mcp-stdio:call-action-input-schema"
       : null
   ].filter((item): item is string => Boolean(item));
 };
