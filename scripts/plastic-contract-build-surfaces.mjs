@@ -26,6 +26,7 @@ export const assertBuildStatusSurface = async ({
   assert(stableJson(status.value.agentTransports) === stableJson(build.agentTransports), "build /status agent transports mismatch");
   assertBuildStatusMethodDescription({ assert, description: await rpc("methods/describe", { id: "build/status" }) });
   assertBuildTypecheckMethodDescription({ assert, description: await rpc("methods/describe", { id: "build/typecheck" }) });
+  const typecheck = await assertBuildTypecheckBehavior({ assert, assertArray, rpc });
   assertAgentTransports({ assert, assertArray, transports: build.agentTransports, rpcUrl: build.controlPlane.runtime.rpcUrl, source: "build/status", methods });
   assertControlPlaneEndpointUrls({ assert, controlPlane: build.controlPlane, source: "build/status" });
   assertMatchingControlPlaneDescriptors({ assert, actual: build.controlPlane, expected: runtimeStartedControlPlane, source: "build/status" });
@@ -34,6 +35,7 @@ export const assertBuildStatusSurface = async ({
     service: build.service,
     runtimeRpcUrl: build.runtimeRpcUrl ?? null,
     runtimePort: build.runtimePort ?? null,
+    typecheckOk: typecheck.ok,
     agentTransports: build.agentTransports.length,
     controlPlane: build.controlPlane
   };
@@ -59,6 +61,22 @@ const assertBuildTypecheckMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.required?.includes("eventId"), "build/typecheck output schema must require eventId");
   assert(description.outputSchema?.properties?.ok?.type === "boolean", "build/typecheck output schema must expose ok boolean");
   assert(description.effects?.durableEvents?.includes("build.typecheck.completed"), "build/typecheck must describe completed event");
+};
+
+const assertBuildTypecheckBehavior = async ({ assert, assertArray, rpc }) => {
+  const result = await rpc("build/typecheck");
+  assert(result.command === "pnpm", "build/typecheck command mismatch");
+  assert(JSON.stringify(result.args) === JSON.stringify(["typecheck"]), "build/typecheck args mismatch");
+  assert(typeof result.ok === "boolean", "build/typecheck ok must be boolean");
+  assert(typeof result.stdout === "string" && typeof result.stderr === "string", "build/typecheck output must be strings");
+  assert(result.eventId, "build/typecheck missing eventId");
+  const events = assertArray(await rpc("events/list", { types: ["build.typecheck.completed"], limit: 5 }), "build/typecheck events/list is not an array");
+  const event = events.find((candidate) => candidate.id === result.eventId);
+  assert(event?.payload?.ok === result.ok, "build/typecheck durable ok mismatch");
+  assert(event.payload.command === result.command, "build/typecheck durable command mismatch");
+  assert(JSON.stringify(event.payload.args) === JSON.stringify(result.args), "build/typecheck durable args mismatch");
+  assert(event.payload.exitCode === result.exitCode, "build/typecheck durable exitCode mismatch");
+  return result;
 };
 
 export const assertBuildHttpTransportSurface = async ({
