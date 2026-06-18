@@ -64,6 +64,19 @@ export const assertWindowResourceAffordances = ({ assert, resources, source }) =
   assert(hasActionAffordance(window.actions, { id: `scroll-panel:${panelId}`, method: "windows/scrollToRef", input: { ref: `panel:${panelId}` } }), `${source} window resource missing scroll action with ref input`);
 };
 
+export const assertResourceMethodReferences = ({ assert, resources, methodIds, source }) => {
+  const transportMethods = new Set(["http/post"]);
+  const unknown = [];
+  for (const resource of Array.isArray(resources) ? resources : []) {
+    for (const affordance of [...(resource.links ?? []), ...(resource.actions ?? [])]) {
+      if (typeof affordance.method === "string" && !transportMethods.has(affordance.method) && !methodIds.has(affordance.method)) {
+        unknown.push(`${resource.id}:${affordance.method}`);
+      }
+    }
+  }
+  assert(unknown.length === 0, `${source} resource affordances reference unknown methods: ${unknown.join(", ")}`);
+};
+
 export const assertContextualResourceAffordances = (input) => {
   assertPanelResourceAffordances(input);
   assertExtensionResourceAffordances(input);

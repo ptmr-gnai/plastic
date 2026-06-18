@@ -63,6 +63,8 @@ The remaining legibility work has moved up a layer:
 
 `plastic/state` and `plastic/snapshot` now project individual `kind: "window"` resources. Window resources expose concrete focus and scroll actions for their projected panels, using exact `panelId` and `panel:<id>` ref payloads.
 
+The contract harness now verifies HATEOAS method integrity for `plastic/state` and `plastic/snapshot`: every resource link/action that names an RPC method must reference a method present in the live method catalog, with transport-only links such as `http/post` explicitly exempted.
+
 ## Required Method Metadata
 
 Every method must be describable with:

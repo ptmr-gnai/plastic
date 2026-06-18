@@ -7,7 +7,7 @@ import {
   assertRuntimeAuditStatus, itemsFrom, results, rpc, rpcUrl, runtimeEventStream, runtimeGet
 } from "./plastic-contract-helpers.mjs";
 import { assertAgentOrientMethodDescription, assertAgentOrientationPacket, assertAgentWorkbenchMethodDescription, assertAgentWorkbenchPacket } from "./plastic-contract-agent-packets.mjs";
-import { assertContextualResourceAffordances, expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
+import { assertContextualResourceAffordances, assertResourceMethodReferences, expectedSnapshotLinks, hasLinkAffordance, hasServiceAffordance } from "./plastic-contract-affordances.mjs";
 import { assertRuntimeCapabilitiesMethodDescription } from "./plastic-contract-capabilities.mjs";
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagnostics.mjs";
@@ -99,6 +99,7 @@ await check("plastic/methods", async () => {
   assertMethodCatalogSurface({ assert, label: "build /methods", methods: buildItems });
   assertMethodCatalogsMatch({ assert, actual: runtimeItems, expected: items, actualLabel: "runtime /methods", expectedLabel: "plastic/methods" });
   assertMethodCatalogsMatch({ assert, actual: buildItems, expected: items, actualLabel: "build /methods", expectedLabel: "plastic/methods" });
+  assertResourceMethodReferences({ assert, resources: state.resources, methodIds, source: "state" });
   const missingAvailability = items.filter((method) => !method.availability?.status).map((method) => method.id); assert(missingAvailability.length === 0, `methods missing availability: ${missingAvailability.join(", ")}`);
   return { count: items.length };
 });
@@ -135,6 +136,7 @@ await check("plastic/snapshot", async () => {
   assert(snapshot.methods.count === methods.length, "snapshot methods count does not match plastic/methods");
   assertMethodCatalogSurface({ assert, label: "snapshot", methods: snapshot.methods.items });
   assertMethodCatalogsMatch({ assert, actual: snapshot.methods.items, expected: methods, actualLabel: "snapshot methods", expectedLabel: "plastic/methods" });
+  assertResourceMethodReferences({ assert, resources: snapshot.resources, methodIds, source: "snapshot" });
   assertContextualResourceAffordances({ assert, resources: snapshot.resources, source: "snapshot" });
   assert(snapshot.events?.count >= 1, "snapshot.events.count missing");
   for (const link of expectedSnapshotLinks) {
