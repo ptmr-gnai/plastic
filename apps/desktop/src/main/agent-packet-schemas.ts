@@ -22,15 +22,52 @@ const controlPlaneSchema = {
   }
 };
 
+const methodParitySchema = {
+  type: "object",
+  required: ["mode", "failureTotal"],
+  properties: {
+    mode: { type: "string" },
+    failureTotal: { type: ["number", "null"] }
+  }
+};
+
+const auditMetadataSchema = {
+  type: "object",
+  required: ["schemaVersion", "generatedAt", "checks", "expectedChecks", "expectedStepIds", "usable", "strictElectron", "unified", "methodParity"],
+  properties: {
+    schemaVersion: { type: ["number", "null"] },
+    generatedAt: { type: ["string", "null"] },
+    checks: { type: ["number", "null"] },
+    expectedChecks: { type: ["number", "null"] },
+    expectedStepIds: { type: "array", items: { type: "string" } },
+    usable: { type: "boolean" },
+    strictElectron: { type: "string" },
+    unified: { type: "string" },
+    methodParity: methodParitySchema
+  }
+};
+
+const recentAuditActionSchema = {
+  type: "object",
+  required: ["actionId", "ok", "exitCode", "auditMetadata", "env"],
+  properties: {
+    actionId: { type: ["string", "null"] },
+    ok: { type: "boolean" },
+    exitCode: { type: ["number", "null"] },
+    auditMetadata: { anyOf: [{ type: "null" }, auditMetadataSchema] },
+    env: { type: "object" }
+  }
+};
+
 const auditStatusSchema = {
   type: "object",
   required: ["verdict", "audit", "failureSummary", "actionIds", "recentActions"],
   properties: {
     verdict: { type: "string" },
-    audit: { type: "object" },
+    audit: auditMetadataSchema,
     failureSummary: { type: "object" },
     actionIds: { type: "array", items: { type: "string" } },
-    recentActions: { type: "array", items: { type: "object" } }
+    recentActions: { type: "array", items: recentAuditActionSchema }
   }
 };
 
