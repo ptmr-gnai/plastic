@@ -64,10 +64,14 @@ export const plasticSnapshotOutputSchema = {
   properties: {
     app: {
       type: "object",
-      required: ["name", "mode", "hostBase"],
+      required: ["name", "mode", "hostBase", "workspaceDir", "eventPath"],
       properties: {
         name: { type: "string" },
         mode: { type: "string", enum: ["electron", "headless"] },
+        workspaceDir: { type: "string" },
+        eventPath: { type: "string" },
+        version: { type: "string" },
+        ready: { type: "boolean" },
         hostBase: {
           type: "object",
           required: ["id", "version"],

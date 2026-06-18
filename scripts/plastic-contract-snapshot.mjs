@@ -12,6 +12,9 @@ export const assertSnapshotMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.app?.properties?.mode?.enum?.includes("electron"), "plastic/snapshot output schema must expose electron mode");
   assert(description.outputSchema?.properties?.app?.properties?.mode?.enum?.includes("headless"), "plastic/snapshot output schema must expose headless mode");
   assert(description.outputSchema?.properties?.app?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "plastic/snapshot output schema must expose hostBase marker");
+  assert(description.outputSchema?.properties?.app?.required?.includes("workspaceDir"), "plastic/snapshot app schema must require workspaceDir");
+  assert(description.outputSchema?.properties?.app?.required?.includes("eventPath"), "plastic/snapshot app schema must require eventPath");
+  assert(description.outputSchema?.properties?.app?.properties?.ready?.type === "boolean", "plastic/snapshot app schema must expose ready");
   assert(description.outputSchema?.properties?.build?.required?.includes("buildSocket"), "plastic/snapshot build schema must expose buildSocket");
   assert(description.outputSchema?.properties?.build?.properties?.agentTransports?.items?.properties?.methodRegistry?.enum?.includes("shared"), "plastic/snapshot build schema must expose shared agent transports");
   assert(description.outputSchema?.properties?.runtime?.required?.includes("windowCount"), "plastic/snapshot runtime schema must require windowCount");
