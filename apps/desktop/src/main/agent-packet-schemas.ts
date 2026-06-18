@@ -62,7 +62,7 @@ export const agentWorkbenchOutputSchema = {
     },
     control: {
       type: "object",
-      required: ["capabilities", "controlPlane", "agentTransports", "auditStatus", "modules", "methodCount", "methodGroups", "recommendedActions"],
+      required: ["capabilities", "controlPlane", "agentTransports", "auditStatus", "modules", "methodCount", "methodGroups", "links", "recommendedActions"],
       properties: {
         capabilities: capabilityPacketSchema,
         controlPlane: controlPlaneSchema,
@@ -71,6 +71,7 @@ export const agentWorkbenchOutputSchema = {
         modules: { type: "object" },
         methodCount: { type: "number" },
         methodGroups: { type: "array", items: { type: "object" } },
+        links: { type: "array", items: { type: "object" } },
         recommendedActions: { type: "array", items: actionAffordanceSchema }
       }
     },

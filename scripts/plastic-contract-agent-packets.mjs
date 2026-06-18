@@ -49,6 +49,9 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertControlPlaneEndpointUrls({ assert, controlPlane: workbench.control.controlPlane, source: "workbench" });
   assertAgentTransports({ assert, assertArray, transports: workbench.control.agentTransports, rpcUrl: workbench.control.controlPlane.runtime.rpcUrl, source: "workbench" });
   assertArray(workbench.control.recommendedActions, "workbench recommendedActions is not an array");
+  assertArray(workbench.control.links, "workbench control links missing");
+  assertKnownMethodReferences({ assert, references: workbench.control.links, methodIds, source: "workbench links" });
+  assertLinkInputLegibility({ assert, links: workbench.control.links, methods, source: "workbench links" });
   assertKnownMethodReferences({ assert, references: workbench.control.recommendedActions, methodIds, source: "workbench recommendedActions" });
   assertActionInputLegibility({ assert, actions: workbench.control.recommendedActions, methods, source: "workbench recommendedActions" });
   assertActionMetadata({ assert, actions: workbench.control.recommendedActions, source: "workbench recommendedActions" });
@@ -82,6 +85,7 @@ export const assertAgentWorkbenchMethodDescription = ({ assert, description }) =
   assert(actions?.items?.properties?.intent?.enum?.includes("execute"), "agent/workbench output schema must expose action intent");
   assert(actions?.items?.properties?.risk?.enum?.includes("medium"), "agent/workbench output schema must expose action risk");
   assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.required?.includes("runtime"), "agent/workbench output schema must expose runtime control plane");
+  assert(description.outputSchema?.properties?.control?.properties?.links?.items?.type === "object", "agent/workbench output schema must expose control links");
   assert(description.outputSchema?.properties?.control?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "agent/workbench output schema must expose transport action inputSchema");
   return { id: description.id, required: description.outputSchema.required };
 };

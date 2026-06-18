@@ -233,6 +233,27 @@ const buildControl = async (input: {
     modules: await readRuntimeModules({ methods, runPromise }),
     methodCount: methodList.length,
     methodGroups: groupMethodsByOwner(methodList),
+    links: [
+      {
+        rel: "self",
+        href: "agent/workbench",
+        method: "agent/workbench",
+        input: {
+          ...(panelId ? { panelId } : {}),
+          ...(workbenchInput?.ref ? { ref: workbenchInput.ref } : {}),
+          ...(latestEventId ? { eventCursor: latestEventId } : {})
+        }
+      },
+      { rel: "state", href: "plastic/state", method: "plastic/state" },
+      { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
+      { rel: "host", href: "runtime/host", method: "runtime/host" },
+      { rel: "modules", href: "runtime/modules", method: "runtime/modules" },
+      { rel: "audit-status", href: "runtime/auditStatus", method: "runtime/auditStatus" },
+      { rel: "audit-action-plan", href: "runtime/auditActionPlan", method: "runtime/auditActionPlan", inputSchema: agentActionSchemas.auditActionInputSchema },
+      { rel: "audit-action", href: "runtime/runAuditAction", method: "runtime/runAuditAction", inputSchema: agentActionSchemas.auditActionInputSchema },
+      { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
+      { rel: "timeline", href: "events/timeline", method: "events/timeline", inputSchema: agentActionSchemas.timelineInputSchema }
+    ],
     recommendedActions: [
       agentAction({ id: "refresh-workbench", title: "Refresh workbench", method: "agent/workbench", input: { panelId, eventCursor: latestEventId } }),
       agentAction({ id: "read-state", title: "Read state", method: "plastic/state" }),
