@@ -2,7 +2,7 @@ import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane
 import { assertChatMethodDescriptions } from "./plastic-contract-chat.mjs";
 import { assertCodexBridgeMethodDescriptions, assertCodexCoreMethodDescriptions } from "./plastic-contract-codex.mjs";
 import { assertExtensionLifecycleMethodDescriptions, assertExtensionQueryMethodDescriptions, assertExtensionVerificationMethodDescriptions } from "./plastic-contract-extensions.mjs";
-import { assertSetThemeMethodDescription } from "./plastic-contract-events.mjs";
+import { assertSetThemeBehavior, assertSetThemeMethodDescription } from "./plastic-contract-events.mjs";
 import { assertPanelMailboxMethodDescriptions } from "./plastic-contract-panel-mailbox.mjs";
 import { assertPanelControlMethodDescriptions } from "./plastic-contract-panels.mjs";
 import { capabilityExpectationsForMode } from "./plastic-capability-expectations.mjs";
@@ -240,15 +240,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
   assertCodexBridgeMethodDescriptions({ assert, descriptions: Object.fromEntries(await Promise.all([["configure", "bridge/configurePlasticMcp"], ["status", "bridge/status"], ["test", "bridge/test"], ["call", "bridge/callPlasticRpcTool"]].map(async ([key, id]) => [key, await rpc("methods/describe", { id })]))) });
   assertPassthroughMethodLegibility({ methods, ids: ["codex/request", "codex/threadStart", "codex/turnStart", "codex/modelList"] });
   assertSetThemeMethodDescription({ assert, description: await rpc("methods/describe", { id: "app/setTheme" }) });
-  const darkEvent = await rpc("app/setTheme", { theme: "dark" });
-  assert(darkEvent?.type === "theme.changed", "app/setTheme did not append theme.changed");
-  const darkState = await rpc("plastic/state");
-  assert(darkState.app?.theme === "dark", "dark theme did not project into plastic/state");
-  const lightEvent = await rpc("app/setTheme", { theme: "light" });
-  assert(lightEvent?.type === "theme.changed", "app/setTheme light did not append theme.changed");
-  const lightState = await rpc("plastic/state");
-  assert(lightState.app?.theme === "light", "light theme did not project into plastic/state");
-  return { methods: 6, events: [darkEvent.id, lightEvent.id], theme: lightState.app.theme };
+  return assertSetThemeBehavior({ assert, rpc });
 };
 
 export const assertPanelLifecycleProjection = async ({ rpc, panelId, meta }) => {

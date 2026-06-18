@@ -54,6 +54,18 @@ export const assertSetThemeMethodDescription = ({ assert, description }) => {
   assert(description.reversibility?.method === "app/setTheme", "app/setTheme must describe its reversal method");
 };
 
+export const assertSetThemeBehavior = async ({ assert, rpc }) => {
+  const darkEvent = await rpc("app/setTheme", { theme: "dark" });
+  assert(darkEvent?.type === "theme.changed", "app/setTheme did not append theme.changed");
+  assert(darkEvent.payload?.theme === "dark", "app/setTheme dark payload mismatch");
+  assert((await rpc("plastic/state")).app?.theme === "dark", "dark theme did not project into plastic/state");
+  const lightEvent = await rpc("app/setTheme", { theme: "light" });
+  assert(lightEvent?.type === "theme.changed", "app/setTheme light did not append theme.changed");
+  assert(lightEvent.payload?.theme === "light", "app/setTheme light payload mismatch");
+  assert((await rpc("plastic/state")).app?.theme === "light", "light theme did not project into plastic/state");
+  return { methods: 6, events: [darkEvent.id, lightEvent.id], theme: "light" };
+};
+
 const assertPlasticEventSchema = ({ assert, schema, label }) => {
   assert(schema?.required?.includes("id"), `${label} schema must require id`);
   assert(schema?.required?.includes("type"), `${label} schema must require type`);
