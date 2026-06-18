@@ -48,6 +48,15 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
       `${label} ${method.id} examples verify unknown methods: ${unknownVerifyMethods.join(", ")}`
     );
     assertActionInputLegibility({ assert, actions: verifyActions, methods, source: `${label} ${method.id} examples` });
+    const durableEvents = method.effects?.durableEvents ?? [];
+    const allowsDynamicEvents = durableEvents.includes("<input.type>") || durableEvents.includes("delegated");
+    const undeclaredExpectedEvents = (method.examples ?? [])
+      .flatMap((example) => example.expectedEvents ?? [])
+      .filter((eventType) => !allowsDynamicEvents && !durableEvents.includes(eventType));
+    assert(
+      undeclaredExpectedEvents.length === 0,
+      `${label} ${method.id} examples expect undeclared durable events: ${undeclaredExpectedEvents.join(", ")}`
+    );
   }
 }
 
