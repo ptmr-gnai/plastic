@@ -268,6 +268,20 @@ const compare = (base, current) => {
   };
 };
 
+const comparisonFailureFields = [
+  "missing", "added", "ownerDrift", "missingModules", "addedModules", "moduleOrderDrift",
+  "moduleMethodDrift", "moduleRequiredCapabilityDrift", "missingCapabilities", "addedCapabilities",
+  "capabilityTitleDrift", "sharedCapabilityStatusDrift", "hostShapeDrift", "healthDrift",
+  "serviceResourceLinkDrift", "serviceResourceActionDrift", "snapshotLinkDrift", "mcpToolDrift",
+  "methodCapabilityDrift", "methodAffordanceDrift", "methodSchemaDrift", "methodEffectDrift",
+  "methodDocumentationDrift"
+];
+const comparisonFailureSummary = (comparison) => {
+  if (!comparison) return null;
+  const counts = Object.fromEntries(comparisonFailureFields.map((field) => [field, comparison[field]?.length ?? 0]));
+  return { total: Object.values(counts).reduce((sum, count) => sum + count, 0), counts };
+};
+
 const compareDiscovery = (baseDiscovery, currentDiscovery) => ({
   serviceResourceLinkDrift: JSON.stringify(baseDiscovery?.serviceResources?.links ?? []) === JSON.stringify(currentDiscovery?.serviceResources?.links ?? [])
     ? []
@@ -461,6 +475,7 @@ const main = async () => {
     sharedHealthChecks: current.health.sharedChecks.map((check) => check.id),
     mcpTools: current.mcpTools.map((tool) => tool.name),
     capabilityStatuses: Object.fromEntries(current.capabilities.map((capability) => [capability.id, capability.status])),
+    comparisonFailureSummary: comparisonFailureSummary(comparison),
     comparison
   }, null, 2));
 };
