@@ -14,6 +14,8 @@ export const assertSnapshotMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.app?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "plastic/snapshot output schema must expose hostBase marker");
   assert(description.outputSchema?.properties?.build?.required?.includes("buildSocket"), "plastic/snapshot build schema must expose buildSocket");
   assert(description.outputSchema?.properties?.build?.properties?.agentTransports?.items?.properties?.methodRegistry?.enum?.includes("shared"), "plastic/snapshot build schema must expose shared agent transports");
+  assert(description.outputSchema?.properties?.runtime?.required?.includes("windowCount"), "plastic/snapshot runtime schema must require windowCount");
+  assert(description.outputSchema?.properties?.runtime?.properties?.eventStream?.type === "string", "plastic/snapshot runtime schema must expose eventStream");
   assert(description.outputSchema?.properties?.controlPlane?.required?.includes("runtime"), "plastic/snapshot output schema must expose runtime control plane");
   assert(description.outputSchema?.properties?.controlPlane?.required?.includes("build"), "plastic/snapshot output schema must expose build control plane");
   assert(description.outputSchema?.properties?.controlPlane?.properties?.runtime?.required?.includes("rpcUrl"), "plastic/snapshot output schema must expose runtime RPC URL");

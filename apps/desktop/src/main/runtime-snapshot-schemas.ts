@@ -34,6 +34,16 @@ const plasticSnapshotWindowSchema = {
   }
 };
 
+const plasticSnapshotRuntimeSchema = {
+  type: "object",
+  required: ["windowCount"],
+  properties: {
+    windowCount: { type: "number" },
+    retainedWindowCount: { type: "number" },
+    eventStream: { type: "string" }
+  }
+};
+
 export const plasticSnapshotOutputSchema = {
   type: "object",
   required: [
@@ -69,7 +79,7 @@ export const plasticSnapshotOutputSchema = {
       }
     },
     build: buildStatusOutputSchema,
-    runtime: { type: "object" },
+    runtime: plasticSnapshotRuntimeSchema,
     codex: codexStatusOutputSchema,
     controlPlane: runtimeHostControlPlaneSchema,
     methods: {
