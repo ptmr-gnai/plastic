@@ -1,3 +1,4 @@
+import { plasticEventSchema, plasticMethodSchema } from "./runtime-control-schemas.js";
 import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
 
 export const plasticSnapshotOutputSchema = {
@@ -43,7 +44,7 @@ export const plasticSnapshotOutputSchema = {
       required: ["count", "items"],
       properties: {
         count: { type: "number" },
-        items: { type: "array", items: { type: "object" } }
+        items: { type: "array", items: plasticMethodSchema }
       }
     },
     panels: { type: "array", items: { type: "object" } },
@@ -56,8 +57,8 @@ export const plasticSnapshotOutputSchema = {
       required: ["count", "latest", "recent"],
       properties: {
         count: { type: "number" },
-        latest: { anyOf: [{ type: "object" }, { type: "null" }] },
-        recent: { type: "array", items: { type: "object" } }
+        latest: { anyOf: [plasticEventSchema, { type: "null" }] },
+        recent: { type: "array", items: plasticEventSchema }
       }
     },
     links: { type: "array", items: { type: "object" } }
