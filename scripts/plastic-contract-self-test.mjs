@@ -65,6 +65,16 @@ export const assertSelfTestSurface = ({ assert, selfTest }) => {
   assert(orientationCheck.details.unknownOrientationActions?.length === 0, "plastic/selfTest orientation action references unknown methods");
   assert(orientationCheck.details.unknownOrientationLinks?.length === 0, "plastic/selfTest orientation link references unknown methods");
   assert(orientationCheck.details.vagueInputs?.length === 0, "plastic/selfTest agent packet affordances have vague inputs");
+  assert(typeof orientationCheck.details.auditMetadata?.inProgress === "boolean", "plastic/selfTest workbench audit metadata missing progress flag");
+  assert(typeof orientationCheck.details.auditMetadata.usable === "boolean", "plastic/selfTest workbench audit metadata missing usability flag");
+  assert(typeof orientationCheck.details.auditMetadata.strictElectron === "string", "plastic/selfTest workbench audit metadata missing strict Electron verdict");
+  assert(typeof orientationCheck.details.auditMetadata.unified === "string", "plastic/selfTest workbench audit metadata missing unified verdict");
+  assert(orientationCheck.details.auditMetadata.methodParity?.reportPath === null || typeof orientationCheck.details.auditMetadata.methodParity?.reportPath === "string", "plastic/selfTest workbench audit metadata invalid method parity report path");
+  assert(typeof orientationCheck.details.orientationAuditMetadata?.inProgress === "boolean", "plastic/selfTest orient audit metadata missing progress flag");
+  assert(typeof orientationCheck.details.orientationAuditMetadata.usable === "boolean", "plastic/selfTest orient audit metadata missing usability flag");
+  assert(typeof orientationCheck.details.orientationAuditMetadata.strictElectron === "string", "plastic/selfTest orient audit metadata missing strict Electron verdict");
+  assert(typeof orientationCheck.details.orientationAuditMetadata.unified === "string", "plastic/selfTest orient audit metadata missing unified verdict");
+  assert(orientationCheck.details.orientationAuditMetadata.methodParity?.reportPath === null || typeof orientationCheck.details.orientationAuditMetadata.methodParity?.reportPath === "string", "plastic/selfTest orient audit metadata invalid method parity report path");
   return { checks: selfTest.checks?.length ?? null };
 };
 
