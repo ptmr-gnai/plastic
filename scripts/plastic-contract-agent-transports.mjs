@@ -14,6 +14,7 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
   assert(http.links?.some((link) => link.rel === "self-test" && link.method === "http/get" && link.href === selfTestUrl), `${source} HTTP transport missing self-test link`);
   assert(http.links?.some((link) => link.rel === "rpc" && link.method === "http/post" && link.href === rpcUrl), `${source} HTTP transport missing RPC link`);
   assert(http.actions?.some((action) => action.id === "call-plastic-rpc" && action.method === "http/post" && action.href === rpcUrl), `${source} HTTP transport missing call action`);
+  assert(http.actions?.some((action) => action.id === "call-plastic-rpc" && action.inputSchema?.required?.includes("method")), `${source} HTTP transport call action missing RPC input schema`);
   assert(mcp?.status === "available", `${source} missing available MCP stdio transport`);
   assert(mcp.title === "MCP stdio bridge", `${source} MCP transport title mismatch`);
   assert(mcp.transport === "stdio", `${source} MCP transport kind mismatch`);
@@ -22,5 +23,6 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
   assert(mcp.env?.PLASTIC_RPC_URL === rpcUrl, `${source} MCP RPC URL mismatch`);
   assert(mcp.tools?.some((tool) => tool.name === "plastic_rpc" && tool.methodRegistry === "shared"), `${source} MCP transport missing plastic_rpc tool metadata`);
   assert(mcp.actions?.some((action) => action.id === "call-plastic-rpc" && action.tool === "plastic_rpc" && action.arguments?.method === "agent/orient"), `${source} MCP transport missing plastic_rpc call action`);
+  assert(mcp.actions?.some((action) => action.id === "call-plastic-rpc" && action.inputSchema?.required?.includes("method")), `${source} MCP transport call action missing RPC input schema`);
   return { count: items.length };
 };
