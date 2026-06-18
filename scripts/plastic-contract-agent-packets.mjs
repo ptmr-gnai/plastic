@@ -192,6 +192,7 @@ const assertCapabilityStatuses = ({ assert, items, statuses, source }) => {
 const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {
   assert(auditStatus.audit?.schemaVersion === 1, `${source} audit status missing schema version`);
   assert(typeof auditStatus.audit.generatedAt === "string" && !Number.isNaN(Date.parse(auditStatus.audit.generatedAt)), `${source} audit status missing generated timestamp`);
+  assert(typeof auditStatus.audit.inProgress === "boolean", `${source} audit status missing progress flag`);
   assert(typeof auditStatus.audit.checks === "number", `${source} audit status missing check count`);
   assert(typeof auditStatus.audit.expectedChecks === "number", `${source} audit status missing expected check count`);
   assert(Array.isArray(auditStatus.audit.expectedStepIds), `${source} audit status missing expected step ids`);
@@ -199,6 +200,7 @@ const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {
   assert(typeof auditStatus.audit.strictElectron === "string", `${source} audit status missing strict Electron status`);
   assert(typeof auditStatus.audit.unified === "string", `${source} audit status missing unified status`);
   assert(typeof auditStatus.audit.methodParity?.mode === "string", `${source} audit status missing method parity mode`);
+  assert(auditStatus.audit.methodParity.reportPath === null || typeof auditStatus.audit.methodParity.reportPath === "string", `${source} audit status invalid method parity report path`);
   assert(auditStatus.audit.methodParity.failureTotal === null || typeof auditStatus.audit.methodParity.failureTotal === "number", `${source} audit status invalid method parity total`);
 };
 

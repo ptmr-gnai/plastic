@@ -1,4 +1,5 @@
 import type { MethodRegistry, PlasticMethod } from "@plastic/core";
+import { compactAuditMetadata, type AuditSummary } from "./runtime-audit-projection.js";
 import type { RunPromise } from "./runtime-method-context.js";
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -18,11 +19,11 @@ export const readAgentAuditStatus = async (input: {
   if (typeof status.error === "string") {
     return { error: status.error };
   }
+  const rawSummary = status.summary && typeof status.summary === "object" && !Array.isArray(status.summary)
+    ? status.summary as AuditSummary
+    : null;
   const verdict = asRecord(status.verdict);
-  const summary = asRecord(status.summary);
-  const runtimeUnification = asRecord(summary.runtimeUnification);
-  const methodParity = asRecord(runtimeUnification.methodParity);
-  const parityFailureSummary = asRecord(methodParity.failureSummary);
+  const auditMetadata = compactAuditMetadata(rawSummary);
   const diagnosis = asRecord(verdict.diagnosis);
   const failureSummary = asRecord(verdict.failureSummary);
   const firstFailure = asRecord(failureSummary.first);
@@ -30,20 +31,7 @@ export const readAgentAuditStatus = async (input: {
   const recentActions = Array.isArray(status.recentActions) ? status.recentActions.map(asRecord) : [];
   return {
     available: status.available === true,
-    audit: {
-      schemaVersion: typeof summary.schemaVersion === "number" ? summary.schemaVersion : null,
-      generatedAt: typeof summary.generatedAt === "string" ? summary.generatedAt : null,
-      checks: typeof summary.checks === "number" ? summary.checks : null,
-      expectedChecks: typeof summary.expectedChecks === "number" ? summary.expectedChecks : null,
-      expectedStepIds: Array.isArray(summary.expectedStepIds) ? summary.expectedStepIds.filter((id): id is string => typeof id === "string") : [],
-      usable: runtimeUnification.usable === true,
-      strictElectron: typeof runtimeUnification.strictElectron === "string" ? runtimeUnification.strictElectron : "unknown",
-      unified: typeof runtimeUnification.unified === "string" ? runtimeUnification.unified : "unknown",
-      methodParity: {
-        mode: typeof methodParity.mode === "string" ? methodParity.mode : "unknown",
-        failureTotal: typeof parityFailureSummary.total === "number" ? parityFailureSummary.total : null
-      }
-    },
+    audit: auditMetadata,
     verdict: typeof verdict.status === "string" ? verdict.status : "unknown",
     diagnosis: {
       code: typeof diagnosis.code === "string" ? diagnosis.code : "unknown",

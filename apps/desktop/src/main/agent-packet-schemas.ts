@@ -26,6 +26,7 @@ const methodParitySchema = {
   type: "object",
   required: ["mode", "failureTotal"],
   properties: {
+    reportPath: { type: ["string", "null"] },
     mode: { type: "string" },
     failureTotal: { type: ["number", "null"] }
   }
@@ -33,10 +34,11 @@ const methodParitySchema = {
 
 const auditMetadataSchema = {
   type: "object",
-  required: ["schemaVersion", "generatedAt", "checks", "expectedChecks", "expectedStepIds", "usable", "strictElectron", "unified", "methodParity"],
+  required: ["schemaVersion", "generatedAt", "inProgress", "checks", "expectedChecks", "expectedStepIds", "usable", "strictElectron", "unified", "methodParity"],
   properties: {
     schemaVersion: { type: ["number", "null"] },
     generatedAt: { type: ["string", "null"] },
+    inProgress: { type: "boolean" },
     checks: { type: ["number", "null"] },
     expectedChecks: { type: ["number", "null"] },
     expectedStepIds: { type: "array", items: { type: "string" } },
