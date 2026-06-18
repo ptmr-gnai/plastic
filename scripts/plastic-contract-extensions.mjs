@@ -61,6 +61,9 @@ export const assertExtensionVerificationMethodDescriptions = ({ assert, descript
   const item = descriptions.status.outputSchema?.properties?.items?.items;
   assert(item?.required?.includes("eventId"), "extensions/verificationStatus item schema must require eventId");
   assert(item?.required?.includes("checkCount"), "extensions/verificationStatus item schema must require checkCount");
+  assert(descriptions.status.outputSchema?.properties?.links?.items?.required?.includes("rel"), "extensions/verificationStatus link schema must require rel");
+  assert(descriptions.status.outputSchema?.properties?.links?.items?.required?.includes("href"), "extensions/verificationStatus link schema must require href");
+  assert(descriptions.status.outputSchema?.properties?.links?.items?.properties?.method?.type === "string", "extensions/verificationStatus link schema must expose method");
 };
 
 const assertExtensionSchema = ({ assert, schema, label }) => {

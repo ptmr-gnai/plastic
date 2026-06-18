@@ -7,6 +7,7 @@ import {
 import type { RunPromise } from "./runtime-method-context.js";
 import { noInputSchema, readOnlyEffects, readOnlyReversibility } from "./runtime-method-metadata.js";
 import { plasticEventSchema } from "./runtime-control-schemas.js";
+import { plasticStateResourceLinkSchema } from "./runtime-state-schemas.js";
 import { appendVerificationEvent, latestVerificationStatus, verifyExtension } from "./extension-verifier.js";
 
 const extensionVerificationAvailability = {
@@ -61,7 +62,7 @@ const verificationStatusOutputSchema = {
   required: ["items", "links"],
   properties: {
     items: { type: "array", items: verificationStatusItemSchema },
-    links: { type: "array", items: { type: "object" } }
+    links: { type: "array", items: plasticStateResourceLinkSchema }
   }
 };
 
