@@ -34,8 +34,12 @@ const readMethodEffects = async (method) => {
   try {
     const description = await callPlastic("methods/describe", { id: method });
     return {
+      id: description.id ?? method,
+      title: description.title ?? null,
       owner: description.owner ?? null,
       availability: description.availability?.status ?? description.availability ?? null,
+      inputSchema: description.inputSchema ?? null,
+      outputSchema: description.outputSchema ?? null,
       effects: description.effects ?? null,
       reversibility: description.reversibility ?? null
     };

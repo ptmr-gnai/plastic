@@ -26,6 +26,18 @@ const initializeMcp = async (mcp) => {
   assert(initialized.result?.serverInfo?.name === "plastic", "MCP initialize returned wrong server");
 };
 
+const assertDelegatedMethodEffects = async ({ method, payload }) => {
+  const description = await rpc("methods/describe", { id: method });
+  const effects = payload.methodEffects;
+  assert(effects?.id === description.id, `${method} MCP methodEffects id mismatch`);
+  assert(effects.title === description.title, `${method} MCP methodEffects title mismatch`);
+  assert(stableJson(effects.owner) === stableJson(description.owner), `${method} MCP methodEffects owner mismatch`);
+  assert(stableJson(effects.inputSchema) === stableJson(description.inputSchema), `${method} MCP methodEffects inputSchema mismatch`);
+  assert(stableJson(effects.outputSchema) === stableJson(description.outputSchema), `${method} MCP methodEffects outputSchema mismatch`);
+  assert(stableJson(effects.effects) === stableJson(description.effects), `${method} MCP methodEffects effects mismatch`);
+  assert(stableJson(effects.reversibility) === stableJson(description.reversibility), `${method} MCP methodEffects reversibility mismatch`);
+};
+
 const run = async () => {
   const mcp = createPlasticMcpClient({
     env: {
@@ -44,6 +56,7 @@ const run = async () => {
       input: {}
     });
     assert(payload.ok === true, "MCP Plastic RPC call failed");
+    await assertDelegatedMethodEffects({ method: "runtime/auditStatus", payload });
     assert(payload.methodEffects?.reversibility?.reversible === true, "MCP result missing delegated read-only reversibility");
     assert(Array.isArray(payload.methodEffects?.effects?.durableEvents), "MCP result missing delegated effects");
     const actionId = payload.value?.verdict?.actions?.[0]?.id;
@@ -58,6 +71,7 @@ const run = async () => {
       assert(payload.value?.verdict?.status === "running", "MCP auditStatus may only omit current action while running");
     } else {
       assert(planPayload.ok === true, "MCP auditActionPlan call failed");
+      await assertDelegatedMethodEffects({ method: "runtime/auditActionPlan", payload: planPayload });
       assert(planPayload.value?.id === actionId, "MCP auditActionPlan id mismatch");
       assert(planPayload.value?.invocation?.method === "runtime/runAuditAction", "MCP auditActionPlan invocation mismatch");
       assert(planPayload.value?.audit?.metadata?.schemaVersion === payload.value?.summary?.schemaVersion, "MCP auditActionPlan metadata schema mismatch");
