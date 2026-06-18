@@ -199,6 +199,7 @@ await check("runtime/runAuditAction description", async () => {
   assert(plan.audit?.metadata?.schemaVersion === auditStatus.summary?.schemaVersion, "runtime/auditActionPlan audit schema mismatch");
   assert(plan.audit.metadata.generatedAt === auditStatus.summary?.generatedAt, "runtime/auditActionPlan audit timestamp mismatch");
   assert(plan.audit.metadata.usable === auditStatus.summary?.runtimeUnification?.usable, "runtime/auditActionPlan audit usability mismatch");
+  assert(plan.audit.metadata.methodParity?.mode === auditStatus.verdict.methodParity?.mode && plan.audit.metadata.methodParity?.failureTotal === auditStatus.verdict.methodParity?.failureTotal, "runtime/auditActionPlan audit method parity mismatch");
   assert(JSON.stringify(plan.audit.metadata.expectedStepIds) === JSON.stringify(auditStatus.summary?.expectedStepIds), "runtime/auditActionPlan audit step ids mismatch");
   return { id: description.id, planId: planDescription.id, plannedAction: plan.id, durableEvents: description.effects.durableEvents };
 });
