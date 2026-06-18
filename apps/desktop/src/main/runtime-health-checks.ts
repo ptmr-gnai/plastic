@@ -71,6 +71,7 @@ export const checkMethodRegistryHealth = (
 };
 
 export const checkMethodAffordanceHealth = (methods: PlasticMethod[]) => {
+  const methodsById = new Map(methods.map((method) => [method.id, method]));
   const missingDescribeLinks = methods
     .filter((method) =>
       !method.links?.some((link) =>
@@ -91,26 +92,16 @@ export const checkMethodAffordanceHealth = (methods: PlasticMethod[]) => {
     .map((method) => method.id);
   const invalidDescribeLinks = methods
     .filter((method) =>
-      !method.links?.some((link) =>
-        link.rel === "describe"
-        && link.href === "methods/describe"
-        && link.method === "methods/describe"
-        && link.target === method.id
-        && (link.input as { id?: unknown } | undefined)?.id === method.id
-      )
+      !method.links?.some((link) => isConcreteDescribeLink(link, method.id))
     )
     .map((method) => method.id);
   const invalidInvokeLinks = methods
     .filter((method) =>
-      !method.links?.some((link) =>
-        link.rel === "invoke"
-        && link.href === "rpc/call"
-        && link.method === "rpc/call"
-        && link.target === method.id
-        && (link.input as { method?: unknown } | undefined)?.method === method.id
-      )
+      !method.links?.some((link) => isConcreteInvokeLink(link, method.id))
     )
     .map((method) => method.id);
+  const unknownLinkMethods = collectUnknownMethodLinks(methods, methodsById);
+  const vagueInputLinks = collectVagueInputLinks(methods, methodsById);
   if (missingDescribeLinks.length > 0) {
     throw new Error(`Methods missing describe links: ${missingDescribeLinks.join(", ")}`);
   }
@@ -123,13 +114,78 @@ export const checkMethodAffordanceHealth = (methods: PlasticMethod[]) => {
   if (invalidInvokeLinks.length > 0) {
     throw new Error(`Methods with invalid invoke links: ${invalidInvokeLinks.join(", ")}`);
   }
+  if (unknownLinkMethods.length > 0) {
+    throw new Error(`Method links reference unknown methods: ${unknownLinkMethods.join(", ")}`);
+  }
+  if (vagueInputLinks.length > 0) {
+    throw new Error(`Method links for input-bearing methods must expose input or inputSchema: ${vagueInputLinks.join(", ")}`);
+  }
   return {
     count: methods.length,
     missingDescribeLinks,
     missingInvokeLinks,
     invalidDescribeLinks,
-    invalidInvokeLinks
+    invalidInvokeLinks,
+    unknownLinkMethods,
+    vagueInputLinks
   };
+};
+
+const isConcreteDescribeLink = (link: NonNullable<PlasticMethod["links"]>[number], methodId: string) =>
+  link.rel === "describe"
+  && link.href === "methods/describe"
+  && link.method === "methods/describe"
+  && link.target === methodId
+  && (link.input as { id?: unknown } | undefined)?.id === methodId;
+
+const isConcreteInvokeLink = (link: NonNullable<PlasticMethod["links"]>[number], methodId: string) =>
+  link.rel === "invoke"
+  && link.href === "rpc/call"
+  && link.method === "rpc/call"
+  && link.target === methodId
+  && (link.input as { method?: unknown } | undefined)?.method === methodId;
+
+const collectUnknownMethodLinks = (methods: PlasticMethod[], methodsById: Map<string, PlasticMethod>) =>
+  methods.flatMap((method) =>
+    (method.links ?? [])
+      .filter((link) => typeof link.method === "string" && !methodsById.has(link.method))
+      .map((link) => `${method.id}:${link.rel}:${link.method}`)
+  );
+
+const collectVagueInputLinks = (methods: PlasticMethod[], methodsById: Map<string, PlasticMethod>) =>
+  methods.flatMap((method) =>
+    (method.links ?? [])
+      .filter((link) => isVagueInputLink(link, methodsById))
+      .map((link) => `${method.id}:${link.rel}:${link.method}`)
+  );
+
+const isVagueInputLink = (link: NonNullable<PlasticMethod["links"]>[number], methodsById: Map<string, PlasticMethod>) => {
+  if (typeof link.method !== "string") {
+    return false;
+  }
+  const target = methodsById.get(link.method);
+  return Boolean(
+    target
+    && schemaHasInputShape(target.inputSchema)
+    && !inputSatisfiesRequiredFields(link.input, target.inputSchema)
+    && link.inputSchema === undefined
+  );
+};
+
+const schemaHasInputShape = (schema: unknown) =>
+  Boolean(schema && typeof schema === "object" && Object.keys((schema as { properties?: unknown }).properties ?? {}).length > 0);
+
+const inputSatisfiesRequiredFields = (input: unknown, schema: unknown) => {
+  const required = Array.isArray((schema as { required?: unknown }).required)
+    ? (schema as { required: string[] }).required
+    : [];
+  if (required.length === 0) {
+    return input !== undefined;
+  }
+  if (!input || typeof input !== "object") {
+    return false;
+  }
+  return required.every((key) => Object.prototype.hasOwnProperty.call(input, key) && (input as Record<string, unknown>)[key] !== undefined);
 };
 
 export const checkCapabilityRegistryHealth = (capabilities: RuntimeCapability[]) => {
