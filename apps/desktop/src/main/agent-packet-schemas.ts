@@ -85,6 +85,15 @@ const failureSummarySchema = {
   }
 };
 
+const diagnosisSchema = {
+  type: "object",
+  required: ["code", "phase"],
+  properties: {
+    code: { type: "string" },
+    phase: { type: ["string", "null"] }
+  }
+};
+
 const auditStatusSchema = {
   type: "object",
   required: ["available", "verdict", "audit", "diagnosis", "failureSummary", "nextAction", "actionIds", "recentActions"],
@@ -92,7 +101,7 @@ const auditStatusSchema = {
     available: { type: "boolean" },
     verdict: { type: "string" },
     audit: auditMetadataSchema,
-    diagnosis: { type: "object" },
+    diagnosis: diagnosisSchema,
     failureSummary: failureSummarySchema,
     nextAction: { type: ["string", "null"] },
     actionIds: { type: "array", items: { type: "string" } },

@@ -33,6 +33,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertSameModuleAvailability({ assert, actual: workbench.control.modules.items, expected: modules.items, source: "workbench" });
   assert(workbench.control.auditStatus?.verdict, "workbench missing compact audit status");
   assertAgentAuditMetadata({ assert, auditStatus: workbench.control.auditStatus, source: "workbench" });
+  assertAuditDiagnosis({ assert, diagnosis: workbench.control.auditStatus.diagnosis, source: "workbench" });
   assertAuditFailureSummary({ assert, failureSummary: workbench.control.auditStatus.failureSummary, source: "workbench" });
   assertArray(workbench.control.auditStatus.actionIds, "workbench audit status action ids missing");
   assertArray(workbench.control.auditStatus.recentActions, "workbench audit status recent actions missing");
@@ -91,6 +92,8 @@ export const assertAgentWorkbenchMethodDescription = ({ assert, description }) =
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.required?.includes("available"), "agent/workbench output schema must expose audit availability");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.required?.includes("diagnosis"), "agent/workbench output schema must expose audit diagnosis");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.required?.includes("nextAction"), "agent/workbench output schema must expose audit next action");
+  assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.diagnosis?.required?.includes("code"), "agent/workbench output schema must expose audit diagnosis code");
+  assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.diagnosis?.required?.includes("phase"), "agent/workbench output schema must expose audit diagnosis phase");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.failureSummary?.required?.includes("blockingIds"), "agent/workbench output schema must expose audit blocking failure ids");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.failureSummary?.required?.includes("first"), "agent/workbench output schema must expose first audit failure");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("failureTotal"), "agent/workbench output schema must expose audit method parity total");
@@ -134,6 +137,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   );
   assert(orientation.capabilities.auditStatus?.verdict, "agent/orient missing compact audit status");
   assertAgentAuditMetadata({ assert, auditStatus: orientation.capabilities.auditStatus, source: "agent/orient" });
+  assertAuditDiagnosis({ assert, diagnosis: orientation.capabilities.auditStatus.diagnosis, source: "agent/orient" });
   assertAuditFailureSummary({ assert, failureSummary: orientation.capabilities.auditStatus.failureSummary, source: "agent/orient" });
   assertArray(orientation.capabilities.auditStatus.actionIds, "agent/orient audit status action ids missing");
   assertArray(orientation.capabilities.auditStatus.recentActions, "agent/orient audit status recent actions missing");
@@ -187,6 +191,8 @@ export const assertAgentOrientMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.required?.includes("available"), "agent/orient output schema must expose audit availability");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.required?.includes("diagnosis"), "agent/orient output schema must expose audit diagnosis");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.required?.includes("nextAction"), "agent/orient output schema must expose audit next action");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.diagnosis?.required?.includes("code"), "agent/orient output schema must expose audit diagnosis code");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.diagnosis?.required?.includes("phase"), "agent/orient output schema must expose audit diagnosis phase");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.failureSummary?.required?.includes("blockingIds"), "agent/orient output schema must expose audit blocking failure ids");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.failureSummary?.required?.includes("first"), "agent/orient output schema must expose first audit failure");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("failureTotal"), "agent/orient output schema must expose audit method parity total");
@@ -216,6 +222,11 @@ const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {
   assert(typeof auditStatus.audit.methodParity?.mode === "string", `${source} audit status missing method parity mode`);
   assert(auditStatus.audit.methodParity.reportPath === null || typeof auditStatus.audit.methodParity.reportPath === "string", `${source} audit status invalid method parity report path`);
   assert(auditStatus.audit.methodParity.failureTotal === null || typeof auditStatus.audit.methodParity.failureTotal === "number", `${source} audit status invalid method parity total`);
+};
+
+const assertAuditDiagnosis = ({ assert, diagnosis, source }) => {
+  assert(typeof diagnosis?.code === "string", `${source} audit status missing diagnosis code`);
+  assert(diagnosis.phase === null || typeof diagnosis.phase === "string", `${source} audit status invalid diagnosis phase`);
 };
 
 const assertAuditFailureSummary = ({ assert, failureSummary, source }) => {
