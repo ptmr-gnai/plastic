@@ -69,6 +69,25 @@ const buildStateResources = (input: {
 const eventMetaSchema = { type: "object", description: "Optional durable event metadata." };
 const themeInputSchema = { type: "object", required: ["theme"], properties: { theme: { type: "string", enum: ["light", "dark"] } } };
 const describeMethodInputSchema = { type: "object", required: ["id"], properties: { id: { type: "string" } } };
+const eventsListInputSchema = {
+  type: "object",
+  properties: {
+    after: { type: "string" },
+    before: { type: "string" },
+    limit: { oneOf: [{ type: "number" }, { const: "all" }] },
+    types: { type: "array", items: { type: "string" } },
+    includeDeltas: { type: "boolean" },
+    scope: {
+      type: "object",
+      properties: {
+        panelId: { type: "string" },
+        agentId: { type: "string" },
+        extensionId: { type: "string" },
+        windowId: { type: "string" }
+      }
+    }
+  }
+};
 const extensionIdInputSchema = { type: "object", required: ["id"], properties: { id: { type: "string" } } };
 const panelCreateInputSchema = {
   type: "object",
@@ -101,8 +120,8 @@ const plasticAppResource = (eventCount: number, methodCount: number): PlasticRes
   links: [
     { rel: "self", href: "plastic/state", method: "plastic/state" },
     { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
-    { rel: "describe-method", href: "methods/describe", method: "methods/describe" },
-    { rel: "events", href: "events/list", method: "events/list" },
+    { rel: "describe-method", href: "methods/describe", method: "methods/describe", inputSchema: describeMethodInputSchema },
+    { rel: "events", href: "events/list", method: "events/list", inputSchema: eventsListInputSchema },
     { rel: "extensions", href: "extensions/list", method: "extensions/list" },
     { rel: "panels", href: "panels/list", method: "panels/list" },
     { rel: "windows", href: "windows/list", method: "windows/list" },

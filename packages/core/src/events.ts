@@ -21,6 +21,7 @@ export interface PlasticLink {
   method?: string;
   target?: string;
   input?: unknown;
+  inputSchema?: unknown;
 }
 
 export interface PlasticRedaction {

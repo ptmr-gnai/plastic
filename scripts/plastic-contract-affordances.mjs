@@ -95,14 +95,16 @@ export const assertResourceActionInputLegibility = ({ assert, resources, methods
   const methodsById = new Map((Array.isArray(methods) ? methods : []).map((method) => [method.id, method]));
   const vague = [];
   for (const resource of Array.isArray(resources) ? resources : []) {
-    for (const action of resource.actions ?? []) {
-      const method = methodsById.get(action.method);
-      if (method && schemaHasInputShape(method.inputSchema) && !inputSatisfiesRequiredFields(action.input, method.inputSchema) && action.inputSchema === undefined) {
-        vague.push(`${resource.id}:${action.id}:${action.method}`);
+    for (const [kind, affordances] of [["link", resource.links ?? []], ["action", resource.actions ?? []]]) {
+      for (const affordance of affordances) {
+        const method = methodsById.get(affordance.method);
+        if (method && schemaHasInputShape(method.inputSchema) && !inputSatisfiesRequiredFields(affordance.input, method.inputSchema) && affordance.inputSchema === undefined) {
+          vague.push(`${resource.id}:${affordance.id ?? affordance.rel}:${kind}:${affordance.method}`);
+        }
       }
     }
   }
-  assert(vague.length === 0, `${source} resource actions with input-bearing methods must expose input or inputSchema: ${vague.join(", ")}`);
+  assert(vague.length === 0, `${source} resource affordances with input-bearing methods must expose input or inputSchema: ${vague.join(", ")}`);
 };
 
 export const assertActionInputLegibility = ({ assert, actions, methods, source }) =>
