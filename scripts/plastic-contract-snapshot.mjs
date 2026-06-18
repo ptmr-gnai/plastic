@@ -25,6 +25,9 @@ export const assertSnapshotMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.panels?.items?.required?.includes("extensionId"), "plastic/snapshot panel schema must expose extensionId");
   assert(description.outputSchema?.properties?.panels?.items?.required?.includes("order"), "plastic/snapshot panel schema must expose order");
   assert(description.outputSchema?.properties?.panels?.items?.properties?.windowId?.type === "string", "plastic/snapshot panel schema must expose windowId");
+  assert(description.outputSchema?.properties?.resources?.items?.required?.includes("links"), "plastic/snapshot resource schema must require links");
+  assert(description.outputSchema?.properties?.resources?.items?.required?.includes("actions"), "plastic/snapshot resource schema must require actions");
+  assert(description.outputSchema?.properties?.resources?.items?.properties?.actions?.items?.required?.includes("method"), "plastic/snapshot resource action schema must require method");
   assert(description.outputSchema?.properties?.windows?.items?.required?.includes("panelIds"), "plastic/snapshot window schema must expose panelIds");
   assert(description.outputSchema?.properties?.windows?.items?.properties?.open?.type === "boolean", "plastic/snapshot window schema must expose open");
   assert(description.outputSchema?.properties?.events?.required?.includes("recent"), "plastic/snapshot events schema must require recent");

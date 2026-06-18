@@ -1,5 +1,6 @@
 import { plasticEventSchema, plasticMethodSchema } from "./runtime-control-schemas.js";
 import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
+import { plasticStateResourceSchema } from "./runtime-state-schemas.js";
 
 const plasticSnapshotPanelSchema = {
   type: "object",
@@ -76,7 +77,7 @@ export const plasticSnapshotOutputSchema = {
       }
     },
     panels: { type: "array", items: plasticSnapshotPanelSchema },
-    resources: { type: "array", items: { type: "object" } },
+    resources: { type: "array", items: plasticStateResourceSchema },
     windows: { type: "array", items: plasticSnapshotWindowSchema },
     extensions: { type: "array", items: { type: "object" } },
     visibleRefs: { type: "array", items: { type: "object" } },

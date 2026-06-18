@@ -35,7 +35,7 @@ const plasticStateResourceActionSchema = {
   }
 };
 
-const plasticStateResourceSchema = {
+export const plasticStateResourceSchema = {
   type: "object",
   required: ["id", "kind", "state", "links", "actions"],
   properties: {
