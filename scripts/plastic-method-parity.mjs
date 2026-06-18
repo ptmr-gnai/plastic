@@ -268,19 +268,39 @@ const compare = (base, current) => {
   };
 };
 
-const comparisonFailureFields = [
-  "missing", "added", "ownerDrift", "missingModules", "addedModules", "moduleOrderDrift",
-  "moduleMethodDrift", "moduleRequiredCapabilityDrift", "missingCapabilities", "addedCapabilities",
-  "capabilityTitleDrift", "sharedCapabilityStatusDrift", "hostShapeDrift", "healthDrift",
-  "serviceResourceLinkDrift", "serviceResourceActionDrift", "snapshotLinkDrift", "mcpToolDrift",
-  "methodCapabilityDrift", "methodAffordanceDrift", "methodSchemaDrift", "methodEffectDrift",
-  "methodDocumentationDrift"
+const comparisonFailureChecks = [
+  ["missing", (items) => `missing methods: ${items.join(", ")}`],
+  ["added", (items) => `added methods: ${items.join(", ")}`],
+  ["ownerDrift", (items) => `owner drift: ${items.map((item) => item.id).join(", ")}`],
+  ["missingModules", (items) => `missing modules: ${items.join(", ")}`],
+  ["addedModules", (items) => `added modules: ${items.join(", ")}`],
+  ["moduleOrderDrift", () => "module order drift"],
+  ["moduleMethodDrift", (items) => `module method drift: ${items.map((item) => item.id).join(", ")}`],
+  ["moduleRequiredCapabilityDrift", (items) => `module required capability drift: ${items.map((item) => item.id).join(", ")}`],
+  ["missingCapabilities", (items) => `missing capabilities: ${items.join(", ")}`],
+  ["addedCapabilities", (items) => `added capabilities: ${items.join(", ")}`],
+  ["capabilityTitleDrift", (items) => `capability title drift: ${items.map((item) => item.id).join(", ")}`],
+  ["sharedCapabilityStatusDrift", (items) => `shared capability status drift: ${items.map((item) => item.id).join(", ")}`],
+  ["hostShapeDrift", () => "host shape drift"], ["healthDrift", (items) => `health drift: ${items.map((item) => item.id).join(", ")}`],
+  ["serviceResourceLinkDrift", () => "service resource link drift"], ["serviceResourceActionDrift", () => "service resource action drift"],
+  ["snapshotLinkDrift", () => "snapshot link drift"], ["mcpToolDrift", () => "MCP tool metadata drift"],
+  ["methodCapabilityDrift", (items) => `method capability drift: ${items.map((item) => item.id).join(", ")}`],
+  ["methodAffordanceDrift", (items) => `method affordance drift: ${items.map((item) => item.id).join(", ")}`],
+  ["methodSchemaDrift", (items) => `method schema drift: ${items.map((item) => `${item.id}.${item.field}`).join(", ")}`],
+  ["methodEffectDrift", (items) => `method effect drift: ${items.map((item) => `${item.id}.${item.field}`).join(", ")}`],
+  ["methodDocumentationDrift", (items) => `method documentation drift: ${items.map((item) => `${item.id}.${item.field}`).join(", ")}`]
 ];
 const comparisonFailureSummary = (comparison) => {
   if (!comparison) return null;
-  const counts = Object.fromEntries(comparisonFailureFields.map((field) => [field, comparison[field]?.length ?? 0]));
+  const counts = Object.fromEntries(comparisonFailureChecks.map(([field]) => [field, comparison[field]?.length ?? 0]));
   return { total: Object.values(counts).reduce((sum, count) => sum + count, 0), counts };
 };
+const comparisonFailureMessages = (comparison) => comparisonFailureChecks
+  .map(([field, message]) => {
+    const items = comparison[field] ?? [];
+    return items.length ? message(items) : null;
+  })
+  .filter(Boolean);
 
 const compareDiscovery = (baseDiscovery, currentDiscovery) => ({
   serviceResourceLinkDrift: JSON.stringify(baseDiscovery?.serviceResources?.links ?? []) === JSON.stringify(currentDiscovery?.serviceResources?.links ?? [])
@@ -432,31 +452,7 @@ const main = async () => {
   if (basePath) {
     const base = JSON.parse(await readFile(basePath, "utf8"));
     comparison = compare(base, current);
-    const failures = [
-      comparison.missing.length ? `missing methods: ${comparison.missing.join(", ")}` : null,
-      comparison.added.length ? `added methods: ${comparison.added.join(", ")}` : null,
-      comparison.ownerDrift.length ? `owner drift: ${comparison.ownerDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.missingModules.length ? `missing modules: ${comparison.missingModules.join(", ")}` : null,
-      comparison.addedModules.length ? `added modules: ${comparison.addedModules.join(", ")}` : null,
-      comparison.moduleOrderDrift.length ? "module order drift" : null,
-      comparison.moduleMethodDrift.length ? `module method drift: ${comparison.moduleMethodDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.moduleRequiredCapabilityDrift.length ? `module required capability drift: ${comparison.moduleRequiredCapabilityDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.missingCapabilities.length ? `missing capabilities: ${comparison.missingCapabilities.join(", ")}` : null,
-      comparison.addedCapabilities.length ? `added capabilities: ${comparison.addedCapabilities.join(", ")}` : null,
-      comparison.capabilityTitleDrift.length ? `capability title drift: ${comparison.capabilityTitleDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.sharedCapabilityStatusDrift.length ? `shared capability status drift: ${comparison.sharedCapabilityStatusDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.hostShapeDrift.length ? "host shape drift" : null,
-      comparison.healthDrift.length ? `health drift: ${comparison.healthDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.serviceResourceLinkDrift.length ? "service resource link drift" : null,
-      comparison.serviceResourceActionDrift.length ? "service resource action drift" : null,
-      comparison.snapshotLinkDrift.length ? "snapshot link drift" : null,
-      comparison.mcpToolDrift.length ? "MCP tool metadata drift" : null,
-      comparison.methodCapabilityDrift.length ? `method capability drift: ${comparison.methodCapabilityDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.methodAffordanceDrift.length ? `method affordance drift: ${comparison.methodAffordanceDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.methodSchemaDrift.length ? `method schema drift: ${comparison.methodSchemaDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null,
-      comparison.methodEffectDrift.length ? `method effect drift: ${comparison.methodEffectDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null,
-      comparison.methodDocumentationDrift.length ? `method documentation drift: ${comparison.methodDocumentationDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null
-    ].filter(Boolean);
+    const failures = comparisonFailureMessages(comparison);
     if (failures.length > 0) {
       throw new Error(`Method parity failed between ${base.mode} and ${current.mode}: ${failures.join("; ")}`);
     }
