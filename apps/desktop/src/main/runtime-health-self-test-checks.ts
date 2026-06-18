@@ -443,23 +443,19 @@ const invalidAgentTransportAffordances = (transports: Record<string, unknown>[])
   const mcp = transports.find((transport) => transport.id === "mcp-stdio");
   const methodsUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/methods") : undefined;
   const selfTestUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/self-test") : undefined;
+  const eventStreamUrl = typeof http?.rpcUrl === "string" ? http.rpcUrl.replace(/\/rpc$/, "/events/stream") : undefined;
   const hasRpcInputSchema = (item: unknown) => (asRecord(asRecord(item).inputSchema).required as unknown[] | undefined)?.includes("method") === true;
   const hasRpcCallActionSchema = (action: unknown) => asRecord(action).id === "call-plastic-rpc" && hasRpcInputSchema(action);
   const hasMcpTool = Array.isArray(mcp?.tools) && mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && asRecord(tool).methodRegistry === "shared");
   const hasMcpToolInputSchema = Array.isArray(mcp?.tools) && mcp.tools.some((tool) => asRecord(tool).name === "plastic_rpc" && hasRpcInputSchema(tool));
+  const hasHttpLink = (rel: string, href: unknown) => Array.isArray(http?.links) && http.links.some((link) => {
+    const record = asRecord(link);
+    return record.rel === rel && record.method === "http/get" && record.href === href;
+  });
   return [
-    !Array.isArray(http?.links) || !http.links.some((link) => {
-      const record = asRecord(link);
-      return record.rel === "methods" && record.method === "http/get" && record.href === methodsUrl;
-    })
-      ? "http-rpc:methods-link"
-      : null,
-    !Array.isArray(http?.links) || !http.links.some((link) => {
-      const record = asRecord(link);
-      return record.rel === "self-test" && record.method === "http/get" && record.href === selfTestUrl;
-    })
-      ? "http-rpc:self-test-link"
-      : null,
+    hasHttpLink("methods", methodsUrl) ? null : "http-rpc:methods-link",
+    hasHttpLink("self-test", selfTestUrl) ? null : "http-rpc:self-test-link",
+    hasHttpLink("event-stream", eventStreamUrl) ? null : "http-rpc:event-stream-link",
     !Array.isArray(http?.actions) || !http.actions.some((action) => {
       const record = asRecord(action);
       return record.id === "call-plastic-rpc" && record.method === "http/post" && record.href === http?.rpcUrl;
