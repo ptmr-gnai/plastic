@@ -38,6 +38,17 @@ const assertDelegatedMethodEffects = async ({ method, payload }) => {
   assert(stableJson(effects.reversibility) === stableJson(description.reversibility), `${method} MCP methodEffects reversibility mismatch`);
 };
 
+const assertBridgeEventEffects = ({ events, method, payload }) => {
+  const matchingEvents = events.filter((event) =>
+    event.payload?.method === method
+    && (event.type === "bridge.plastic_rpc.requested" || event.type === "bridge.plastic_rpc.completed")
+  );
+  assert(matchingEvents.length >= 2, `${method} MCP bridge events missing request/completion pair`);
+  for (const event of matchingEvents) {
+    assert(stableJson(event.payload?.methodEffects) === stableJson(payload.methodEffects), `${method} MCP bridge event methodEffects mismatch`);
+  }
+};
+
 const run = async () => {
   const mcp = createPlasticMcpClient({
     env: {
@@ -88,6 +99,10 @@ const run = async () => {
     assert(Array.isArray(events), "events/list did not return events");
     assert(events.some((event) => event.type === "bridge.plastic_rpc.requested" && event.payload?.methodEffects), "MCP requested event missing method effects");
     assert(events.some((event) => event.type === "bridge.plastic_rpc.completed" && event.payload?.methodEffects), "MCP completed event missing method effects");
+    assertBridgeEventEffects({ events, method: "runtime/auditStatus", payload });
+    if (planPayload !== null) {
+      assertBridgeEventEffects({ events, method: "runtime/auditActionPlan", payload: planPayload });
+    }
 
     console.log(JSON.stringify({
       ok: true,
