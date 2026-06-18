@@ -56,6 +56,38 @@ const auditDiagnosisSchema = {
   }
 };
 
+const auditActionRunSchema = {
+  type: "object",
+  required: ["command", "args"],
+  properties: {
+    command: { type: "string" },
+    args: { type: "array", items: { type: "string" } },
+    env: { type: "object" }
+  }
+};
+
+const auditActionInvocationSchema = {
+  type: "object",
+  required: ["id"],
+  properties: {
+    id: { type: "string" }
+  }
+};
+
+const auditDiagnosticActionSchema = {
+  type: "object",
+  required: ["id", "title", "command", "run", "description", "method", "input"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    command: { type: "string" },
+    run: auditActionRunSchema,
+    description: { type: "string" },
+    method: { type: "string", enum: ["runtime/runAuditAction"] },
+    input: auditActionInvocationSchema
+  }
+};
+
 const auditFailureSummarySchema = {
   type: "object",
   required: ["count", "ids", "blockingIds", "first"],
@@ -144,7 +176,7 @@ export const auditStatusOutputSchema = {
         diagnosis: auditDiagnosisSchema,
         hints: { type: "array", items: { type: "string" } },
         nextAction: { type: "string" },
-        actions: { type: "array" }
+        actions: { type: "array", items: auditDiagnosticActionSchema }
       }
     },
     summary: {

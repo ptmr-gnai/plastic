@@ -39,6 +39,11 @@ export const assertRuntimeAuditStatusMethodDescription = ({ assert, description 
   assert(description.outputSchema?.properties?.verdict?.properties?.diagnosis?.required?.includes("summary"), "runtime/auditStatus output schema must expose diagnosis summary");
   assert(description.outputSchema?.properties?.verdict?.properties?.failureSummary?.required?.includes("blockingIds"), "runtime/auditStatus output schema must expose blocking failure ids");
   assert(description.outputSchema?.properties?.verdict?.properties?.failureSummary?.required?.includes("first"), "runtime/auditStatus output schema must expose first failure");
+  assert(description.outputSchema?.properties?.verdict?.properties?.actions?.items?.required?.includes("run"), "runtime/auditStatus action schema must require run metadata");
+  assert(description.outputSchema?.properties?.verdict?.properties?.actions?.items?.properties?.run?.required?.includes("command"), "runtime/auditStatus action run schema must require command");
+  assert(description.outputSchema?.properties?.verdict?.properties?.actions?.items?.properties?.run?.properties?.args?.items?.type === "string", "runtime/auditStatus action run schema must expose args");
+  assert(description.outputSchema?.properties?.verdict?.properties?.actions?.items?.properties?.method?.enum?.includes("runtime/runAuditAction"), "runtime/auditStatus action schema must expose Plastic invocation method");
+  assert(description.outputSchema?.properties?.verdict?.properties?.actions?.items?.properties?.input?.required?.includes("id"), "runtime/auditStatus action schema must expose invocation input id");
   assert(description.outputSchema?.properties?.recentActions?.items?.required?.includes("stdoutTail"), "runtime/auditStatus output schema must expose recent action tails");
   assert(description.outputSchema?.properties?.recentActions?.items?.properties?.auditMetadata?.anyOf?.some((candidate) => candidate.properties?.methodParity), "runtime/auditStatus output schema must expose recent action method parity metadata");
   assert(description.outputSchema?.properties?.summary?.anyOf?.some((candidate) => candidate.properties?.inProgress?.type === "boolean"), "runtime/auditStatus output schema must expose summary.inProgress");
