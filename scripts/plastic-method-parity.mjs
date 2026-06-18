@@ -169,12 +169,16 @@ const mcpToolShape = (tool) => stableValue({
   inputSchema: tool.inputSchema
 });
 
-const methodMetadataFields = [
+const methodDocumentationFields = [
   "title",
   "description",
+  "examples"
+];
+const methodSchemaFields = [
   "inputSchema",
-  "outputSchema",
-  "examples",
+  "outputSchema"
+];
+const methodEffectFields = [
   "effects",
   "preconditions",
   "reversibility",
@@ -257,7 +261,9 @@ const compare = (base, current) => {
     mcpToolDrift: JSON.stringify(base.mcpTools) === JSON.stringify(current.mcpTools) ? [] : [{ base: base.mcpTools, current: current.mcpTools }],
     methodCapabilityDrift: methodDrift.methodCapabilityDrift,
     methodAffordanceDrift: methodDrift.methodAffordanceDrift,
-    methodMetadataDrift: methodDrift.methodMetadataDrift
+    methodDocumentationDrift: methodDrift.methodDocumentationDrift,
+    methodSchemaDrift: methodDrift.methodSchemaDrift,
+    methodEffectDrift: methodDrift.methodEffectDrift
   };
 };
 
@@ -362,17 +368,6 @@ const compareMethodMetadata = ({ baseIds, baseMethods, currentMethods }) => {
       base: baseMethods[id].requiredCapabilities,
       current: currentMethods[id].requiredCapabilities
     }));
-  const methodMetadataDrift = methodMetadataFields.flatMap((field) =>
-    baseIds
-      .filter((id) => currentMethods[id])
-      .filter((id) => JSON.stringify(baseMethods[id][field]) !== JSON.stringify(currentMethods[id][field]))
-      .map((id) => ({
-        id,
-        field,
-        base: baseMethods[id][field],
-        current: currentMethods[id][field]
-      }))
-  );
   const methodAffordanceDrift = baseIds
     .filter((id) => currentMethods[id])
     .filter((id) => JSON.stringify(baseMethods[id].affordances) !== JSON.stringify(currentMethods[id].affordances))
@@ -385,9 +380,23 @@ const compareMethodMetadata = ({ baseIds, baseMethods, currentMethods }) => {
     ownerDrift,
     methodCapabilityDrift,
     methodAffordanceDrift,
-    methodMetadataDrift
+    methodDocumentationDrift: compareMethodFieldDrift({ baseIds, baseMethods, currentMethods, fields: methodDocumentationFields }),
+    methodSchemaDrift: compareMethodFieldDrift({ baseIds, baseMethods, currentMethods, fields: methodSchemaFields }),
+    methodEffectDrift: compareMethodFieldDrift({ baseIds, baseMethods, currentMethods, fields: methodEffectFields })
   };
 };
+
+const compareMethodFieldDrift = ({ baseIds, baseMethods, currentMethods, fields }) => fields.flatMap((field) =>
+  baseIds
+    .filter((id) => currentMethods[id])
+    .filter((id) => JSON.stringify(baseMethods[id][field]) !== JSON.stringify(currentMethods[id][field]))
+    .map((id) => ({
+      id,
+      field,
+      base: baseMethods[id][field],
+      current: currentMethods[id][field]
+    }))
+);
 
 const main = async () => {
   const current = await capture();
@@ -414,7 +423,9 @@ const main = async () => {
       comparison.mcpToolDrift.length ? "MCP tool metadata drift" : null,
       comparison.methodCapabilityDrift.length ? `method capability drift: ${comparison.methodCapabilityDrift.map((item) => item.id).join(", ")}` : null,
       comparison.methodAffordanceDrift.length ? `method affordance drift: ${comparison.methodAffordanceDrift.map((item) => item.id).join(", ")}` : null,
-      comparison.methodMetadataDrift.length ? `method metadata drift: ${comparison.methodMetadataDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null
+      comparison.methodSchemaDrift.length ? `method schema drift: ${comparison.methodSchemaDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null,
+      comparison.methodEffectDrift.length ? `method effect drift: ${comparison.methodEffectDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null,
+      comparison.methodDocumentationDrift.length ? `method documentation drift: ${comparison.methodDocumentationDrift.map((item) => `${item.id}.${item.field}`).join(", ")}` : null
     ].filter(Boolean);
     if (failures.length > 0) {
       throw new Error(`Method parity failed between ${base.mode} and ${current.mode}: ${failures.join("; ")}`);
