@@ -36,6 +36,8 @@ export const assertSnapshotMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.visibleRefs?.items?.properties?.refs?.items?.required?.includes("tag"), "plastic/snapshot visible ref schema must require tag");
   assert(description.outputSchema?.properties?.windows?.items?.required?.includes("panelIds"), "plastic/snapshot window schema must expose panelIds");
   assert(description.outputSchema?.properties?.windows?.items?.properties?.open?.type === "boolean", "plastic/snapshot window schema must expose open");
+  assert(description.outputSchema?.properties?.links?.items?.required?.includes("href"), "plastic/snapshot link schema must require href");
+  assert(description.outputSchema?.properties?.links?.items?.properties?.method?.type === "string", "plastic/snapshot link schema must expose method");
   assert(description.outputSchema?.properties?.events?.required?.includes("recent"), "plastic/snapshot events schema must require recent");
   assert(description.outputSchema?.properties?.events?.properties?.recent?.items?.properties?.actor?.properties?.kind?.enum?.includes("agent"), "plastic/snapshot recent event schema must expose agent actors");
   assert(description.outputSchema?.properties?.events?.properties?.latest?.anyOf?.some((candidate) => candidate.properties?.scope?.required?.includes("workspaceId")), "plastic/snapshot latest event schema must expose event scope");

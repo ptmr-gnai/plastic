@@ -9,7 +9,7 @@ const plasticStateEventsSchema = {
   }
 };
 
-const plasticStateResourceLinkSchema = {
+export const plasticStateResourceLinkSchema = {
   type: "object",
   required: ["rel", "href"],
   properties: {
