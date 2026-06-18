@@ -71,6 +71,8 @@ export const assertHeadlessFallbackChatFixture = async ({
   });
   assertEventsTagged(assertArray(fallbackEvents, "fallback chat events/list is not an array"), validationTags, "fallback chat validation tags not readable");
   await rpc("panels/close", { id: chatId, meta: validationMeta });
+  const cleanupEvents = await rpc("events/list", { types: ["panel.removed"], scope: { panelId: chatId }, limit: 10 });
+  assertEventsTagged(assertArray(cleanupEvents, "fallback cleanup events/list is not an array"), validationTags, "fallback cleanup validation tags not readable");
   const panels = await rpc("panels/list");
   assert(!panels.some((panel) => panel.id === chatId), "fallback chat still projected after cleanup");
   return {
