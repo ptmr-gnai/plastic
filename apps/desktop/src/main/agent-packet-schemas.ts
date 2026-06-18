@@ -1,5 +1,7 @@
-import { agentTransportSchema } from "./runtime-control-schemas.js";
+import { eventTimelineItemSchema, plasticMethodSchema, runtimeCapabilitySchema, agentTransportSchema } from "./runtime-control-schemas.js";
 import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
+import { runtimeModulesOutputSchema } from "./runtime-module-schemas.js";
+import { plasticStateResourceLinkSchema } from "./runtime-state-schemas.js";
 
 const actionAffordanceSchema = {
   type: "object",
@@ -11,6 +13,53 @@ const actionAffordanceSchema = {
     intent: { type: "string", enum: ["read", "inspect", "execute"] },
     risk: { type: "string", enum: ["none", "low", "medium"] },
     input: { type: "object" }
+  }
+};
+
+const flatVisibleRefSchema = {
+  type: "object",
+  required: ["windowId"],
+  properties: {
+    windowId: { type: "number" },
+    ref: { type: "string" },
+    panel: { type: "string" },
+    extension: { type: "string" },
+    command: { type: "string" },
+    tag: { type: "string" },
+    text: { type: "string" },
+    bounds: { type: "object" }
+  }
+};
+
+const agentMethodSummarySchema = {
+  type: "object",
+  required: ["id", "title", "owner"],
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    description: { type: "string" },
+    owner: plasticMethodSchema.properties.owner
+  }
+};
+
+const methodGroupSchema = {
+  type: "object",
+  required: ["owner", "count", "methods"],
+  properties: {
+    owner: { type: "string" },
+    count: { type: "number" },
+    methods: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["id", "title"],
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" }
+        }
+      }
+    }
   }
 };
 
@@ -106,7 +155,7 @@ const capabilityPacketSchema = {
   required: ["count", "items", "statuses"],
   properties: {
     count: { type: "number" },
-    items: { type: "array", items: { type: "object" } },
+    items: { type: "array", items: runtimeCapabilitySchema },
     statuses: { type: "object" }
   }
 };
@@ -121,9 +170,18 @@ export const agentWorkbenchOutputSchema = {
       type: "object",
       required: ["visibleRefs", "sourceHints", "timeline", "latestEventId"],
       properties: {
-        visibleRefs: { type: "array", items: { type: "object" } },
+        visibleRefs: { type: "array", items: flatVisibleRefSchema },
         sourceHints: { type: "array", items: { type: "string" } },
-        timeline: { type: "object" },
+        timeline: {
+          type: "object",
+          required: ["latestEventId", "eventCount", "cursor", "items"],
+          properties: {
+            latestEventId: { type: ["string", "null"] },
+            eventCount: { type: "number" },
+            cursor: { type: ["string", "null"] },
+            items: { type: "array", items: eventTimelineItemSchema }
+          }
+        },
         latestEventId: { type: ["string", "null"] }
       }
     },
@@ -135,10 +193,10 @@ export const agentWorkbenchOutputSchema = {
         controlPlane: runtimeHostControlPlaneSchema,
         agentTransports: { type: "array", items: agentTransportSchema },
         auditStatus: auditStatusSchema,
-        modules: { type: "object" },
+        modules: runtimeModulesOutputSchema,
         methodCount: { type: "number" },
-        methodGroups: { type: "array", items: { type: "object" } },
-        links: { type: "array", items: { type: "object" } },
+        methodGroups: { type: "array", items: methodGroupSchema },
+        links: { type: "array", items: plasticStateResourceLinkSchema },
         recommendedActions: { type: "array", items: actionAffordanceSchema }
       }
     },
@@ -170,9 +228,9 @@ export const agentOrientOutputSchema = {
         latestEventId: { type: ["string", "null"] },
         eventCount: { type: "number" },
         eventCursor: { type: ["string", "null"] },
-        sinceCursor: { type: "array", items: { type: "object" } },
-        recentUserIntents: { type: "array", items: { type: "object" } },
-        recentAgentActions: { type: "array", items: { type: "object" } }
+        sinceCursor: { type: "array", items: eventTimelineItemSchema },
+        recentUserIntents: { type: "array", items: eventTimelineItemSchema },
+        recentAgentActions: { type: "array", items: eventTimelineItemSchema }
       }
     },
     capabilities: {
@@ -181,14 +239,14 @@ export const agentOrientOutputSchema = {
       properties: {
         hostBase: { type: "object" },
         host: capabilityPacketSchema,
-        modules: { type: "object" },
+        modules: runtimeModulesOutputSchema,
         auditStatus: auditStatusSchema,
         controlPlane: runtimeHostControlPlaneSchema,
         agentTransports: { type: "array", items: agentTransportSchema },
         methodCount: { type: "number" },
-        methods: { type: "array", items: { type: "object" } },
+        methods: { type: "array", items: agentMethodSummarySchema },
         recommendedActions: { type: "array", items: actionAffordanceSchema },
-        links: { type: "array", items: { type: "object" } }
+        links: { type: "array", items: plasticStateResourceLinkSchema }
       }
     },
     obligations: { type: "object" }

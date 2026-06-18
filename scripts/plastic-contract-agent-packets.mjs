@@ -105,7 +105,13 @@ export const assertAgentWorkbenchMethodDescription = ({ assert, description }) =
   assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.properties?.runtime?.properties?.eventStreamPath?.enum?.includes("/events/stream"), "agent/workbench output schema must expose runtime event stream path");
   assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.properties?.build?.required?.includes("statusUrl"), "agent/workbench output schema must expose build status URL");
   assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.properties?.build?.properties?.statusPath?.enum?.includes("/status"), "agent/workbench output schema must expose build status path");
-  assert(description.outputSchema?.properties?.control?.properties?.links?.items?.type === "object", "agent/workbench output schema must expose control links");
+  assert(description.outputSchema?.properties?.control?.properties?.capabilities?.properties?.items?.items?.required?.includes("status"), "agent/workbench output schema must expose capability item status");
+  assert(description.outputSchema?.properties?.control?.properties?.modules?.properties?.items?.items?.required?.includes("methodIds"), "agent/workbench output schema must expose module method ids");
+  assert(description.outputSchema?.properties?.control?.properties?.methodGroups?.items?.required?.includes("methods"), "agent/workbench output schema must expose method groups");
+  assert(description.outputSchema?.properties?.control?.properties?.methodGroups?.items?.properties?.methods?.items?.required?.includes("id"), "agent/workbench output schema must expose grouped method ids");
+  assert(description.outputSchema?.properties?.control?.properties?.links?.items?.required?.includes("rel"), "agent/workbench output schema must expose typed control links");
+  assert(description.outputSchema?.properties?.observability?.properties?.visibleRefs?.items?.required?.includes("windowId"), "agent/workbench output schema must expose visible ref window ids");
+  assert(description.outputSchema?.properties?.observability?.properties?.timeline?.properties?.items?.items?.required?.includes("eventId"), "agent/workbench output schema must expose timeline event ids");
   assert(description.outputSchema?.properties?.control?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "agent/workbench output schema must expose transport action inputSchema");
   return { id: description.id, required: description.outputSchema.required };
 };
@@ -207,6 +213,11 @@ export const assertAgentOrientMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.properties?.runtime?.properties?.eventStreamPath?.enum?.includes("/events/stream"), "agent/orient output schema must expose runtime event stream path");
   assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.properties?.build?.required?.includes("statusUrl"), "agent/orient output schema must expose build status URL");
   assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.properties?.build?.properties?.statusPath?.enum?.includes("/status"), "agent/orient output schema must expose build status path");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.host?.properties?.items?.items?.required?.includes("status"), "agent/orient output schema must expose capability item status");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.modules?.properties?.items?.items?.required?.includes("methodIds"), "agent/orient output schema must expose module method ids");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.methods?.items?.required?.includes("owner"), "agent/orient output schema must expose method summary owners");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.links?.items?.required?.includes("rel"), "agent/orient output schema must expose typed capability links");
+  assert(description.outputSchema?.properties?.memory?.properties?.sinceCursor?.items?.required?.includes("eventId"), "agent/orient output schema must expose timeline memory event ids");
   assert(description.outputSchema?.properties?.capabilities?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "agent/orient output schema must expose transport action inputSchema");
   return { id: description.id, required: description.outputSchema.required };
 };
