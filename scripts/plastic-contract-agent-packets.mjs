@@ -89,6 +89,7 @@ export const assertAgentWorkbenchMethodDescription = ({ assert, description }) =
   assert(actions?.items?.properties?.intent?.enum?.includes("execute"), "agent/workbench output schema must expose action intent");
   assert(actions?.items?.properties?.risk?.enum?.includes("medium"), "agent/workbench output schema must expose action risk");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("failureTotal"), "agent/workbench output schema must expose audit method parity total");
+  assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("reportPath"), "agent/workbench output schema must expose audit method parity report path");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.recentActions?.items?.properties?.auditMetadata?.anyOf?.some((candidate) => candidate.properties?.methodParity), "agent/workbench output schema must expose recent audit action method parity");
   assert(description.outputSchema?.properties?.control?.properties?.controlPlane?.required?.includes("runtime"), "agent/workbench output schema must expose runtime control plane");
   assert(description.outputSchema?.properties?.control?.properties?.links?.items?.type === "object", "agent/workbench output schema must expose control links");
@@ -178,6 +179,7 @@ export const assertAgentOrientMethodDescription = ({ assert, description }) => {
   assert(actions?.items?.properties?.intent?.enum?.includes("inspect"), "agent/orient output schema must expose action intent");
   assert(actions?.items?.properties?.risk?.enum?.includes("medium"), "agent/orient output schema must expose action risk");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("failureTotal"), "agent/orient output schema must expose audit method parity total");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("reportPath"), "agent/orient output schema must expose audit method parity report path");
   assert(description.outputSchema?.properties?.capabilities?.properties?.controlPlane?.required?.includes("build"), "agent/orient output schema must expose build control plane");
   assert(description.outputSchema?.properties?.capabilities?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "agent/orient output schema must expose transport action inputSchema");
   return { id: description.id, required: description.outputSchema.required };

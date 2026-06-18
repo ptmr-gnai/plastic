@@ -21,7 +21,7 @@ export const appDiagnosticsOutputSchema = {
 
 const methodParityOutputSchema = {
   type: "object",
-  required: ["mode", "failureTotal"],
+  required: ["reportPath", "mode", "failureTotal"],
   properties: {
     reportPath: { type: ["string", "null"] },
     mode: { type: "string" },
