@@ -1,6 +1,9 @@
+import { stableJson } from "./plastic-stable-json.mjs";
+
 export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl, source, methods }) => {
   const items = assertArray(transports, `${source} agentTransports is not an array`);
   const methodIds = new Set((Array.isArray(methods) ? methods : []).map((method) => method.id));
+  const rpcCallInputSchema = (Array.isArray(methods) ? methods : []).find((method) => method.id === "rpc/call")?.inputSchema;
   const methodsUrl = rpcUrl.replace(/\/rpc$/, "/methods");
   const selfTestUrl = rpcUrl.replace(/\/rpc$/, "/self-test");
   const http = items.find((transport) => transport.id === "http-rpc");
@@ -36,6 +39,20 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
     assert(
       unknownDelegatedMethods.length === 0,
       `${source} agent transport actions reference unknown delegated methods: ${unknownDelegatedMethods.join(", ")}`
+    );
+  }
+  if (rpcCallInputSchema) {
+    const schemas = [
+      { label: "HTTP call action", schema: http.actions?.find((action) => action.id === "call-plastic-rpc")?.inputSchema },
+      { label: "MCP plastic_rpc tool", schema: mcp.tools?.find((tool) => tool.name === "plastic_rpc")?.inputSchema },
+      { label: "MCP call action", schema: mcp.actions?.find((action) => action.id === "call-plastic-rpc")?.inputSchema }
+    ];
+    const mismatchedSchemas = schemas
+      .filter((item) => stableJson(item.schema) !== stableJson(rpcCallInputSchema))
+      .map((item) => item.label);
+    assert(
+      mismatchedSchemas.length === 0,
+      `${source} agent transport schemas must match rpc/call input schema: ${mismatchedSchemas.join(", ")}`
     );
   }
   return { count: items.length };
