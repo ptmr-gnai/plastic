@@ -6,6 +6,7 @@ import { stableValue } from "./plastic-stable-json.mjs";
 const rpcUrl = process.env.PLASTIC_RPC_URL ?? "http://127.0.0.1:7331/rpc";
 const outPath = process.env.PLASTIC_METHOD_PARITY_OUT;
 const basePath = process.env.PLASTIC_METHOD_PARITY_BASE;
+const reportPath = process.env.PLASTIC_METHOD_PARITY_REPORT_OUT;
 const mcpToolTimeoutMs = Number(process.env.PLASTIC_METHOD_PARITY_MCP_TIMEOUT_MS ?? "3000");
 
 const rpc = async (method, input = {}) => {
@@ -462,7 +463,7 @@ const main = async () => {
     await mkdir(dirname(outPath), { recursive: true });
     await writeFile(outPath, `${JSON.stringify(current, null, 2)}\n`);
   }
-  console.log(JSON.stringify({
+  const report = {
     ok: true,
     mode: current.mode,
     methods: current.methodCount,
@@ -474,7 +475,12 @@ const main = async () => {
     capabilityStatuses: Object.fromEntries(current.capabilities.map((capability) => [capability.id, capability.status])),
     comparisonFailureSummary: summary,
     comparison
-  }, null, 2));
+  };
+  if (reportPath) {
+    await mkdir(dirname(reportPath), { recursive: true });
+    await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+  }
+  console.log(JSON.stringify(report, null, 2));
 };
 
 main().catch((error) => {

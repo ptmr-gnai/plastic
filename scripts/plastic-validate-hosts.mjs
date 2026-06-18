@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname } from "node:path";
@@ -11,6 +11,7 @@ const buildUrl = process.env.PLASTIC_BUILD_URL ?? "http://127.0.0.1:7332";
 const viteUrl = process.env.PLASTIC_VITE_URL ?? "http://127.0.0.1:5173";
 const rpcUrl = `${runtimeUrl}/rpc`;
 const parityBaseline = process.env.PLASTIC_METHOD_PARITY_OUT ?? ".plastic/tmp/headless-methods.json";
+const parityReport = process.env.PLASTIC_METHOD_PARITY_REPORT_OUT ?? ".plastic/tmp/electron-method-parity.json";
 const readinessTimeoutMs = Number(process.env.PLASTIC_VALIDATE_READY_TIMEOUT_MS ?? 90_000);
 const electronPreflightTimeoutMs = Number(process.env.PLASTIC_ELECTRON_PREFLIGHT_TIMEOUT_MS ?? 10_000);
 const electronAppModeSmokeTimeoutMs = Number(process.env.PLASTIC_ELECTRON_APP_MODE_SMOKE_TIMEOUT_MS ?? 3_000);
@@ -380,9 +381,14 @@ const runHost = async ({ label, script, parity, requiresRenderer = false }) => {
       });
     }
     if (parity === "compare") {
+      await mkdir(dirname(parityReport), { recursive: true });
       await run("pnpm", ["plastic:method-parity"], {
-        env: { ...process.env, PLASTIC_RPC_URL: rpcUrl, PLASTIC_METHOD_PARITY_BASE: parityBaseline }
+        env: { ...process.env, PLASTIC_RPC_URL: rpcUrl, PLASTIC_METHOD_PARITY_BASE: parityBaseline, PLASTIC_METHOD_PARITY_REPORT_OUT: parityReport }
       });
+      const report = JSON.parse(await readFile(parityReport, "utf8"));
+      if (report.comparisonFailureSummary?.total !== 0) {
+        throw new Error(`method parity report total was ${report.comparisonFailureSummary?.total ?? "<missing>"}`);
+      }
     }
   } finally {
     await stopHost();
