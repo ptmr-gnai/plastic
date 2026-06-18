@@ -49,6 +49,27 @@ const assertBridgeEventEffects = ({ events, method, payload }) => {
   }
 };
 
+const assertMcpErrorPaths = async (mcp) => {
+  const missingMethod = await callPlasticRpcTool(mcp, { id: 5, method: "", input: {} });
+  assert(missingMethod.ok === false, "MCP missing method did not return ok:false");
+  assert(missingMethod.error?.includes("requires method"), "MCP missing method error mismatch");
+
+  const missingRpcMethod = `contract/missing-${actorId}`;
+  const missingRpc = await callPlasticRpcTool(mcp, { id: 6, method: missingRpcMethod, input: {} });
+  assert(missingRpc.ok === false, "MCP unknown delegated method did not return ok:false");
+  assert(missingRpc.error?.includes("not found"), "MCP unknown delegated method error mismatch");
+  assert(missingRpc.methodEffects?.error?.includes("not found"), "MCP unknown delegated method missing methodEffects error");
+  const events = await rpc("events/list", {
+    types: ["bridge.plastic_rpc.requested", "bridge.plastic_rpc.completed"],
+    scope: { agentId: actorId },
+    limit: 20
+  });
+  assert(Array.isArray(events), "MCP error events/list did not return events");
+  assert(!events.some((event) => event.payload?.method === ""), "MCP missing method should not append bridge events");
+  assert(events.some((event) => event.type === "bridge.plastic_rpc.requested" && event.payload?.method === missingRpcMethod), "MCP unknown delegated method missing requested event");
+  assert(events.some((event) => event.type === "bridge.plastic_rpc.completed" && event.payload?.method === missingRpcMethod && event.payload?.ok === false), "MCP unknown delegated method missing failed completion event");
+};
+
 const run = async () => {
   const mcp = createPlasticMcpClient({
     env: {
@@ -103,6 +124,7 @@ const run = async () => {
     if (planPayload !== null) {
       assertBridgeEventEffects({ events, method: "runtime/auditActionPlan", payload: planPayload });
     }
+    await assertMcpErrorPaths(mcp);
 
     console.log(JSON.stringify({
       ok: true,
