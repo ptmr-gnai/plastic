@@ -1,4 +1,4 @@
-import { agentTransportSchema } from "./runtime-control-schemas.js";
+import { agentTransportSchema, runtimeCapabilitySchema } from "./runtime-control-schemas.js";
 import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
 
 export const runtimeHostOutputSchema = {
@@ -46,7 +46,7 @@ export const runtimeHostOutputSchema = {
       required: ["count", "items"],
       properties: {
         count: { type: "number" },
-        items: { type: "array", items: { type: "object" } }
+        items: { type: "array", items: runtimeCapabilitySchema }
       }
     },
     diagnostics: { type: "object" }

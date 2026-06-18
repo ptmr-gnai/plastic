@@ -43,6 +43,7 @@ const assertRuntimeHostMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.controlPlane?.properties?.runtime?.properties?.eventStreamPath?.enum?.includes("/events/stream"), "runtime/host output schema must expose runtime event stream path");
   assert(description.outputSchema?.properties?.controlPlane?.properties?.build?.required?.includes("statusUrl"), "runtime/host output schema must expose build status URL");
   assert(description.outputSchema?.properties?.controlPlane?.properties?.build?.properties?.statusPath?.enum?.includes("/status"), "runtime/host output schema must expose build status path");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.items?.items?.properties?.status?.enum?.includes("available"), "runtime/host output schema must expose capability status");
   assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.methodRegistry?.enum?.includes("shared"), "runtime/host output schema must expose shared method registry transports");
   assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "runtime/host output schema must expose transport action inputSchema");
 };
