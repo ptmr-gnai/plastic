@@ -10,6 +10,7 @@ export function assertMethodCatalogsMatch({ assert, actual, expected, actualLabe
 
 export function assertMethodCatalogSurface({ assert, label, methods }) {
   const methodIds = new Set(methods.map((method) => method.id));
+  const methodsById = Object.fromEntries(methods.map((method) => [method.id, method]));
   for (const method of methods) {
     assert(method.description, `${label} ${method.id} missing description`);
     assert(method.inputSchema, `${label} ${method.id} missing inputSchema`);
@@ -32,6 +33,8 @@ export function assertMethodCatalogSurface({ assert, label, methods }) {
       invokeLinks.some((link) => stableJson(link.inputSchema) === stableJson(method.inputSchema)),
       `${label} ${method.id} invoke link missing delegated input schema`
     );
+    assert(methodsById["methods/describe"]?.availability?.status === "available", `${label} ${method.id} describe link method is not available`);
+    assert(methodsById["rpc/call"]?.availability?.status === "available", `${label} ${method.id} invoke link method is not available`);
     const unknownLinkMethods = (method.links ?? [])
       .filter((link) => typeof link.method === "string" && !methodIds.has(link.method))
       .map((link) => `${link.rel}:${link.method}`);
