@@ -1,4 +1,5 @@
 import { agentTransportSchema } from "./runtime-control-schemas.js";
+import { runtimeHostControlPlaneSchema } from "./runtime-host-control-plane-schema.js";
 
 export const runtimeHostOutputSchema = {
   type: "object",
@@ -28,14 +29,7 @@ export const runtimeHostOutputSchema = {
     dataDir: { type: "string" },
     eventPath: { type: "string" },
     runtimeRpcUrl: { type: "string" },
-    controlPlane: {
-      type: "object",
-      required: ["runtime", "build"],
-      properties: {
-        runtime: { type: "object" },
-        build: { type: "object" }
-      }
-    },
+    controlPlane: runtimeHostControlPlaneSchema,
     agentTransports: { type: "array", items: agentTransportSchema },
     hostBase: {
       type: "object",

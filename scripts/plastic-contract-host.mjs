@@ -39,6 +39,10 @@ const assertRuntimeHostMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.mode?.enum?.includes("electron"), "runtime/host output schema must expose electron mode");
   assert(description.outputSchema?.properties?.mode?.enum?.includes("headless"), "runtime/host output schema must expose headless mode");
   assert(description.outputSchema?.properties?.hostBase?.properties?.id?.enum?.includes("runtime-host-base"), "runtime/host output schema must expose hostBase marker");
+  assert(description.outputSchema?.properties?.controlPlane?.properties?.runtime?.required?.includes("rpcUrl"), "runtime/host output schema must expose runtime RPC URL");
+  assert(description.outputSchema?.properties?.controlPlane?.properties?.runtime?.properties?.eventStreamPath?.enum?.includes("/events/stream"), "runtime/host output schema must expose runtime event stream path");
+  assert(description.outputSchema?.properties?.controlPlane?.properties?.build?.required?.includes("statusUrl"), "runtime/host output schema must expose build status URL");
+  assert(description.outputSchema?.properties?.controlPlane?.properties?.build?.properties?.statusPath?.enum?.includes("/status"), "runtime/host output schema must expose build status path");
   assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.methodRegistry?.enum?.includes("shared"), "runtime/host output schema must expose shared method registry transports");
   assert(description.outputSchema?.properties?.agentTransports?.items?.properties?.actions?.items?.properties?.inputSchema, "runtime/host output schema must expose transport action inputSchema");
 };
