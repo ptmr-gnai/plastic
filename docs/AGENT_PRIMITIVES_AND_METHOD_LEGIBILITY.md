@@ -57,6 +57,8 @@ The remaining legibility work has moved up a layer:
 
 `agent/workbench` and `agent/orient` now follow the same rule when called with a panel context. Their recommended actions include focused panel read/control actions with exact panel inputs, and chat panel contexts include exact chat message actions. This keeps agent packets aligned with the state/snapshot HATEOAS resources instead of forcing agents to translate between packet context and RPC payloads.
 
+`deixis/resolveRef` now follows the same rule for visible UI references. Resolved refs with panel ownership expose concrete panel resource links and concrete panel read/control actions, so an agent can point at visible UI and receive directly invokable RPC payloads.
+
 ## Required Method Metadata
 
 Every method must be describable with:

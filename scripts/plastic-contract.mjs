@@ -12,7 +12,7 @@ import { assertRuntimeCapabilitiesMethodDescription } from "./plastic-contract-c
 import { assertControlPlaneEndpointUrls, assertMatchingControlPlaneDescriptors } from "./plastic-contract-control-plane.mjs";
 import { assertAppDiagnosticsMethodDescription } from "./plastic-contract-diagnostics.mjs";
 import { assertEventsAppendMethodDescription, assertEventsListMethodDescription, assertEventsTimelineMethodDescription } from "./plastic-contract-events.mjs";
-import { assertDeixisMethodDescriptions } from "./plastic-contract-deixis.mjs";
+import { assertDeixisMethodDescriptions, assertResolvedRefAffordances } from "./plastic-contract-deixis.mjs";
 import { assertHttpErrorContract, rawBuildRequest, rawRuntimeRequest } from "./plastic-contract-http-helpers.mjs";
 import { assertRuntimeHostSurface } from "./plastic-contract-host.mjs";
 import { assertDescribeMethodDescription, assertMethodCatalogsMatch, assertMethodCatalogSurface, assertPlasticMethodsMethodDescription, assertRpcCallMethodDescription } from "./plastic-contract-method-surface.mjs";
@@ -353,6 +353,9 @@ await check("capability-backed method metadata", async () => {
   } else {
     const refs = await rpc("deixis/listVisibleRefs", {});
     assertArray(refs, "deixis/listVisibleRefs is not an array");
+    const visibleRef = refs.flatMap((windowRefs) => windowRefs.refs ?? []).find((ref) => ref.ref?.startsWith("chat-compose:") || ref.ref?.startsWith("panel:"));
+    assert(visibleRef?.ref, "deixis/listVisibleRefs did not expose a resolvable panel ref");
+    assertResolvedRefAffordances({ assert, resolved: await rpc("deixis/resolveRef", { ref: visibleRef.ref }) });
     const screenshot = await rpc("windows/screenshot", {});
     assert(screenshot?.dataUrl?.startsWith("data:image/png"), "windows/screenshot missing PNG data URL");
   }

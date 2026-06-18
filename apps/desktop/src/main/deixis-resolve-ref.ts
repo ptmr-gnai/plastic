@@ -33,9 +33,9 @@ const elementProjection = (ref: string, visible: Awaited<ReturnType<DeixisMethod
 } : null;
 
 const resourceLinksFor = (input: { panelId?: string | undefined; extensionId?: string | undefined }) => [
-  ...(input.panelId ? [{ rel: "panel", href: "panels/get", method: "panels/get", target: input.panelId }] : []),
-  ...(input.extensionId ? [{ rel: "extension", href: "extensions/get", method: "extensions/get", target: input.extensionId }] : []),
-  ...(input.panelId ? [{ rel: "timeline", href: "events/timeline", method: "events/timeline", target: input.panelId }] : [])
+  ...(input.panelId ? [{ rel: "panel", href: "panels/get", method: "panels/get", target: input.panelId, input: { id: input.panelId } }] : []),
+  ...(input.extensionId ? [{ rel: "extension", href: "extensions/get", method: "extensions/get", target: input.extensionId, input: { id: input.extensionId } }] : []),
+  ...(input.panelId ? [{ rel: "timeline", href: "events/timeline", method: "events/timeline", target: input.panelId, input: { scope: { panelId: input.panelId }, limit: 12 } }] : [])
 ];
 
 const verificationFor = (input: { ref: string; panelId?: string | undefined }) => [
@@ -56,7 +56,9 @@ const actionsFor = (input: {
 }) => [
   ...(input.panelId ? [
     { id: "get-panel", title: "Get panel", method: "panels/get", input: { id: input.panelId } },
-    { id: "rename-panel", title: "Rename panel", method: "panels/rename" }
+    { id: "rename-panel", title: "Rename panel", method: "panels/rename", input: { id: input.panelId } },
+    { id: "move-panel", title: "Move panel", method: "panels/move", input: { id: input.panelId } },
+    { id: "remove-panel", title: "Remove panel", method: "panels/remove", input: { id: input.panelId } }
   ] : []),
   ...(input.isChatCompose && input.panelId ? [
     { id: "fill-compose", title: "Fill chat compose", method: "deixis/fillRef", input: { ref: input.ref, value: "" } },
