@@ -18,11 +18,15 @@ const assertHttpTransport = ({ assert, http, rpcUrl, source }) => {
   const methodsUrl = rpcUrl.replace(/\/rpc$/, "/methods");
   const selfTestUrl = rpcUrl.replace(/\/rpc$/, "/self-test");
   const eventStreamUrl = rpcUrl.replace(/\/rpc$/, "/events/stream");
+  const linkKeys = (http.links ?? []).map((link) => `${link.rel}:${link.method}`).sort();
+  const actionIds = (http.actions ?? []).map((action) => action.id).sort();
   assert(http?.status === "available", `${source} missing available HTTP RPC transport`);
   assert(http.title === "HTTP RPC", `${source} HTTP transport title mismatch`);
   assert(http.transport === "http", `${source} HTTP transport kind mismatch`);
   assert(http.methodRegistry === "shared", `${source} HTTP transport must use shared registry`);
   assert(http.rpcUrl === rpcUrl, `${source} HTTP transport URL mismatch`);
+  assert(stableJson(linkKeys) === stableJson(["event-stream:http/get", "methods:http/get", "rpc:http/post", "self-test:http/get"]), `${source} HTTP transport exposes unexpected links`);
+  assert(stableJson(actionIds) === stableJson(["call-plastic-rpc"]), `${source} HTTP transport exposes unexpected actions`);
   assert(http.links?.some((link) => link.rel === "methods" && link.method === "http/get" && link.href === methodsUrl), `${source} HTTP transport missing methods link`);
   assert(http.links?.some((link) => link.rel === "self-test" && link.method === "http/get" && link.href === selfTestUrl), `${source} HTTP transport missing self-test link`);
   assert(http.links?.some((link) => link.rel === "event-stream" && link.method === "http/get" && link.href === eventStreamUrl), `${source} HTTP transport missing event stream link`);
@@ -32,12 +36,16 @@ const assertHttpTransport = ({ assert, http, rpcUrl, source }) => {
 };
 
 const assertMcpTransport = ({ assert, mcp, rpcUrl, source }) => {
+  const toolNames = (mcp?.tools ?? []).map((tool) => tool.name).sort();
+  const actionIds = (mcp?.actions ?? []).map((action) => action.id).sort();
   assert(mcp?.status === "available", `${source} missing available MCP stdio transport`);
   assert(mcp.title === "MCP stdio bridge", `${source} MCP transport title mismatch`);
   assert(mcp.transport === "stdio", `${source} MCP transport kind mismatch`);
   assert(mcp.methodRegistry === "shared", `${source} MCP transport must use shared registry`);
   assert(mcp.command === "node" && mcp.args?.includes("scripts/plastic-mcp-server.mjs"), `${source} MCP command mismatch`);
   assert(mcp.env?.PLASTIC_RPC_URL === rpcUrl, `${source} MCP RPC URL mismatch`);
+  assert(stableJson(toolNames) === stableJson(["plastic_rpc"]), `${source} MCP transport exposes unexpected tools`);
+  assert(stableJson(actionIds) === stableJson(["call-plastic-rpc"]), `${source} MCP transport exposes unexpected actions`);
   assert(mcp.tools?.some((tool) => tool.name === "plastic_rpc" && tool.methodRegistry === "shared"), `${source} MCP transport missing plastic_rpc tool metadata`);
   assert(mcp.tools?.some((tool) => tool.name === "plastic_rpc" && tool.inputSchema?.required?.includes("method")), `${source} MCP plastic_rpc tool missing RPC input schema`);
   assert(mcp.actions?.some((action) => action.id === "call-plastic-rpc" && action.tool === "plastic_rpc" && action.arguments?.method === "agent/orient"), `${source} MCP transport missing plastic_rpc call action`);
