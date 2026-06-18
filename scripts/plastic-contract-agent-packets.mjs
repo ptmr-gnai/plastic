@@ -33,8 +33,7 @@ export const assertAgentWorkbenchPacket = ({ assert, assertArray, workbench, mod
   assertSameModuleAvailability({ assert, actual: workbench.control.modules.items, expected: modules.items, source: "workbench" });
   assert(workbench.control.auditStatus?.verdict, "workbench missing compact audit status");
   assertAgentAuditMetadata({ assert, auditStatus: workbench.control.auditStatus, source: "workbench" });
-  assert(typeof workbench.control.auditStatus.failureSummary?.count === "number", "workbench audit status missing failure summary");
-  assert(Array.isArray(workbench.control.auditStatus.failureSummary.ids), "workbench audit status missing failure ids");
+  assertAuditFailureSummary({ assert, failureSummary: workbench.control.auditStatus.failureSummary, source: "workbench" });
   assertArray(workbench.control.auditStatus.actionIds, "workbench audit status action ids missing");
   assertArray(workbench.control.auditStatus.recentActions, "workbench audit status recent actions missing");
   assertRecentAuditActionRows({ assert, recentActions: workbench.control.auditStatus.recentActions, source: "workbench" });
@@ -92,6 +91,8 @@ export const assertAgentWorkbenchMethodDescription = ({ assert, description }) =
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.required?.includes("available"), "agent/workbench output schema must expose audit availability");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.required?.includes("diagnosis"), "agent/workbench output schema must expose audit diagnosis");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.required?.includes("nextAction"), "agent/workbench output schema must expose audit next action");
+  assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.failureSummary?.required?.includes("blockingIds"), "agent/workbench output schema must expose audit blocking failure ids");
+  assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.failureSummary?.required?.includes("first"), "agent/workbench output schema must expose first audit failure");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("failureTotal"), "agent/workbench output schema must expose audit method parity total");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("reportPath"), "agent/workbench output schema must expose audit method parity report path");
   assert(description.outputSchema?.properties?.control?.properties?.auditStatus?.properties?.recentActions?.items?.properties?.auditMetadata?.anyOf?.some((candidate) => candidate.properties?.methodParity), "agent/workbench output schema must expose recent audit action method parity");
@@ -133,8 +134,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
   );
   assert(orientation.capabilities.auditStatus?.verdict, "agent/orient missing compact audit status");
   assertAgentAuditMetadata({ assert, auditStatus: orientation.capabilities.auditStatus, source: "agent/orient" });
-  assert(typeof orientation.capabilities.auditStatus.failureSummary?.count === "number", "agent/orient audit status missing failure summary");
-  assert(Array.isArray(orientation.capabilities.auditStatus.failureSummary.ids), "agent/orient audit status missing failure ids");
+  assertAuditFailureSummary({ assert, failureSummary: orientation.capabilities.auditStatus.failureSummary, source: "agent/orient" });
   assertArray(orientation.capabilities.auditStatus.actionIds, "agent/orient audit status action ids missing");
   assertArray(orientation.capabilities.auditStatus.recentActions, "agent/orient audit status recent actions missing");
   assertRecentAuditActionRows({ assert, recentActions: orientation.capabilities.auditStatus.recentActions, source: "agent/orient" });
@@ -187,6 +187,8 @@ export const assertAgentOrientMethodDescription = ({ assert, description }) => {
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.required?.includes("available"), "agent/orient output schema must expose audit availability");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.required?.includes("diagnosis"), "agent/orient output schema must expose audit diagnosis");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.required?.includes("nextAction"), "agent/orient output schema must expose audit next action");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.failureSummary?.required?.includes("blockingIds"), "agent/orient output schema must expose audit blocking failure ids");
+  assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.failureSummary?.required?.includes("first"), "agent/orient output schema must expose first audit failure");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("failureTotal"), "agent/orient output schema must expose audit method parity total");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.audit?.properties?.methodParity?.required?.includes("reportPath"), "agent/orient output schema must expose audit method parity report path");
   assert(description.outputSchema?.properties?.capabilities?.properties?.auditStatus?.properties?.recentActions?.items?.required?.includes("actionId"), "agent/orient output schema must expose recent audit action rows");
@@ -214,6 +216,13 @@ const assertAgentAuditMetadata = ({ assert, auditStatus, source }) => {
   assert(typeof auditStatus.audit.methodParity?.mode === "string", `${source} audit status missing method parity mode`);
   assert(auditStatus.audit.methodParity.reportPath === null || typeof auditStatus.audit.methodParity.reportPath === "string", `${source} audit status invalid method parity report path`);
   assert(auditStatus.audit.methodParity.failureTotal === null || typeof auditStatus.audit.methodParity.failureTotal === "number", `${source} audit status invalid method parity total`);
+};
+
+const assertAuditFailureSummary = ({ assert, failureSummary, source }) => {
+  assert(typeof failureSummary?.count === "number", `${source} audit status missing failure summary`);
+  assert(Array.isArray(failureSummary.ids), `${source} audit status missing failure ids`);
+  assert(Array.isArray(failureSummary.blockingIds), `${source} audit status missing blocking failure ids`);
+  assert(failureSummary.first === null || typeof failureSummary.first?.id === "string", `${source} audit status invalid first failure`);
 };
 
 const assertRecentAuditActionMetadata = ({ assert, recentActions, source }) => {

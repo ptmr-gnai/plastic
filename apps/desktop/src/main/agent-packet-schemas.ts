@@ -61,6 +61,30 @@ const recentAuditActionSchema = {
   }
 };
 
+const failureSummarySchema = {
+  type: "object",
+  required: ["count", "ids", "blockingIds", "first"],
+  properties: {
+    count: { type: "number" },
+    ids: { type: "array", items: { type: "string" } },
+    blockingIds: { type: "array", items: { type: "string" } },
+    first: {
+      anyOf: [
+        { type: "null" },
+        {
+          type: "object",
+          required: ["id", "command", "exit"],
+          properties: {
+            id: { type: "string" },
+            command: { type: ["string", "null"] },
+            exit: { type: ["number", "string", "null"] }
+          }
+        }
+      ]
+    }
+  }
+};
+
 const auditStatusSchema = {
   type: "object",
   required: ["available", "verdict", "audit", "diagnosis", "failureSummary", "nextAction", "actionIds", "recentActions"],
@@ -69,7 +93,7 @@ const auditStatusSchema = {
     verdict: { type: "string" },
     audit: auditMetadataSchema,
     diagnosis: { type: "object" },
-    failureSummary: { type: "object" },
+    failureSummary: failureSummarySchema,
     nextAction: { type: ["string", "null"] },
     actionIds: { type: "array", items: { type: "string" } },
     recentActions: { type: "array", items: recentAuditActionSchema }
