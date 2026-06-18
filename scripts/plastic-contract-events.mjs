@@ -42,7 +42,12 @@ export const assertEventQueryBehavior = async ({ assert, assertArray, createdPan
   assert(timelineItems.some((item) => item.eventId === createdPanelEvent.id), "panel create event missing from timeline");
   const limitedTimeline = await rpc("events/timeline", { scope: { panelId }, limit: 1 });
   assert(itemsFrom(limitedTimeline, "limited events/timeline returned no items").length === 1, "events/timeline limit did not constrain result size");
-  return { events: events.length, afterCreate: eventsAfterCreate.length, timeline: timelineItems.length };
+  const timelineAfterCreate = await rpc("events/timeline", { after: createdPanelEvent.id, scope: { panelId }, limit: 25 });
+  const timelineAfterItems = itemsFrom(timelineAfterCreate, "events/timeline after cursor returned no items");
+  assert(!timelineAfterItems.some((item) => item.eventId === createdPanelEvent.id), "events/timeline after cursor included cursor event");
+  assert(timelineAfterItems.every((item) => item.scope?.panelId === panelId), "events/timeline after cursor returned other panels");
+  assert(timelineAfterItems.length === eventsAfterCreate.length, "events/timeline after cursor count diverged from events/list");
+  return { events: events.length, afterCreate: eventsAfterCreate.length, timeline: timelineItems.length, timelineAfterCreate: timelineAfterItems.length };
 };
 
 export const assertSetThemeMethodDescription = ({ assert, description }) => {
