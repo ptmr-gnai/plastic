@@ -1,5 +1,8 @@
 import { stableJson } from "./plastic-stable-json.mjs";
 
+let canonicalAgentTransports = null;
+let canonicalAgentTransportSource = null;
+
 export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl, source, methods }) => {
   const items = assertArray(transports, `${source} agentTransports is not an array`);
   const methodIds = new Set((Array.isArray(methods) ? methods : []).map((method) => method.id));
@@ -55,6 +58,15 @@ export const assertAgentTransports = ({ assert, assertArray, transports, rpcUrl,
     assert(
       mismatchedSchemas.length === 0,
       `${source} agent transport schemas must match rpc/call input schema: ${mismatchedSchemas.join(", ")}`
+    );
+  }
+  if (canonicalAgentTransports === null) {
+    canonicalAgentTransports = stableJson(items);
+    canonicalAgentTransportSource = source;
+  } else {
+    assert(
+      stableJson(items) === canonicalAgentTransports,
+      `${source} agent transports diverged from ${canonicalAgentTransportSource}`
     );
   }
   return { count: items.length };
