@@ -228,7 +228,8 @@ const capture = async () => {
     modules: modules.items.map((module) => ({
       id: module.id,
       order: module.order,
-      methodIds: [...module.methodIds].sort()
+      methodIds: [...module.methodIds].sort(),
+      requiredCapabilities: sorted(module.availability?.requiredCapabilities)
     })).sort((left, right) => left.order - right.order),
     capabilities: capabilities.items.map((capability) => ({
       id: capability.id,
@@ -325,7 +326,15 @@ const compareModules = (baseModulesList, currentModulesList) => {
     moduleMethodDrift: baseModuleIds
       .filter((id) => currentModules[id])
       .filter((id) => JSON.stringify(baseModules[id].methodIds) !== JSON.stringify(currentModules[id].methodIds))
-      .map((id) => ({ id, base: baseModules[id].methodIds, current: currentModules[id].methodIds }))
+      .map((id) => ({ id, base: baseModules[id].methodIds, current: currentModules[id].methodIds })),
+    moduleRequiredCapabilityDrift: baseModuleIds
+      .filter((id) => currentModules[id])
+      .filter((id) => JSON.stringify(baseModules[id].requiredCapabilities) !== JSON.stringify(currentModules[id].requiredCapabilities))
+      .map((id) => ({
+        id,
+        base: baseModules[id].requiredCapabilities,
+        current: currentModules[id].requiredCapabilities
+      }))
   };
 };
 
@@ -412,6 +421,7 @@ const main = async () => {
       comparison.addedModules.length ? `added modules: ${comparison.addedModules.join(", ")}` : null,
       comparison.moduleOrderDrift.length ? "module order drift" : null,
       comparison.moduleMethodDrift.length ? `module method drift: ${comparison.moduleMethodDrift.map((item) => item.id).join(", ")}` : null,
+      comparison.moduleRequiredCapabilityDrift.length ? `module required capability drift: ${comparison.moduleRequiredCapabilityDrift.map((item) => item.id).join(", ")}` : null,
       comparison.missingCapabilities.length ? `missing capabilities: ${comparison.missingCapabilities.join(", ")}` : null,
       comparison.addedCapabilities.length ? `added capabilities: ${comparison.addedCapabilities.join(", ")}` : null,
       comparison.capabilityTitleDrift.length ? `capability title drift: ${comparison.capabilityTitleDrift.map((item) => item.id).join(", ")}` : null,
