@@ -287,15 +287,20 @@ const buildCapabilities = async (input: {
     agentAction({ id: "capture-screenshot", title: "Capture screenshot", method: "windows/screenshot", inputSchema: agentActionSchemas.screenshotInputSchema })
   ],
   links: [
-    { rel: "self", href: "agent/orient", method: "agent/orient" },
+    {
+      rel: "self",
+      href: "agent/orient",
+      method: "agent/orient",
+      input: { ...(input.panelId ? { panelId: input.panelId } : {}), ...(input.latestEventId ? { eventCursor: input.latestEventId } : {}) }
+    },
     { rel: "state", href: "plastic/state", method: "plastic/state" },
-    { rel: "timeline", href: "events/timeline", method: "events/timeline" },
+    { rel: "timeline", href: "events/timeline", method: "events/timeline", inputSchema: agentActionSchemas.timelineInputSchema },
     { rel: "methods", href: "plastic/methods", method: "plastic/methods" },
     { rel: "host", href: "runtime/host", method: "runtime/host" },
     { rel: "self-test", href: "plastic/selfTest", method: "plastic/selfTest" },
     { rel: "audit-status", href: "runtime/auditStatus", method: "runtime/auditStatus" },
-    { rel: "audit-action-plan", href: "runtime/auditActionPlan", method: "runtime/auditActionPlan" },
-    { rel: "audit-action", href: "runtime/runAuditAction", method: "runtime/runAuditAction" },
+    { rel: "audit-action-plan", href: "runtime/auditActionPlan", method: "runtime/auditActionPlan", inputSchema: agentActionSchemas.auditActionInputSchema },
+    { rel: "audit-action", href: "runtime/runAuditAction", method: "runtime/runAuditAction", inputSchema: agentActionSchemas.auditActionInputSchema },
     { rel: "modules", href: "runtime/modules", method: "runtime/modules" },
     { rel: "control-plane", href: "events/list", method: "events/list", input: { types: ["runtime.started"], limit: 1 } },
     { rel: "capabilities", href: "runtime/capabilities", method: "runtime/capabilities" },

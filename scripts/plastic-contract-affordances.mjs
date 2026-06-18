@@ -110,6 +110,9 @@ export const assertResourceActionInputLegibility = ({ assert, resources, methods
 export const assertActionInputLegibility = ({ assert, actions, methods, source }) =>
   assertResourceActionInputLegibility({ assert, resources: [{ id: source, actions }], methods, source });
 
+export const assertLinkInputLegibility = ({ assert, links, methods, source }) =>
+  assertResourceActionInputLegibility({ assert, resources: [{ id: source, links }], methods, source });
+
 export const assertResourceAffordanceIntegrity = (input) => {
   assertResourceMethodReferences(input);
   assertResourceActionInputLegibility(input);

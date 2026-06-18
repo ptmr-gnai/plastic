@@ -1,6 +1,6 @@
 import { assertControlPlaneEndpointUrls } from "./plastic-contract-control-plane.mjs";
 import { assertAgentTransports } from "./plastic-contract-agent-transports.mjs";
-import { assertActionInputLegibility } from "./plastic-contract-affordances.mjs";
+import { assertActionInputLegibility, assertLinkInputLegibility } from "./plastic-contract-affordances.mjs";
 import {
   hasActionAffordance,
   hasLinkAffordance,
@@ -146,6 +146,7 @@ export const assertAgentOrientationPacket = ({ assert, assertArray, orientation,
     assert(hasLinkAffordance(orientation.capabilities.links, link), `agent/orient missing ${link.rel} link`);
   }
   assertKnownMethodReferences({ assert, references: orientation.capabilities.links ?? [], methodIds, source: "agent/orient links" });
+  assertLinkInputLegibility({ assert, links: orientation.capabilities.links, methods, source: "agent/orient links" });
   assert(orientation.memory?.eventCount >= 1, "agent/orient missing event memory");
   return {
     agentId: orientation.agent.id,
