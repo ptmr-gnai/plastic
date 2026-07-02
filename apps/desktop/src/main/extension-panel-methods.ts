@@ -47,7 +47,7 @@ export const registerExtensionPanelMethods = async (input: {
       ],
       effects: {
         durableEvents: ["panel.created"],
-        mutatesProjection: ["panels"]
+        mutatesProjection: ["panels", "windows"]
       },
       reversibility: {
         reversible: true,

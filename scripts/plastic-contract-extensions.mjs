@@ -22,6 +22,8 @@ export const assertExtensionLifecycleMethodDescriptions = ({ assert, description
   assert(descriptions.activate.effects?.durableEvents?.includes("extension.loaded"), "extensions/activate must describe loaded events");
   assert(descriptions.registerPanel.outputSchema?.required?.includes("id"), "extensions/registerPanel output schema must expose event id");
   assert(descriptions.registerPanel.effects?.durableEvents?.includes("panel.created"), "extensions/registerPanel must describe panel.created");
+  assert(descriptions.registerPanel.effects?.mutatesProjection?.includes("panels"), "extensions/registerPanel must describe panels projection mutation");
+  assert(descriptions.registerPanel.effects?.mutatesProjection?.includes("windows"), "extensions/registerPanel must describe windows projection mutation");
   assertExtensionSchema({ assert, schema: descriptions.forkBundled.outputSchema?.properties?.source, label: "extensions/forkBundled source" });
   assertExtensionSchema({ assert, schema: descriptions.forkBundled.outputSchema?.properties?.fork, label: "extensions/forkBundled fork" });
   assert(descriptions.forkBundled.outputSchema?.required?.includes("targetPath"), "extensions/forkBundled output schema must require targetPath");

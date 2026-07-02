@@ -170,7 +170,7 @@ export const createCodexChatMetadata = {
   ],
   effects: {
     durableEvents: ["panel.created", "chat.codex_thread.bound"],
-    mutatesProjection: ["panels", "chatBindings"]
+    mutatesProjection: ["panels", "windows", "chatBindings"]
   },
   reversibility: {
     reversible: false,
@@ -191,7 +191,7 @@ export const fallbackCreateCodexChatMetadata = {
   ],
   effects: {
     durableEvents: ["panel.created", "chat.agent_message.completed"],
-    mutatesProjection: ["panels", "chats"]
+    mutatesProjection: ["panels", "windows", "chats"]
   },
   reversibility: {
     reversible: false,
