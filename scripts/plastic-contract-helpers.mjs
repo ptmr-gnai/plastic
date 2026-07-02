@@ -245,7 +245,7 @@ export const assertControlLegibilityAndThemeProjection = async ({ methods, rpc }
 
 export const assertPanelLifecycleProjection = async ({ rpc, panelId, meta }) => {
   const panelDescriptions = Object.fromEntries(await Promise.all(
-    ["list", "get", "create", "rename", "move", "close"].map(async (key) => [
+    ["list", "get", "create", "rename", "move", "remove", "close"].map(async (key) => [
       key,
       await rpc("methods/describe", { id: `panels/${key}` })
     ])
