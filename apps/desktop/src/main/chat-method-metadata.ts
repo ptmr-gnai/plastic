@@ -223,7 +223,7 @@ export const closeChatMetadata = {
   },
   outputSchema: closeChatOutputSchema,
   examples: [{ title: "Close a chat", input: { chatId: "chat-main" }, verifyWith: { method: "panels/list", input: {} } }],
-  effects: { durableEvents: ["chat.session.closed", "panel.removed"], mutatesProjection: ["panels", "chats", "chatBindings"] },
+  effects: { durableEvents: ["chat.session.closed", "panel.removed"], mutatesProjection: ["panels", "windows", "chats", "chatBindings"] },
   reversibility: { reversible: false, notes: "Recreate the chat or replay the event log to recover it." }
 };
 

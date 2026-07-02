@@ -22,4 +22,6 @@ export const assertChatMethodDescriptions = ({ assert, descriptions }) => {
   assert(descriptions.start.outputSchema?.required?.includes("threadId"), "chats/startCodexThread output schema must require threadId");
   assert(descriptions.interrupt.outputSchema, "chats/interrupt output schema must be present");
   assert(descriptions.close.outputSchema?.required?.includes("closedEvent"), "chats/close output schema must require closedEvent");
+  assert(descriptions.close.effects?.durableEvents?.includes("panel.removed"), "chats/close must describe panel removal");
+  assert(descriptions.close.effects?.mutatesProjection?.includes("windows"), "chats/close must describe windows projection mutation");
 };
